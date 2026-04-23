@@ -59,25 +59,37 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
+
         scriptSrc: [
           "'self'",
           "'unsafe-inline'",
+          "'unsafe-eval'",
           "https://checkout.razorpay.com"
         ],
+
         connectSrc: [
           "'self'",
           "https://insta-serve.onrender.com",
+          "https://insta-serve-1-0.onrender.com",
+          "https://checkout.razorpay.com",
+          "https://api.razorpay.com",
+          "https://lumberjack.razorpay.com"
+        ],
+
+        frameSrc: [
+          "'self'",
+          "https://api.razorpay.com",
           "https://checkout.razorpay.com"
         ],
-        imgSrc: ["'self'", "data:", "https:"],
+
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+
         styleSrc: ["'self'", "'unsafe-inline'", "https:"],
       },
     },
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
-);
-
-// Rate limiting
+);// Rate limiting
 app.set('trust proxy', 1);
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

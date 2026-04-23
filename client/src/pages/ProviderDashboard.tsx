@@ -1442,19 +1442,7 @@ const fetchProviderStatus = async () => {
             <ArrowRightIcon className="w-4 h-4 text-green-600 mt-2 group-hover:translate-x-1 transition-transform" />
           </button>
 
-          <Link
-            to="/provider/earnings"
-            className="group p-6 bg-gradient-to-br from-yellow-50 via-yellow-100 to-orange-100 rounded-xl hover:from-yellow-100 hover:via-orange-100 hover:to-orange-200 transition-all duration-300 border border-yellow-200 text-left hover:shadow-lg hover:scale-105 block"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <CurrencyDollarIcon className="w-8 h-8 text-yellow-600 group-hover:scale-110 transition-transform" />
-              <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded-full">₹{earningsData.thisMonth.toLocaleString()}</span>
-            </div>
-            <h4 className="font-semibold text-gray-900 mb-1">View Earnings</h4>
-            <p className="text-sm text-gray-600">Track your income</p>
-            <ArrowRightIcon className="w-4 h-4 text-yellow-600 mt-2 group-hover:translate-x-1 transition-transform" />
-          </Link>
-        </div>
+                  </div>
       </div>
 
       {/* Recent Activity */}

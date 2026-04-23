@@ -48,9 +48,24 @@ app.use(cors({
 }));
 
 // Security
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        connectSrc: [
+          "'self'",
+          "https://insta-serve.onrender.com", // your backend
+          process.env.FRONTEND_URL || "http://localhost:3000"
+        ],
+        imgSrc: ["'self'", "data:", "blob:"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'"]
+      }
+    }
+  })
+);
 
 // Rate limit
 app.set('trust proxy', 1);

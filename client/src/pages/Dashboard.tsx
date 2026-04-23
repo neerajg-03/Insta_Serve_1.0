@@ -102,19 +102,6 @@ const Dashboard: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   
-  // Settings state
-  const [settings, setSettings] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-    pushNotifications: true,
-    marketingEmails: false,
-    language: 'en',
-    currency: 'INR',
-    darkMode: false,
-    twoFactorAuth: false
-  });
-  const [settingsLoading, setSettingsLoading] = useState(false);
-
   // Review modal state
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -269,23 +256,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Save settings
-  const handleSaveSettings = async () => {
-    try {
-      setSettingsLoading(true);
-      const response = await usersAPI.updateSettings(settings);
-      if (response.success) {
-        toast.success('Settings saved successfully');
-      } else {
-        toast.error(response.message || 'Failed to save settings');
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to save settings');
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
-
   // Handle completion code verification
   const handleVerifyCompletionCode = async (bookingId: string, code: string) => {
     try {
@@ -346,7 +316,6 @@ const Dashboard: React.FC = () => {
     { id: 'overview', label: 'Overview', icon: HomeIcon },
     { id: 'bookings', label: 'My Bookings', icon: CalendarIcon },
     { id: 'profile', label: 'Profile', icon: UserIcon },
-    { id: 'settings', label: 'Settings', icon: CogIcon },
   ];
 
   const getStatusColor = (status: string) => {
@@ -531,15 +500,6 @@ const Dashboard: React.FC = () => {
             <ArrowRightIcon className="w-4 h-4 text-green-600 mt-2 group-hover:translate-x-1 transition-transform" />
           </button>
 
-          <Link
-            to="/wallet"
-            className="group p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl hover:from-purple-100 hover:to-purple-200 transition-all duration-200 border border-purple-200"
-          >
-            <CreditCardIcon className="w-8 h-8 text-purple-600 mb-3 group-hover:scale-110 transition-transform" />
-            <h4 className="font-semibold text-gray-900 mb-1">Wallet</h4>
-            <p className="text-sm text-gray-600">Manage payments</p>
-            <ArrowRightIcon className="w-4 h-4 text-purple-600 mt-2 group-hover:translate-x-1 transition-transform" />
-          </Link>
         </div>
       </div>
 
@@ -937,124 +897,7 @@ const Dashboard: React.FC = () => {
     );
   };
 
-  const renderSettings = () => {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-            <p className="text-gray-600 mt-1">Manage your preferences and privacy</p>
-          </div>
-          <button
-            onClick={handleSaveSettings}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            disabled={settingsLoading}
-          >
-            {settingsLoading ? 'Saving...' : 'Save Settings'}
-          </button>
-        </div>
-
-        {/* Notifications */}
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Notifications</h3>
-          <div className="space-y-4">
-            {[
-              { key: 'emailNotifications', label: 'Email Notifications', desc: 'Receive booking updates via email' },
-              { key: 'smsNotifications', label: 'SMS Notifications', desc: 'Receive booking updates via SMS' },
-              { key: 'pushNotifications', label: 'Push Notifications', desc: 'Receive push notifications in browser' },
-              { key: 'marketingEmails', label: 'Marketing Emails', desc: 'Receive promotional offers and updates' }
-            ].map((item) => (
-              <div key={item.key} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div>
-                  <h4 className="font-medium text-gray-900">{item.label}</h4>
-                  <p className="text-sm text-gray-600">{item.desc}</p>
-                </div>
-                <button
-                  onClick={() => setSettings({...settings, [item.key]: !settings[item.key as keyof typeof settings]})}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    settings[item.key as keyof typeof settings] ? 'bg-blue-600' : 'bg-gray-200'
-                  }`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    settings[item.key as keyof typeof settings] ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Preferences */}
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Preferences</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
-              <select
-                value={settings.language}
-                onChange={(e) => setSettings({...settings, language: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              >
-                <option value="en">English</option>
-                <option value="hi">हिन्दी (Hindi)</option>
-                <option value="bn">বাংলা (Bengali)</option>
-                <option value="ta">தமிழ் (Tamil)</option>
-                <option value="te">తెలుగు (Telugu)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
-              <select
-                value={settings.currency}
-                onChange={(e) => setSettings({...settings, currency: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              >
-                <option value="INR">Indian Rupee (₹)</option>
-                <option value="USD">US Dollar ($)</option>
-                <option value="EUR">Euro (€)</option>
-                <option value="GBP">British Pound (£)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Privacy & Security */}
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Privacy & Security</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-              <div>
-                <h4 className="font-medium text-gray-900">Two-Factor Authentication</h4>
-                <p className="text-sm text-gray-600">Add an extra layer of security</p>
-              </div>
-              <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
-                Enable 2FA
-              </button>
-            </div>
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-              <div>
-                <h4 className="font-medium text-gray-900">Download Your Data</h4>
-                <p className="text-sm text-gray-600">Get a copy of all your data</p>
-              </div>
-              <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
-                Download Data
-              </button>
-            </div>
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-              <div>
-                <h4 className="font-medium text-gray-900">Privacy Policy</h4>
-                <p className="text-sm text-gray-600">Read our privacy policy</p>
-              </div>
-              <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
-                View Policy
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
+  
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
@@ -1063,8 +906,6 @@ const Dashboard: React.FC = () => {
         return renderBookings();
       case 'profile':
         return renderProfile();
-      case 'settings':
-        return renderSettings();
       default:
         return renderOverview();
     }

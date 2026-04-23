@@ -292,7 +292,7 @@ const Contact: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900">Email Support</h3>
-                    <p className="text-gray-600">admin@instaserve.com</p>
+                    <p className="text-gray-600">admin.instaserve@gmail.com</p>
                     <p className="text-sm text-blue-600">Response within 24 hours</p>
                   </div>
                 </div>
@@ -315,7 +315,10 @@ const Contact: React.FC = () => {
                   <div>
                     <h3 className="font-bold text-gray-900">Live Chat</h3>
                     <p className="text-gray-600">Available 24/7</p>
-                    <button className="mt-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200">
+                    <button 
+                      onClick={() => toast('Feature coming soon!')}
+                      className="mt-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200"
+                    >
                       Start Chat
                     </button>
                   </div>

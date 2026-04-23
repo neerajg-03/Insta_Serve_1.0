@@ -1363,98 +1363,37 @@ const fetchProviderStatus = async () => {
         </div>
       )}
 
-      {/* Availability Status */}
-      <ProviderAvailabilityToggle />
-
-      {/* Location Tracking Status */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-          <MapPinIcon className="w-6 h-6 mr-2 text-red-500" />
-          Real-Time Location Tracking
-        </h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-full ${locationSharingEnabled ? 'bg-green-100' : 'bg-gray-100'}`}>
-                <MapPinIcon className={`w-5 h-5 ${locationSharingEnabled ? 'text-green-600' : 'text-gray-400'}`} />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">
-                  {locationSharingEnabled ? 'Location Sharing Active' : 'Location Sharing Inactive'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  {lastLocationUpdate 
-                    ? `Last updated: ${lastLocationUpdate.toLocaleTimeString()}`
-                    : 'No location data yet'
-                  }
-                </p>
-              </div>
-            </div>
-            <div className="text-sm text-gray-600">
-              <p className="font-medium">
-                {locationSharingEnabled ? 'Location sharing is active' : 'Location sharing is inactive'}
-              </p>
-              <p className="text-xs mt-1">
-                Location is automatically shared when you are available
-              </p>
-            </div>
+      {/* Compact Status Box - Top Right Corner */}
+      <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-64">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            <span className="text-xs font-semibold text-gray-700">Status</span>
           </div>
-          
-          {currentLocation && (
-            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-blue-800 flex items-center">
-                  <MapPinIcon className="w-4 h-4 mr-2 text-blue-600" />
-                  Live GPS Coordinates
-                </p>
-                <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-green-600 font-medium">LIVE</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white rounded-lg p-3 border border-blue-100">
-                  <p className="text-xs text-gray-600 mb-1">Latitude</p>
-                  <p className="text-sm font-mono font-bold text-blue-700">
-                    {currentLocation.lat.toFixed(6)}
-                  </p>
-                </div>
-                <div className="bg-white rounded-lg p-3 border border-blue-100">
-                  <p className="text-xs text-gray-600 mb-1">Longitude</p>
-                  <p className="text-sm font-mono font-bold text-blue-700">
-                    {currentLocation.lng.toFixed(6)}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <p className="text-xs text-gray-600">
-                  Accuracy: ±10m • Updated: {lastLocationUpdate ? lastLocationUpdate.toLocaleTimeString() : 'Just now'}
-                </p>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`);
-                    toast.success('Coordinates copied to clipboard!');
-                  }}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center"
-                >
-                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Copy
-                </button>
-              </div>
-            </div>
-          )}
-          
-          <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-            <p className="text-sm text-yellow-800">
-              <strong className="flex items-center">
-                <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
-                Important:
-              </strong> Enabling location tracking allows customers to see your real-time location for active bookings and helps us calculate accurate distances for service requests.
-            </p>
-          </div>
+          <div className="text-xs text-green-600 font-medium">Available</div>
         </div>
+        
+        {currentLocation && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-600">Coordinates:</span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`);
+                  toast.success('Coordinates copied!');
+                }}
+                className="text-xs text-blue-600 hover:text-blue-700 font-mono"
+              >
+                {currentLocation.lat.toFixed(4)}, {currentLocation.lng.toFixed(4)}
+              </button>
+            </div>
+            {lastLocationUpdate && (
+              <div className="text-xs text-gray-500 text-right">
+                Updated: {lastLocationUpdate.toLocaleTimeString()}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Quick Actions */}

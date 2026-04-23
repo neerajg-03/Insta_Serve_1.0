@@ -136,12 +136,13 @@ router.get('/reviews', async (req, res) => {
       service: booking.service?.title || 'Service',
       provider: booking.provider?.name || 'Service Provider',
       rating: booking.review?.rating || 5,
-      comment: booking.review?.comment || 'Excellent service!',
+      content: booking.review?.comment || 'Excellent service!',
       date: booking.createdAt,
       verified: true
     }));
 
     res.json({
+      success: true,
       testimonials,
       count: testimonials.length
     });

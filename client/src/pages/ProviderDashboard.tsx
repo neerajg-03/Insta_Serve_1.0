@@ -607,7 +607,7 @@ const ProviderDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await bookingsAPI.getBookings({ provider: user?._id, status: ['confirmed', 'in_progress'] });
+      const response = await bookingsAPI.getBookings({ provider: user?._id, status: 'confirmed' });
       setBookings(response.bookings || []);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch bookings');
@@ -693,9 +693,9 @@ const ProviderDashboard: React.FC = () => {
         // Generate completion code
         const response = await bookingsAPI.completeBooking(bookingId);
         if (response.completionCode) {
-          toast.success(`Completion code generated: ${response.completionCode}`, {
-            duration: 8000,
-            icon: '🔢'
+          toast.success('Completion code generated and sent to customer', {
+            duration: 5000,
+            icon: '✅'
           });
         }
       } else {

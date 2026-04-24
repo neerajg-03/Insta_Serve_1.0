@@ -67,6 +67,7 @@ import {
 import { StarIcon as StarSolidIcon, FireIcon as FireSolidIcon } from '@heroicons/react/24/solid';
 import ProviderAvailabilityToggle from '../components/ProviderAvailabilityToggle';
 import ProviderCompletionModal from '../components/ProviderCompletionModal';
+import ProviderNavigationModal from '../components/ProviderNavigationModal';
 
 interface Service {
   _id: string;
@@ -214,6 +215,10 @@ const ProviderDashboard: React.FC = () => {
   const [showProviderCompletionModal, setShowProviderCompletionModal] = useState(false);
   const [selectedCompletionBooking, setSelectedCompletionBooking] = useState<Booking | null>(null);
   const [completionLoading, setCompletionLoading] = useState(false);
+  
+  // Navigation modal state
+  const [showNavigationModal, setShowNavigationModal] = useState(false);
+  const [selectedNavigationBooking, setSelectedNavigationBooking] = useState<Booking | null>(null);
   
   // KYC related state
   const [kycStatus, setKycStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
@@ -684,6 +689,11 @@ const ProviderDashboard: React.FC = () => {
   const handleCompleteBooking = (booking: Booking) => {
     setSelectedCompletionBooking(booking);
     setShowProviderCompletionModal(true);
+  };
+
+  const handleNavigateToCustomer = (booking: Booking) => {
+    setSelectedNavigationBooking(booking);
+    setShowNavigationModal(true);
   };
 
   const handleProviderCompletion = async (bookingId: string, code: string) => {
@@ -2307,6 +2317,16 @@ const fetchProviderStatus = async () => {
                           >
                             Track Booking
                           </Link>
+                          {(booking.status === 'confirmed' || booking.status === 'in_progress') && (
+                            <button
+                              onClick={() => handleNavigateToCustomer(booking)}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center"
+                              disabled={loading}
+                            >
+                              <MapPinIcon className="w-4 h-4 mr-2" />
+                              Navigate Now
+                            </button>
+                          )}
                           {booking.status === 'broadcast' && (
                             <button
                               onClick={() => handleAcceptBooking(booking._id)}
@@ -2850,6 +2870,19 @@ const fetchProviderStatus = async () => {
           customerName={selectedCompletionBooking.customer?.name || 'Unknown Customer'}
           onVerify={handleProviderCompletion}
           loading={completionLoading}
+        />
+      )}
+
+      {/* Navigation Modal */}
+      {showNavigationModal && selectedNavigationBooking && (
+        <ProviderNavigationModal
+          isOpen={showNavigationModal}
+          onClose={() => {
+            setShowNavigationModal(false);
+            setSelectedNavigationBooking(null);
+          }}
+          booking={selectedNavigationBooking}
+          providerLocation={currentLocation}
         />
       )}
       </div>

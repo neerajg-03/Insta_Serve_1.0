@@ -71,7 +71,7 @@ class RazorpayService {
   initializePayment(order: any, options: PaymentOptions): Promise<PaymentResponse> {
     return new Promise((resolve, reject) => {
       const razorpay = new (window as any).Razorpay({
-        key: 'rzp_test_1DP5mmOlF5G5ag', // Test key - replace with your actual key
+       key: process.env.REACT_APP_RAZORPAY_KEY, // Test key - replace with your actual key
         amount: order.amount,
         currency: order.currency,
         name: 'InstaServe',

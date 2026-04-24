@@ -607,7 +607,7 @@ const ProviderDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await bookingsAPI.getBookings({ provider: user?._id, status: 'confirmed' });
+      const response = await bookingsAPI.getBookings({ provider: user?._id, status: ['confirmed', 'in_progress'] });
       setBookings(response.bookings || []);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch bookings');

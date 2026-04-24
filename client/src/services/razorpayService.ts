@@ -29,44 +29,42 @@ class RazorpayService {
   }
 
   // Create Razorpay order
-  async createOrder(options: PaymentOptions): Promise<any> {
-    try {
-      // In production, this should be called from your backend
-      // For now, we'll use a mock order creation
-      const orderData = {
-        amount: options.amount * 100, // Razorpay expects amount in paise
-        currency: options.currency || 'INR',
-        receipt: options.receipt || `receipt_${Date.now()}`,
-        notes: {
-          ...options.notes,
-          bookingId: options.bookingId,
-          customerName: options.customerName,
-          customerEmail: options.customerEmail,
-          customerPhone: options.customerPhone
-        }
-      };
+ async createOrder(options: PaymentOptions): Promise<any> {
+  try {
+    const response = await fetch(
+      `${process.env.REACT_APP_API_URL}/api/razorpay-route/create-split-order`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bookingData: {
+            _id: options.bookingId,
+            amount: options.amount,
+          }
+        }),
+      }
+    );
 
-      // Mock order creation - in production, call your backend API
-      const mockOrder = {
-        id: `order_${Date.now()}`,
-        entity: 'order',
-        amount: orderData.amount,
-        amount_paid: 0,
-        amount_due: orderData.amount,
-        currency: orderData.currency,
-        receipt: orderData.receipt,
-        notes: orderData.notes,
-        status: 'created',
-        created_at: Math.floor(Date.now() / 1000)
-      };
+    const data = await response.json();
 
-      return mockOrder;
-    } catch (error) {
-      console.error('Error creating Razorpay order:', error);
-      throw new Error('Failed to create payment order');
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to create order");
     }
-  }
 
+    return {
+      id: data.orderId,     // ✅ REAL ORDER ID
+      amount: data.amount,
+      currency: "INR",
+      notes: {}
+    };
+
+  } catch (error) {
+    console.error("Error creating Razorpay order:", error);
+    throw error;
+  }
+}
   // Initialize Razorpay payment
   initializePayment(order: any, options: PaymentOptions): Promise<PaymentResponse> {
     return new Promise((resolve, reject) => {

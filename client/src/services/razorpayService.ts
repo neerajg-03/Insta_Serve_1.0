@@ -118,7 +118,7 @@ class RazorpayService {
       const response = await this.initializePayment(order, options);
       
       // Step 3: Verify payment on backend (in production)
-      await this.verifyPayment(response);
+      await this.verifyPayment(response, options.bookingId);
       
       return response;
     } catch (error) {
@@ -128,26 +128,34 @@ class RazorpayService {
   }
 
   // Verify payment with backend
-  private async verifyPayment(response: PaymentResponse): Promise<void> {
-    try {
-      // In production, send this to your backend for verification
-      // For now, we'll just log it
-      console.log('Verifying payment:', response);
-      
-      // Mock verification - in production, call your backend API
-      const verificationData = {
-        razorpay_payment_id: response.razorpay_payment_id,
-        razorpay_order_id: response.razorpay_order_id,
-        razorpay_signature: response.razorpay_signature
-      };
+ private async verifyPayment(response: PaymentResponse, bookingId: string): Promise<void> {
+  try {
+    const res = await fetch(
+      `${process.env.REACT_APP_API_URL}/api/payments/verify`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...response,
+          bookingId, // ✅ IMPORTANT (backend needs this)
+        }),
+      }
+    );
 
-      console.log('Payment verification data:', verificationData);
-    } catch (error) {
-      console.error('Payment verification failed:', error);
-      throw new Error('Payment verification failed');
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Payment verification failed");
     }
-  }
 
+    console.log("✅ Payment verified:", data);
+  } catch (error) {
+    console.error("❌ Verification error:", error);
+    throw error;
+  }
+}
   // Load Razorpay script
   loadRazorpayScript(): Promise<void> {
     return new Promise((resolve, reject) => {

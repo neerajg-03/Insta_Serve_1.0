@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import LocationService, { Location, GoogleMapsDistanceResult } from '../../services/locationService';
 import toast from 'react-hot-toast';
+import CustomerCompletionModal from '../CustomerCompletionModal';
 
 interface CustomerTrackingViewProps {
   booking: any;
@@ -42,6 +43,7 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
   const { user } = useSelector((state: RootState) => state.auth);
   const [showMap, setShowMap] = useState(false);
   const [mapUrl, setMapUrl] = useState('');
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   useEffect(() => {
     if (providerLocation && booking.address) {
@@ -80,7 +82,8 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -129,23 +132,31 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
                 )}
                 
                 {booking.status === 'in_progress' && (
-                  <div className="flex items-center">
-                    <div className="animate-pulse">
-                      <span className="text-3xl mr-3">ð</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="animate-pulse">
+                        <span className="text-3xl mr-3">ð</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold">Provider is on the way!</p>
+                        <p className="text-blue-100">
+                          {distance ? `${distance.toFixed(1)} km away` : 'Tracking location...'}
+                          {estimatedArrival && ` • ETA: ${estimatedArrival}`}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold">Provider is on the way!</p>
-                      <p className="text-blue-100">
-                        {distance ? `${distance.toFixed(1)} km away` : 'Tracking location...'}
-                        {estimatedArrival && ` â¢ ETA: ${estimatedArrival}`}
-                      </p>
-                    </div>
+                    <button
+                      onClick={() => setShowCompletionModal(true)}
+                      className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium"
+                    >
+                      Complete Service
+                    </button>
                   </div>
                 )}
                 
                 {booking.status === 'completed' && (
                   <div className="flex items-center">
-                    <span className="text-3xl mr-3">ð</span>
+                    <span className="text-3xl mr-3">✓</span>
                     <div>
                       <p className="font-semibold">Service Completed!</p>
                       <p className="text-blue-100">Thank you for using InstaServe</p>
@@ -461,6 +472,16 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
         </div>
       </div>
     </div>
+
+    {/* Customer Completion Modal */}
+    <CustomerCompletionModal
+      isOpen={showCompletionModal}
+      onClose={() => setShowCompletionModal(false)}
+      bookingId={booking._id}
+      serviceTitle={booking.service?.title || 'Service'}
+      providerName={booking.provider?.name || 'Provider'}
+    />
+    </>
   );
 };
 

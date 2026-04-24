@@ -178,57 +178,43 @@ const CustomerCompletionModal: React.FC<CustomerCompletionModalProps> = ({
             </div>
           )}
 
-          {/* Code Verification Section */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter Completion Code (from provider)
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={inputCode}
-                  onChange={handleInputChange}
-                  placeholder="XXX-XXX"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-center text-lg font-mono font-bold tracking-wider"
-                  maxLength={7}
-                />
-                {inputCode.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="text-gray-400 text-sm">Enter 6-digit code</span>
-                  </div>
-                )}
+          {/* Instructions for Customer */}
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-start space-x-2">
+              <CheckCircleIcon className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-900 mb-2">
+                  Next Steps
+                </p>
+                <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+                  <li>Wait for provider to generate completion code</li>
+                  <li>You will receive the 6-digit code here automatically</li>
+                  <li>Share this code with your provider verbally or via message</li>
+                  <li>Provider will enter the code to verify and complete the service</li>
+                </ol>
               </div>
             </div>
+          </div>
 
-            {/* Action Buttons */}
-            <div className="flex space-x-3">
+          {/* Action Buttons */}
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+            >
+              Close
+            </button>
+            {codeGenerated && completionCode && (
               <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                onClick={handleCopyCode}
+                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center"
               >
-                Cancel
+                <ClipboardDocumentIcon className="w-4 h-4 mr-2" />
+                Copy Code
               </button>
-              <button
-                type="submit"
-                disabled={loading || inputCode.length !== 7}
-                className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Verifying...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircleIcon className="w-4 h-4 mr-2" />
-                    Verify & Complete
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+            )}
+          </div>
         </div>
       </div>
     </div>

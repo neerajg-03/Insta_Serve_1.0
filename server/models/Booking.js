@@ -170,7 +170,7 @@ const bookingSchema = new mongoose.Schema({
   timeline: [{
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'refunded', 'broadcast_rejected']
+      enum: ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'refunded', 'broadcast_rejected', 'completion_code_generated']
     },
     timestamp: {
       type: Date,

@@ -1007,9 +1007,9 @@ router.post('/:id/complete', protect, authorize('provider'), async (req, res) =>
 });
 
 // @route   POST /api/bookings/:id/verify-completion-code
-// @desc    Verify completion code and complete booking (Customer only)
-// @access  Private (Customer)
-router.post('/:id/verify-completion-code', protect, authorize('customer'), async (req, res) => {
+// @desc    Verify completion code and complete booking (Provider only)
+// @access  Private (Provider)
+router.post('/:id/verify-completion-code', protect, authorize('provider'), async (req, res) => {
   try {
     const { completionCode } = req.body;
     
@@ -1018,8 +1018,8 @@ router.post('/:id/verify-completion-code', protect, authorize('customer'), async
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    // Check if booking belongs to customer
-    if (booking.customer.toString() !== req.user._id.toString()) {
+    // Check if booking belongs to provider
+    if (booking.provider.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to verify this booking' });
     }
 

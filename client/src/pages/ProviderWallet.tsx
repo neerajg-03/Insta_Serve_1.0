@@ -125,7 +125,7 @@ const ProviderWallet: React.FC = () => {
       
       // Initialize Razorpay payment
       const options = {
-        key: 'rzp_test_SeuRUk1igN5nSO', // Razorpay test key
+        key: 'rzp_live_ShE5bM184arxkI', // Razorpay test key
         amount: amount * 100, // Convert to paise
         currency: 'INR',
         name: 'Insta Serve',

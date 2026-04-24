@@ -60,21 +60,23 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
 
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "'unsafe-eval'",
-          "https://checkout.razorpay.com"
-        ],
+       scriptSrc: [
+  "'self'",
+  "'unsafe-inline'",
+  "'unsafe-eval'",
+  "https://checkout.razorpay.com",
+  "https://cdn.razorpay.com"   // ✅ ADD THIS LINE
+],
 
-        connectSrc: [
-          "'self'",
-          "https://insta-serve.onrender.com",
-          "https://insta-serve-1-0.onrender.com",
-          "https://checkout.razorpay.com",
-          "https://api.razorpay.com",
-          "https://lumberjack.razorpay.com"
-        ],
+       connectSrc: [
+  "'self'",
+  "https://insta-serve.onrender.com",
+  "https://insta-serve-1-0.onrender.com",
+  "https://checkout.razorpay.com",
+  "https://api.razorpay.com",
+  "https://lumberjack.razorpay.com",
+  "https://cdn.razorpay.com"   // ✅ ADD THIS
+],
 
         frameSrc: [
           "'self'",

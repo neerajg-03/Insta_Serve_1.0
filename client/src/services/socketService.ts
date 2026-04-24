@@ -132,6 +132,8 @@ class SocketService {
       this.bookingUpdateCallbacks = [];
       this.serviceRequestCallbacks = [];
       this.chatMessageCallbacks = [];
+      this.newServiceAvailableCallbacks = [];
+      this.completionCodeGeneratedCallbacks = [];
     }
   }
 
@@ -189,6 +191,12 @@ class SocketService {
       console.log('New service available notification:', data);
       this.emitNewServiceAvailable(data);
     });
+
+    // Completion code generated (for customers)
+    this.socket.on('completion_code_generated', (data) => {
+      console.log('Completion code generated received:', data);
+      this.emitCompletionCodeGenerated(data);
+    });
   }
 
   // Custom event emitters for components
@@ -197,6 +205,7 @@ class SocketService {
   private serviceRequestCallbacks: ((data: any) => void)[] = [];
   private chatMessageCallbacks: ((data: any) => void)[] = [];
   private newServiceAvailableCallbacks: ((data: any) => void)[] = [];
+  private completionCodeGeneratedCallbacks: ((data: any) => void)[] = [];
 
   onLocationUpdate(callback: (data: any) => void): void {
     console.log('🔌 Registering location update callback');
@@ -218,6 +227,10 @@ class SocketService {
 
   onNewServiceAvailable(callback: (data: any) => void): void {
     this.newServiceAvailableCallbacks.push(callback);
+  }
+
+  onCompletionCodeGenerated(callback: (data: any) => void): void {
+    this.completionCodeGeneratedCallbacks.push(callback);
   }
 
   private async emitLocationUpdate(data: any): Promise<void> {
@@ -248,6 +261,12 @@ class SocketService {
 
   private async emitNewServiceAvailable(data: any): Promise<void> {
     for (const callback of this.newServiceAvailableCallbacks) {
+      await callback(data);
+    }
+  }
+
+  private async emitCompletionCodeGenerated(data: any): Promise<void> {
+    for (const callback of this.completionCodeGeneratedCallbacks) {
       await callback(data);
     }
   }

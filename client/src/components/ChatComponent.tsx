@@ -9,6 +9,7 @@ import {
   PaperAirplaneIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
+import axios from 'axios';
 
 interface ChatComponentProps {
   bookingId: string;
@@ -62,8 +63,9 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
           console.log('💬 [CLIENT DEBUG] Sender ID:', message.senderId);
           
           if (message.bookingId === bookingId) {
-            console.log('💬 [CLIENT DEBUG] Message matches booking ID, adding to messages');
-            setMessages(prev => [...prev, message]);
+            console.log('💬 [CLIENT DEBUG] Message matches booking ID, reloading messages');
+            // Reload messages to get the latest from database
+            loadMessages();
             
             // Show notification if message is from other person
             if (message.senderId !== user._id) {
@@ -81,9 +83,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
           }
         });
 
-        // Load initial messages (you can implement this with an API call)
-        // For now, we'll start with empty messages
-        setMessages([]);
+        // Load initial messages from API
+        await loadMessages();
 
       } catch (error) {
         console.error('Failed to initialize chat:', error);
@@ -106,6 +107,28 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     scrollToBottom();
   }, [messages]);
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const loadMessages = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await axios.get(`/api/chat/messages/${bookingId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        setMessages(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      toast.error('Failed to load messages');
+    }
+  };
+
   useEffect(() => {
     // Focus input when chat opens
     if (isOpen && inputRef.current) {
@@ -113,36 +136,41 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     }
   }, [isOpen]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !user) return;
 
-    const message: ChatMessage = {
-      id: Date.now().toString(),
-      bookingId,
-      senderId: user._id,
-      senderName: user.name,
-      recipientId,
-      recipientName,
-      message: newMessage.trim(),
-      timestamp: new Date(),
-      type: 'text'
-    };
+    const messageText = newMessage.trim();
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
 
-    // Send message via socket
-    socketService.sendMessage(message);
+      // Send message via API
+      const response = await axios.post('/api/chat/send', {
+        bookingId,
+        recipientId,
+        message: messageText,
+        type: 'text'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-    // Add to local messages
-    setMessages(prev => [...prev, message]);
+      if (response.data.success) {
+        // Clear input
+        setNewMessage('');
 
-    // Clear input
-    setNewMessage('');
+        // Stop typing indicator
+        socketService.sendTyping(bookingId, false);
 
-    // Stop typing indicator
-    socketService.sendTyping(bookingId, false);
+        // Reload messages to get the latest
+        await loadMessages();
+      } else {
+        toast.error('Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    }
   };
 
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {

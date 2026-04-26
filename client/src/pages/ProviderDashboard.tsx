@@ -2311,12 +2311,6 @@ const fetchProviderStatus = async () => {
                         )}
 
                         <div className="flex justify-end space-x-3">
-                          <Link
-                            to={`/provider/tracking/${booking._id}`}
-                            className="btn btn-outline text-sm"
-                          >
-                            Track Booking
-                          </Link>
                           {(booking.status === 'confirmed' || booking.status === 'in_progress') && (
                             <button
                               onClick={() => handleNavigateToCustomer(booking)}

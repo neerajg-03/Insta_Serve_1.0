@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon, MapPinIcon, PhoneIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import LocationService, { Location, GoogleMapsDistanceResult } from '../services/locationService';
 import toast from 'react-hot-toast';
+import ChatComponent from './ChatComponent';
 
 interface ProviderNavigationModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
   const [mapUrl, setMapUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
 
   // Get customer location from booking
@@ -115,8 +117,7 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
   };
 
   const handleChatNow = () => {
-    // Open chat functionality - can be implemented later
-    toast.success('Chat feature coming soon!');
+    setShowChat(true);
   };
 
   const handleCallCustomer = () => {
@@ -330,6 +331,18 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
         </div>
       </div>
     </div>
+
+    {/* Chat Component */}
+    {booking?.customer && (
+      <ChatComponent
+        bookingId={booking._id}
+        recipientId={booking.customer._id}
+        recipientName={booking.customer.name}
+        isOpen={showChat}
+        onClose={() => setShowChat(false)}
+        isProvider={true}
+      />
+    )}
   );
 };
 

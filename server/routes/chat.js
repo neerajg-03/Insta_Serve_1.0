@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Message = require('../models/Message');
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const Booking = require('../models/Booking');
 
 // Get all messages for a booking
-router.get('/messages/:bookingId', auth, async (req, res) => {
+router.get('/messages/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
     const userId = req.user.id;
@@ -62,7 +62,7 @@ router.get('/messages/:bookingId', auth, async (req, res) => {
 });
 
 // Send a message
-router.post('/send', auth, async (req, res) => {
+router.post('/send', protect, async (req, res) => {
   try {
     const { bookingId, recipientId, message, type = 'text' } = req.body;
     const senderId = req.user.id;
@@ -155,7 +155,7 @@ router.post('/send', auth, async (req, res) => {
 });
 
 // Get unread message count
-router.get('/unread-count', auth, async (req, res) => {
+router.get('/unread-count', protect, async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -179,7 +179,7 @@ router.get('/unread-count', auth, async (req, res) => {
 });
 
 // Mark messages as read
-router.post('/mark-read/:bookingId', auth, async (req, res) => {
+router.post('/mark-read/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
     const userId = req.user.id;
@@ -234,7 +234,7 @@ router.post('/mark-read/:bookingId', auth, async (req, res) => {
 });
 
 // Delete chat history (only when booking is completed)
-router.delete('/history/:bookingId', auth, async (req, res) => {
+router.delete('/history/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
     const userId = req.user.id;

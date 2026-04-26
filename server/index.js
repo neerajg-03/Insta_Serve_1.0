@@ -137,6 +137,7 @@ app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/provider', ensureProviderLocation, require('./routes/provider'));
 app.use('/api', require('./routes/kyc'));
+app.use('/api/chat', require('./routes/chat'));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

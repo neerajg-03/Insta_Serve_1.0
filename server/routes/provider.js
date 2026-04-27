@@ -193,4 +193,58 @@ router.get('/nearby', protect, async (req, res) => {
   }
 });
 
+// @route   GET /api/provider/:id/location
+// @desc    Get provider's current location (for customers)
+// @access  Private
+router.get('/:id/location', protect, async (req, res) => {
+  try {
+    const providerId = req.params.id;
+    
+    // Get provider's current location
+    const provider = await User.findById(providerId)
+      .select('name email phone currentLocation isAvailable locationSharingEnabled')
+      .lean();
+
+    if (!provider) {
+      return res.status(404).json({ message: 'Provider not found' });
+    }
+
+    // Check if provider is available and sharing location
+    if (!provider.isAvailable || !provider.locationSharingEnabled) {
+      return res.json({
+        success: false,
+        message: 'Provider is not available or not sharing location',
+        location: null
+      });
+    }
+
+    // Check if provider has valid location
+    if (!provider.currentLocation || 
+        !provider.currentLocation.lat || 
+        !provider.currentLocation.lng) {
+      return res.json({
+        success: false,
+        message: 'Provider location not available',
+        location: null
+      });
+    }
+
+    res.json({
+      success: true,
+      location: {
+        lat: provider.currentLocation.lat,
+        lng: provider.currentLocation.lng,
+        timestamp: new Date(provider.currentLocation.lastUpdated || Date.now()).getTime()
+      },
+      provider: {
+        name: provider.name,
+        phone: provider.phone
+      }
+    });
+  } catch (error) {
+    console.error('Get provider location error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

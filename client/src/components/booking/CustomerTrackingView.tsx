@@ -477,9 +477,7 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
     <CustomerCompletionModal
       isOpen={showCompletionModal}
       onClose={() => setShowCompletionModal(false)}
-      bookingId={booking._id}
-      serviceTitle={booking.service?.title || 'Service'}
-      providerName={booking.provider?.name || 'Provider'}
+      booking={booking}
     />
     </>
   );

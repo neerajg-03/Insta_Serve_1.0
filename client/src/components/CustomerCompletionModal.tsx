@@ -7,7 +7,9 @@ import ChatComponent from './ChatComponent';
 interface CustomerNavigationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  booking: any;
+  bookingId: string;
+  serviceTitle: string;
+  providerName: string;
 }
 
 interface RouteData {

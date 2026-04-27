@@ -79,7 +79,7 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
 
       try {
         // Get provider's current location from API
-        const response = await fetch(`/api/provider/${booking.provider._id}/location`, {
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/provider/${booking.provider._id}/location`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

@@ -9,7 +9,7 @@ import {
   PaperAirplaneIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
+import { chatAPI } from '../services/api';
 
 interface ChatComponentProps {
   bookingId: string;
@@ -113,15 +113,10 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const loadMessages = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const response = await chatAPI.getMessages(bookingId);
 
-      const response = await axios.get(`/api/chat/messages/${bookingId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.data.success) {
-        setMessages(response.data.data);
+      if (response.success) {
+        setMessages(response.data);
       }
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -142,20 +137,15 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     const messageText = newMessage.trim();
     
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
       // Send message via API
-      const response = await axios.post('/api/chat/send', {
+      const response = await chatAPI.sendMessage({
         bookingId,
         recipientId,
         message: messageText,
         type: 'text'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (response.data.success) {
+      if (response.success) {
         // Clear input
         setNewMessage('');
 

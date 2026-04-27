@@ -301,4 +301,22 @@ export const adminAPI = {
     api.get(`/admin/coupons/${id}/stats`).then(res => res.data),
 };
 
+export const chatAPI = {
+  getMessages: (bookingId: string) =>
+    api.get(`/chat/messages/${bookingId}`).then(res => res.data),
+  
+  sendMessage: (messageData: { bookingId: string; recipientId: string; message: string; type?: string }) =>
+    api.post('/chat/send', messageData).then(res => res.data),
+  
+  getUnreadCount: () =>
+    api.get('/chat/unread-count').then(res => res.data),
+  
+  markAsRead: (bookingId: string) =>
+    api.post(`/chat/mark-read/${bookingId}`).then(res => res.data),
+  
+  deleteHistory: (bookingId: string) =>
+    api.delete(`/chat/history/${bookingId}`).then(res => res.data),
+};
+
+
 export default api;

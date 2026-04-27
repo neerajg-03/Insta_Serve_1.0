@@ -36,6 +36,7 @@ import ReviewModal from '../components/ReviewModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import CompletionCodeModal from '../components/CompletionCodeModal';
+import CustomerNavigationModal from '../components/CustomerNavigationModal';
 import SocketService from '../services/socketService';
 
 interface Booking {
@@ -122,6 +123,10 @@ const Dashboard: React.FC = () => {
     completionCode: string;
   } | null>(null);
   const [verificationLoading, setVerificationLoading] = useState(false);
+
+  // Customer navigation modal state
+  const [showCustomerNavigationModal, setShowCustomerNavigationModal] = useState(false);
+  const [selectedBookingForNavigation, setSelectedBookingForNavigation] = useState<Booking | null>(null);
 
   // Fetch user bookings
   const fetchBookings = async () => {
@@ -711,13 +716,18 @@ const Dashboard: React.FC = () => {
                   )}
 
                   <div className="flex justify-end space-x-3">
-                    <Link
-                      to={`/tracking/${booking._id}`}
-                      className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm flex items-center"
-                    >
-                      <MapPinIcon className="w-4 h-4 mr-2" />
-                      Track Booking
-                    </Link>
+                    {booking.status === 'confirmed' && booking.provider && (
+                      <button
+                        onClick={() => {
+                          setSelectedBookingForNavigation(booking);
+                          setShowCustomerNavigationModal(true);
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center"
+                      >
+                        <MapPinIcon className="w-4 h-4 mr-2" />
+                        Navigate Now
+                      </button>
+                    )}
                     <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
                       View Details
                     </button>
@@ -985,6 +995,18 @@ const Dashboard: React.FC = () => {
           completionCode={completionCodeData.completionCode}
           onVerify={handleVerifyCompletionCode}
           loading={verificationLoading}
+        />
+      )}
+
+      {/* Customer Navigation Modal */}
+      {showCustomerNavigationModal && selectedBookingForNavigation && (
+        <CustomerNavigationModal
+          isOpen={showCustomerNavigationModal}
+          onClose={() => {
+            setShowCustomerNavigationModal(false);
+            setSelectedBookingForNavigation(null);
+          }}
+          booking={selectedBookingForNavigation}
         />
       )}
     </div>

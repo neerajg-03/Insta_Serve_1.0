@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Message = require('../models/Message');
 const { protect } = require('../middleware/auth');
 const Booking = require('../models/Booking');
@@ -8,11 +9,23 @@ const Booking = require('../models/Booking');
 router.get('/messages/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user._id;
+
+    console.log('🔍 [DEBUG] Fetching messages:', { bookingId, userId });
+
+    // Validate bookingId format
+    if (!bookingId || !mongoose.Types.ObjectId.isValid(bookingId)) {
+      console.log('❌ [ERROR] Invalid booking ID format:', bookingId);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid booking ID format'
+      });
+    }
 
     // Verify user is part of this booking
     const booking = await Booking.findById(bookingId);
     if (!booking) {
+      console.log('❌ [ERROR] Booking not found:', bookingId);
       return res.status(404).json({
         success: false,
         message: 'Booking not found'
@@ -64,8 +77,26 @@ router.get('/messages/:bookingId', protect, async (req, res) => {
 // Send a message
 router.post('/send', protect, async (req, res) => {
   try {
+    console.log('🔍 [DEBUG] Chat send request received:', {
+      body: req.body,
+      user: req.user ? {
+        id: req.user._id,
+        name: req.user.name,
+        role: req.user.role
+      } : 'No user found'
+    });
+
     const { bookingId, recipientId, message, type = 'text' } = req.body;
-    const senderId = req.user.id;
+    
+    if (!req.user) {
+      console.error('❌ [ERROR] No user found in request');
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+    
+    const senderId = req.user._id;
     const senderName = req.user.name;
     const senderRole = req.user.role;
 
@@ -77,9 +108,19 @@ router.post('/send', protect, async (req, res) => {
       });
     }
 
+    // Validate bookingId format
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      console.log('❌ [ERROR] Invalid booking ID format in send:', bookingId);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid booking ID format'
+      });
+    }
+
     // Verify booking exists and user is part of it
     const booking = await Booking.findById(bookingId);
     if (!booking) {
+      console.log('❌ [ERROR] Booking not found in send:', bookingId);
       return res.status(404).json({
         success: false,
         message: 'Booking not found'
@@ -100,8 +141,8 @@ router.post('/send', protect, async (req, res) => {
     // Get recipient details
     let recipientName = 'Unknown';
     if (isCustomer && booking.provider) {
-      const Provider = require('../models/Provider');
-      const provider = await Provider.findById(booking.provider);
+      const User = require('../models/User');
+      const provider = await User.findById(booking.provider);
       recipientName = provider?.name || 'Provider';
     } else if (isProvider && booking.customer) {
       const User = require('../models/User');
@@ -146,10 +187,20 @@ router.post('/send', protect, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error('❌ [ERROR] Error sending message:', {
+      error: error.message,
+      stack: error.stack,
+      body: req.body,
+      user: req.user ? {
+        id: req.user._id,
+        name: req.user.name,
+        role: req.user.role
+      } : 'No user'
+    });
     res.status(500).json({
       success: false,
-      message: 'Failed to send message'
+      message: 'Failed to send message',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });
@@ -157,7 +208,7 @@ router.post('/send', protect, async (req, res) => {
 // Get unread message count
 router.get('/unread-count', protect, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     const unreadCount = await Message.countDocuments({
       recipientId: userId,
@@ -182,7 +233,15 @@ router.get('/unread-count', protect, async (req, res) => {
 router.post('/mark-read/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user._id;
+
+    // Validate bookingId format
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid booking ID format'
+      });
+    }
 
     // Verify user is part of this booking
     const booking = await Booking.findById(bookingId);
@@ -237,7 +296,15 @@ router.post('/mark-read/:bookingId', protect, async (req, res) => {
 router.delete('/history/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user._id;
+
+    // Validate bookingId format
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid booking ID format'
+      });
+    }
 
     // Verify booking exists and is completed
     const booking = await Booking.findById(bookingId);

@@ -3,6 +3,7 @@ import { XMarkIcon, MapPinIcon, PhoneIcon, ChatBubbleLeftRightIcon } from '@hero
 import LocationService, { Location, GoogleMapsDistanceResult } from '../services/locationService';
 import toast from 'react-hot-toast';
 import ChatComponent from './ChatComponent';
+import socketService from '../services/socketService';
 
 interface CustomerNavigationModalProps {
   isOpen: boolean;
@@ -72,13 +73,37 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
     }
   }, [isOpen, booking]);
 
-  // Get provider location
+  // Get provider location via Socket.IO
   useEffect(() => {
-    const getProviderLocation = async () => {
+    if (!isOpen || !booking) return;
+
+    // Listen for provider location updates
+    const handleProviderLocationUpdate = (data: any) => {
+      console.log('Provider location update received in CustomerNavigationModal:', data);
+      
+      // Check if this update is for the current booking's provider
+      if (data.providerId === booking.provider._id && 
+          (data.bookingId === booking._id || !data.bookingId)) {
+        
+        if (data.location) {
+          setProviderLocation({
+            lat: data.location.lat,
+            lng: data.location.lng,
+            timestamp: data.timestamp || Date.now()
+          });
+          console.log('Provider location updated:', data.location);
+        }
+      }
+    };
+
+    // Subscribe to provider location updates
+    socketService.on('locationUpdate', handleProviderLocationUpdate);
+
+    // Also try to get initial provider location via API as fallback
+    const getInitialProviderLocation = async () => {
       if (!booking?.provider?._id) return;
 
       try {
-        // Get provider's current location from API
         const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/provider/${booking.provider._id}/location`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -88,31 +113,24 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
         if (response.ok) {
           const contentType = response.headers.get('content-type');
           
-          // Check if response is JSON before parsing
           if (contentType && contentType.includes('application/json')) {
             const data = await response.json();
             if (data.success && data.location) {
               setProviderLocation(data.location);
             }
-          } else {
-            // Log the response for debugging
-            const responseText = await response.text();
-            console.error('Provider location API returned non-JSON response:', responseText);
           }
-        } else {
-          // Handle HTTP errors
-          const errorText = await response.text();
-          console.error(`Provider location API error (${response.status}):`, errorText);
         }
       } catch (err) {
-        console.error('Error getting provider location:', err);
-        // Don't show error for provider location, it might be normal
+        console.log('Initial provider location API failed, relying on Socket.IO updates');
       }
     };
 
-    if (isOpen && booking) {
-      getProviderLocation();
-    }
+    // Get initial location and start listening for updates
+    getInitialProviderLocation();
+
+    return () => {
+      socketService.off('locationUpdate', handleProviderLocationUpdate);
+    };
   }, [isOpen, booking]);
 
   // Calculate route when both locations are available

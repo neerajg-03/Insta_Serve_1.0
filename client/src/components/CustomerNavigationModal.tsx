@@ -79,17 +79,30 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
 
       try {
         // Get provider's current location from API
-        const response = await fetch(`/api/providers/${booking.provider._id}/location`, {
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/provider/${booking.provider._id}/location`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
 
         if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.location) {
-            setProviderLocation(data.location);
+          const contentType = response.headers.get('content-type');
+          
+          // Check if response is JSON before parsing
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            if (data.success && data.location) {
+              setProviderLocation(data.location);
+            }
+          } else {
+            // Log the response for debugging
+            const responseText = await response.text();
+            console.error('Provider location API returned non-JSON response:', responseText);
           }
+        } else {
+          // Handle HTTP errors
+          const errorText = await response.text();
+          console.error(`Provider location API error (${response.status}):`, errorText);
         }
       } catch (err) {
         console.error('Error getting provider location:', err);

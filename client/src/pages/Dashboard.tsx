@@ -36,7 +36,7 @@ import ReviewModal from '../components/ReviewModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import CompletionCodeModal from '../components/CompletionCodeModal';
-import CustomerNavigationModal from '../components/CustomerNavigationModal';
+import CustomerNavigationModal, { CustomerNavigationModalProps } from '../components/CustomerNavigationModal';
 import SocketService from '../services/socketService';
 
 interface Booking {
@@ -287,6 +287,27 @@ const Dashboard: React.FC = () => {
     // Always fetch bookings on component mount for overview stats
     fetchBookings();
   }, [activeTab]);
+
+  // Socket.IO connection establishment
+  useEffect(() => {
+    if (user) {
+      // Connect to Socket.IO server
+      SocketService.connect({
+        userId: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }).then(() => {
+        console.log('✅ Socket.IO connected in Dashboard');
+      }).catch((error) => {
+        console.error('❌ Socket.IO connection failed in Dashboard:', error);
+      });
+
+      return () => {
+        SocketService.disconnect();
+      };
+    }
+  }, [user]);
 
   // Socket listeners for completion code
   useEffect(() => {

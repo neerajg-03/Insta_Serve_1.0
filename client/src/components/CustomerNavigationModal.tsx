@@ -77,6 +77,9 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
   useEffect(() => {
     if (!isOpen || !booking) return;
 
+    // Join the booking room for targeted location updates
+    socketService.joinBookingRoom(booking._id);
+
     // Listen for provider location updates
     const handleProviderLocationUpdate = (data: any) => {
       console.log('Provider location update received in CustomerNavigationModal:', data);
@@ -96,7 +99,8 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
       }
     };
 
-    // Subscribe to provider location updates
+    // Subscribe to provider location updates (both targeted and broadcast)
+    socketService.on('provider_location_update', handleProviderLocationUpdate);
     socketService.on('locationUpdate', handleProviderLocationUpdate);
 
     // Also try to get initial provider location via API as fallback
@@ -129,6 +133,8 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
     getInitialProviderLocation();
 
     return () => {
+      socketService.leaveBookingRoom(booking._id);
+      socketService.off('provider_location_update', handleProviderLocationUpdate);
       socketService.off('locationUpdate', handleProviderLocationUpdate);
     };
   }, [isOpen, booking]);

@@ -28,7 +28,7 @@ const ClockIcon = ({ style, className }: IconProps = {}) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
 );
 const CurrencyIcon = ({ style, className }: IconProps = {}) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/><line x1="7" y1="10" x2="17" y2="10"/><line x1="7" y1="14" x2="17" y2="14"/></svg>
 );
 const TagIcon = ({ style, className }: IconProps = {}) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
@@ -71,6 +71,8 @@ const Services: React.FC = () => {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<Service[]>([]);
 
   const categories = [
     { value: 'home_cleaning', label: 'Home Cleaning' },
@@ -93,6 +95,21 @@ const Services: React.FC = () => {
   useEffect(() => {
     fetchServices();
   }, []);
+
+  useEffect(() => {
+    if (searchTerm && searchTerm.length > 0) {
+      const filtered = services.filter(service => 
+        service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        service.category.toLowerCase().includes(searchTerm.toLowerCase())
+      ).slice(0, 5); // Limit to 5 suggestions
+      setFilteredSuggestions(filtered);
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+      setFilteredSuggestions([]);
+    }
+  }, [searchTerm, services]);
 
   const fetchServices = async () => {
     try {
@@ -125,8 +142,6 @@ const Services: React.FC = () => {
     const filters: any = {};
     if (searchTerm) filters.search = searchTerm;
     if (selectedCategory) filters.category = selectedCategory;
-    if (priceRange.min) filters.minPrice = priceRange.min;
-    if (priceRange.max) filters.maxPrice = priceRange.max;
     
     fetchFilteredServices(filters);
   };
@@ -365,7 +380,7 @@ const Services: React.FC = () => {
           </div>
           
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))',gap:20,marginBottom:32}}>
-            <div>
+            <div style={{position:'relative'}}>
               <label style={{display:'block',fontSize:12,fontWeight:600,color:'var(--muted)',marginBottom:12,letterSpacing:'.8px',textTransform:'uppercase'}}>
                 <SearchIcon style={{width:14,height:14,marginRight:6,verticalAlign:'middle'}}/>
                 Search
@@ -375,10 +390,49 @@ const Services: React.FC = () => {
                 placeholder="What service do you need?"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={(e) => {e.target.style.borderColor = 'var(--accent)'; e.target.style.background = 'rgba(124,58,237,.1)'; if (searchTerm) setShowSuggestions(true);}}
+                onBlur={(e) => {e.target.style.borderColor = 'var(--bord)'; e.target.style.background = 'var(--surf2)'; setTimeout(() => setShowSuggestions(false), 200);}}
                 style={{width:'100%',padding:'14px 18px',background:'var(--surf2)',border:'1px solid var(--bord)',borderRadius:12,color:'#fff',fontSize:15,transition:'border-color .3s,background .3s'}}
-                onFocus={(e) => {e.target.style.borderColor = 'var(--accent)'; e.target.style.background = 'rgba(124,58,237,.1)';}}
-                onBlur={(e) => {e.target.style.borderColor = 'var(--bord)'; e.target.style.background = 'var(--surf2)';}}
               />
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <div style={{
+                  position:'absolute',
+                  top:'100%',
+                  left:0,
+                  right:0,
+                  background:'var(--surf)',
+                  border:'1px solid var(--bord)',
+                  borderTop:'none',
+                  borderRadius:'0 0 12px 12px',
+                  maxHeight:'200px',
+                  overflowY:'auto',
+                  zIndex:10,
+                  marginTop:'-1px'
+                }}>
+                  {filteredSuggestions.map((service, index) => (
+                    <div
+                      key={service._id}
+                      onClick={() => {
+                        setSearchTerm(service.title);
+                        setShowSuggestions(false);
+                        handleSearch();
+                      }}
+                      style={{
+                        padding:'12px 18px',
+                        cursor:'pointer',
+                        borderBottom:index < filteredSuggestions.length - 1 ? '1px solid var(--bord)' : 'none',
+                        transition:'background .2s',
+                        fontSize:14
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(124,58,237,.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{fontWeight:600,color:'#fff',marginBottom:2}}>{service.title}</div>
+                      <div style={{fontSize:12,color:'var(--muted)'}}>{getCategoryLabel(service.category)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             
             <div>
@@ -398,38 +452,6 @@ const Services: React.FC = () => {
                   <option key={cat.value} value={cat.value} style={{background:'var(--surf2)',color:'#fff'}}>{cat.label}</option>
                 ))}
               </select>
-            </div>
-            
-            <div>
-              <label style={{display:'block',fontSize:12,fontWeight:600,color:'var(--muted)',marginBottom:12,letterSpacing:'.8px',textTransform:'uppercase'}}>
-                <CurrencyIcon style={{width:14,height:14,marginRight:6,verticalAlign:'middle'}}/>
-                Min Price
-              </label>
-              <input
-                type="number"
-                placeholder="Min amount"
-                value={priceRange.min}
-                onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
-                style={{width:'100%',padding:'14px 18px',background:'var(--surf2)',border:'1px solid var(--bord)',borderRadius:12,color:'#fff',fontSize:15,transition:'border-color .3s,background .3s'}}
-                onFocus={(e) => {e.target.style.borderColor = 'var(--accent)'; e.target.style.background = 'rgba(124,58,237,.1)';}}
-                onBlur={(e) => {e.target.style.borderColor = 'var(--bord)'; e.target.style.background = 'var(--surf2)';}}
-              />
-            </div>
-            
-            <div>
-              <label style={{display:'block',fontSize:12,fontWeight:600,color:'var(--muted)',marginBottom:12,letterSpacing:'.8px',textTransform:'uppercase'}}>
-                <CurrencyIcon style={{width:14,height:14,marginRight:6,verticalAlign:'middle'}}/>
-                Max Price
-              </label>
-              <input
-                type="number"
-                placeholder="Max amount"
-                value={priceRange.max}
-                onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
-                style={{width:'100%',padding:'14px 18px',background:'var(--surf2)',border:'1px solid var(--bord)',borderRadius:12,color:'#fff',fontSize:15,transition:'border-color .3s,background .3s'}}
-                onFocus={(e) => {e.target.style.borderColor = 'var(--accent)'; e.target.style.background = 'rgba(124,58,237,.1)';}}
-                onBlur={(e) => {e.target.style.borderColor = 'var(--bord)'; e.target.style.background = 'var(--surf2)';}}
-              />
             </div>
           </div>
           
@@ -512,7 +534,7 @@ const Services: React.FC = () => {
                       <div>
                         <div style={{display:'flex',alignItems:'center'}}>
                           <CurrencyIcon style={{width:20,height:20,color:'#4ADE80',marginRight:6,flexShrink:0}}/>
-                          <p style={{fontSize:28,fontWeight:900,color:'#fff',lineHeight:1}}>{service.price}</p>
+                          <p style={{fontSize:28,fontWeight:900,color:'#fff',lineHeight:1}}>₹{service.price}</p>
                         </div>
                         <p style={{fontSize:12,color:'var(--muted)',marginTop:4}}>{service.priceType}</p>
                       </div>
@@ -861,7 +883,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px'}}>
               <div style={{display: 'flex', alignItems: 'center'}}>
                 <span style={{fontSize: '24px', marginRight: '8px'}}>💰</span>
-                <p style={{fontSize: '28px', fontWeight: '800', color: '#4ADE80'}}>{service.price}</p>
+                <p style={{fontSize: '28px', fontWeight: '800', color: '#4ADE80'}}>₹{service.price}</p>
                 <span style={{color: 'var(--muted)', marginLeft: '8px'}}>{service.priceType}</span>
               </div>
               <div style={{display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px', color: 'var(--muted)'}}>

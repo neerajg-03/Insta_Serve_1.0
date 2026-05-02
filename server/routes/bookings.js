@@ -304,13 +304,16 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
         const serverUserLocations = req.app.get('userLocations') || new Map();
         serverUserLocations.forEach((locationData, userId) => {
           if (locationData.userRole === 'provider' && locationData.location) {
-            liveProviderLocations.set(userId.toString(), {
+            // Convert both to string for consistent comparison
+            const userIdStr = userId.toString();
+            liveProviderLocations.set(userIdStr, {
               lat: locationData.location.lat,
               lng: locationData.location.lng,
               timestamp: locationData.timestamp,
               source: 'LIVE (booking room)',
               isRealTime: true
             });
+            console.log(`[DEBUG] Found live location for provider ${userIdStr}:`, locationData.location);
           }
         });
         
@@ -324,14 +327,18 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
       const providersWithin7km = Array.from(providerMap.values())
         .filter(provider => {
           let providerLocation = null;
+          const providerIdStr = provider._id.toString();
+          
+          console.log(`[DEBUG] Checking provider ${provider.name} (${providerIdStr}) for distance`);
           
           // PRIORITY 1: Use LIVE location from booking room if available
-          const liveLocation = liveProviderLocations.get(provider._id.toString());
+          const liveLocation = liveProviderLocations.get(providerIdStr);
           if (liveLocation) {
             providerLocation = {
               lat: liveLocation.lat,
               lng: liveLocation.lng
             };
+            console.log(`[DEBUG] Using LIVE location for ${provider.name}:`, providerLocation);
           }
           // PRIORITY 2: Use database currentLocation if live location not available
           else if (provider.currentLocation && 
@@ -341,12 +348,16 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
             const locationAge = Date.now() - new Date(provider.currentLocation.lastUpdated).getTime();
             const ageInMinutes = Math.floor(locationAge / (1000 * 60));
             
+            console.log(`[DEBUG] Database location age for ${provider.name}: ${ageInMinutes} minutes`);
+            
             // Skip stale locations for 7km filter (older than 30 minutes)
             if (ageInMinutes > 30) {
+              console.log(`[DEBUG] Skipping stale location for ${provider.name} (${ageInMinutes}min old)`);
               return false;
             }
             
             providerLocation = provider.currentLocation;
+            console.log(`[DEBUG] Using DATABASE location for ${provider.name}:`, providerLocation);
           }
           // PRIORITY 3: Use address coordinates as final fallback
           else if (provider.address && 
@@ -354,9 +365,11 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
                      provider.address.coordinates.lat && 
                      provider.address.coordinates.lng) {
             providerLocation = provider.address.coordinates;
+            console.log(`[DEBUG] Using ADDRESS coordinates for ${provider.name}:`, providerLocation);
           }
           
           if (!providerLocation) {
+            console.log(`[DEBUG] No location found for ${provider.name}, skipping`);
             return false;
           }
           
@@ -375,7 +388,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
           const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
           const distance = EARTH_RADIUS * c;
           
-          console.log(`Provider ${provider.name}: ${distance.toFixed(2)}km away`);
+          console.log(`Provider ${provider.name}: ${distance.toFixed(2)}km away (source: ${liveLocation ? 'LIVE' : provider.currentLocation ? 'DATABASE' : 'ADDRESS'})`);
           
           return distance <= 7; // Within 7km range
         });

@@ -63,23 +63,6 @@ const TRUST = [
   'On-time or free',
 ];
 
-const STEPS = [
-  {
-    n: '01', title: 'Choose your service',
-    body: 'Browse 200+ services. Filter by category, price, or rating.',
-    img: 'https://images.unsplash.com/photo-1484723091739-30990ff50872?w=800&q=80',
-  },
-  {
-    n: '02', title: 'Pick a time slot',
-    body: 'Morning, evening, weekend — we work around your schedule.',
-    img: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=800&q=80',
-  },
-  {
-    n: '03', title: 'Relax at home',
-    body: 'A verified professional arrives on time and gets the job done perfectly.',
-    img: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80',
-  },
-];
 
 const FALLBACK_REVIEWS = [
   { _id: '1', name: 'Priya Sharma', service: 'Home Cleaning', city: 'Mumbai', rating: 5, content: 'Absolutely spotless. Arrived 5 minutes early and left the house better than I imagined. Booking again this weekend.' },
@@ -102,7 +85,6 @@ function useInView(threshold = 0.1) {
 /* ════════════ MAIN ════════════ */
 const Home: React.FC = () => {
   const [reviews, setReviews] = useState<any[]>([]);
-  const [activeStep, setActiveStep] = useState(0);
   const [activeCat, setActiveCat] = useState(0);
 
   useEffect(() => {
@@ -111,11 +93,7 @@ const Home: React.FC = () => {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const t = setInterval(() => setActiveStep(p => (p + 1) % 3), 4000);
-    return () => clearInterval(t);
-  }, []);
-
+  
   useEffect(() => {
     const t = setInterval(() => setActiveCat(p => (p + 1) % CATEGORIES.length), 3500);
     return () => clearInterval(t);
@@ -125,7 +103,6 @@ const Home: React.FC = () => {
 
   const heroSec = useInView(0.05);
   const catSec  = useInView(0.08);
-  const stepSec = useInView(0.08);
   const revSec  = useInView(0.08);
   const ctaSec  = useInView(0.08);
 
@@ -171,23 +148,14 @@ const Home: React.FC = () => {
         .ccat img{transition:transform .5s cubic-bezier(.22,1,.36,1)}
         .ccat:hover img{transform:scale(1.07)}
 
-        .step-row{display:flex;gap:20px;align-items:flex-start;padding:22px 26px;border-radius:18px;cursor:pointer;transition:background .3s,border-color .3s;border:1px solid transparent}
-        .step-row.active{background:rgba(124,58,237,.1);border-color:rgba(124,58,237,.3)}
-        .step-num{width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:var(--surf2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;letter-spacing:.5px;flex-shrink:0;transition:background .3s,border-color .3s}
-        .step-row.active .step-num{background:var(--accent);border-color:var(--accent)}
-
         .rcard{background:var(--surf);border:1px solid var(--bord);border-radius:22px;padding:32px 28px;transition:border-color .3s,transform .3s}
         .rcard:hover{border-color:rgba(255,255,255,.18);transform:translateY(-4px)}
 
-        .ticker-wrap{overflow:hidden}
-        .ticker{display:flex;width:max-content;animation:ticker 24s linear infinite}
-        .ticker:hover{animation-play-state:paused}
-
+        
         @media(max-width:900px){
           .hero-h{font-size:clamp(44px,11vw,72px) !important}
           .hero-split{flex-direction:column !important}
           .cats-grid{grid-template-columns:repeat(2,1fr) !important}
-          .step-cols{flex-direction:column !important}
           .rev-grid{grid-template-columns:1fr !important}
           .cta-btns{flex-direction:column !important;align-items:flex-start !important}
         }
@@ -259,34 +227,14 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* Scroll hint */}
-        <div style={{position:'absolute',bottom:40,left:'50%',transform:'translateX(-50%)',display:'flex',flexDirection:'column',alignItems:'center',gap:8,opacity:.3}}>
-          <span style={{fontSize:9,letterSpacing:'2.5px',textTransform:'uppercase'}}>scroll</span>
-          <div style={{width:1,height:52,background:'linear-gradient(to bottom,rgba(255,255,255,.7),transparent)'}}/>
-        </div>
-      </section>
+              </section>
 
       <style>{`
         .hero-photos{display:block}
         @media(max-width:900px){.hero-photos{display:none !important}}
       `}</style>
 
-      {/* ══════════════ TICKER ══════════════ */}
-      <div style={{borderTop:'1px solid var(--bord)',borderBottom:'1px solid var(--bord)',padding:'14px 0',background:'var(--surf)'}}>
-        <div className="ticker-wrap">
-          <div className="ticker">
-            {[...Array(2)].map((_,o)=>
-              ['Home Cleaning','AC Repair','Salon at Home','Plumbing','Electrician','Wall Painting','Carpentry','Pest Control','Laundry','Car Cleaning','Sofa Cleaning','Deep Cleaning'].map((t,i)=>(
-                <span key={`${o}-${i}`} style={{display:'inline-flex',alignItems:'center',gap:18,paddingRight:44,fontSize:12.5,color:'var(--muted)',letterSpacing:'.3px',whiteSpace:'nowrap'}}>
-                  <span style={{width:4,height:4,borderRadius:'50%',background:'var(--accent)',display:'inline-block'}}/>
-                  {t}
-                </span>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
+      
       {/* ══════════════ CATEGORIES ══════════════ */}
       <section ref={catSec.ref as any} style={{padding:'100px 24px'}}>
         <div style={{maxWidth:1260,margin:'0 auto'}}>
@@ -374,59 +322,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* ══════════════ HOW IT WORKS ══════════════ */}
-      <section ref={stepSec.ref as any} style={{padding:'100px 24px',background:'var(--surf)',borderTop:'1px solid var(--bord)',borderBottom:'1px solid var(--bord)'}}>
-        <div style={{maxWidth:1260,margin:'0 auto'}}>
-
-          <div className={`fu ${stepSec.vis?'in':''}`} style={{marginBottom:60}}>
-            <span style={{fontSize:11,color:'#F472B6',letterSpacing:'2.5px',textTransform:'uppercase',fontWeight:700}}>How it works</span>
-            <h2 style={{fontSize:'clamp(30px,4vw,52px)',fontWeight:900,letterSpacing:'-1.5px',marginTop:10,lineHeight:1.08}}>
-              Done in 3 steps.
-            </h2>
-          </div>
-
-          <div className={`step-cols fu d1 ${stepSec.vis?'in':''}`} style={{display:'flex',gap:28,alignItems:'flex-start'}}>
-
-            {/* Steps list */}
-            <div style={{flex:'0 0 380px',display:'flex',flexDirection:'column',gap:6}}>
-              {STEPS.map((s,i)=>(
-                <div key={i} className={`step-row ${activeStep===i?'active':''}`} onClick={()=>setActiveStep(i)}>
-                  <div className="step-num">{s.n}</div>
-                  <div>
-                    <h3 style={{fontSize:17,fontWeight:800,marginBottom:6,letterSpacing:'-.3px',color:activeStep===i?'#fff':'rgba(255,255,255,.5)',transition:'color .3s'}}>{s.title}</h3>
-                    <p style={{fontSize:13.5,color:'rgba(255,255,255,.36)',lineHeight:1.65}}>{s.body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Photo panel */}
-            <div style={{flex:1,borderRadius:24,overflow:'hidden',position:'relative',height:380,border:'1px solid var(--bord)'}}>
-              {STEPS.map((s,i)=>(
-                <img
-                  key={i}
-                  src={s.img}
-                  alt={s.title}
-                  style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:activeStep===i?1:0,transition:'opacity .65s ease'}}
-                />
-              ))}
-              <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(6,6,9,.75) 0%,transparent 55%)'}}/>
-              {/* Overlay text */}
-              <div style={{position:'absolute',bottom:28,left:28}}>
-                <div style={{fontSize:52,fontWeight:900,color:'rgba(124,58,237,.2)',letterSpacing:'-3px',lineHeight:1}}>{STEPS[activeStep].n}</div>
-                <div style={{fontSize:20,fontWeight:800,letterSpacing:'-.5px',marginTop:4}}>{STEPS[activeStep].title}</div>
-              </div>
-              {/* Dots */}
-              <div style={{position:'absolute',bottom:32,right:28,display:'flex',gap:8}}>
-                {STEPS.map((_,i)=>(
-                  <button key={i} onClick={()=>setActiveStep(i)} style={{width:i===activeStep?24:8,height:8,borderRadius:100,background:i===activeStep?'#fff':'rgba(255,255,255,.28)',border:'none',cursor:'pointer',padding:0,transition:'width .35s,background .35s'}}/>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+      
       {/* ══════════════ REVIEWS ══════════════ */}
       <section ref={revSec.ref as any} style={{padding:'100px 24px'}}>
         <div style={{maxWidth:1260,margin:'0 auto'}}>

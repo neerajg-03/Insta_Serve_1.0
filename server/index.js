@@ -65,7 +65,9 @@ app.use(
   "'unsafe-inline'",
   "'unsafe-eval'",
   "https://checkout.razorpay.com",
-  "https://cdn.razorpay.com"   // ✅ ADD THIS LINE
+  "https://cdn.razorpay.com",
+  "https://maps.googleapis.com", 
+  "https://maps.gstatic.com"// ✅ ADD THIS LINE
 ],
 
        connectSrc: [
@@ -74,6 +76,7 @@ app.use(
   "https://insta-serve-1-0.onrender.com",
   "https://checkout.razorpay.com",
   "https://api.razorpay.com",
+  "https://maps.googleapis.com",
   "https://lumberjack.razorpay.com",
   "https://cdn.razorpay.com"   // ✅ ADD THIS
 ],

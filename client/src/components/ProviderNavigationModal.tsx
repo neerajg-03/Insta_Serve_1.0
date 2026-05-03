@@ -40,9 +40,15 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
   // Get customer location from booking
   useEffect(() => {
     const getCustomerLocation = async () => {
-      if (!booking?.address) return;
+      if (!booking?.address) {
+        console.error('[DEBUG] No booking address available');
+        return;
+      }
 
       try {
+        console.log('[DEBUG] Getting customer location for booking:', booking._id);
+        console.log('[DEBUG] Booking address:', booking.address);
+        
         let customerCoords: Location | null = null;
 
         // If booking has coordinates, use them
@@ -52,18 +58,26 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
             lng: booking.address.coordinates.lng,
             timestamp: Date.now()
           };
+          console.log('[DEBUG] Using booking coordinates:', customerCoords);
         } else {
           // Otherwise geocode the address
           const addressString = typeof booking.address === 'string' 
             ? booking.address 
             : `${booking.address?.street || ''}, ${booking.address?.city || ''}, ${booking.address?.state || ''} - ${booking.address?.pincode || ''}`;
           
+          console.log('[DEBUG] Geocoding address:', addressString);
           customerCoords = await LocationService.geocodeAddress(addressString);
+          console.log('[DEBUG] Geocoded coordinates:', customerCoords);
         }
 
-        setCustomerLocation(customerCoords);
+        if (customerCoords) {
+          setCustomerLocation(customerCoords);
+        } else {
+          console.error('[DEBUG] Failed to get customer coordinates');
+          setError('Could not determine customer location');
+        }
       } catch (err) {
-        console.error('Error getting customer location:', err);
+        console.error('[DEBUG] Error getting customer location:', err);
         setError('Could not determine customer location');
       }
     };
@@ -76,17 +90,37 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
   // Calculate route when both locations are available
   useEffect(() => {
     const calculateRoute = async () => {
-      if (!providerLocation || !customerLocation) return;
+      if (!providerLocation || !customerLocation) {
+        console.log('[DEBUG] Missing locations - Provider:', providerLocation, 'Customer:', customerLocation);
+        return;
+      }
+
+      console.log('[DEBUG] Calculating route between:');
+      console.log('[DEBUG] Provider location:', providerLocation);
+      console.log('[DEBUG] Customer location:', customerLocation);
 
       setLoading(true);
       setError(null);
 
       try {
+        // Check if coordinates are identical
+        const isIdentical = Math.abs(providerLocation.lat - customerLocation.lat) < 0.000001 && 
+                           Math.abs(providerLocation.lng - customerLocation.lng) < 0.000001;
+        
+        if (isIdentical) {
+          console.warn('[DEBUG] WARNING: Provider and customer coordinates are identical!');
+          setError('Provider and customer locations appear to be the same. This might be a location tracking issue.');
+          setLoading(false);
+          return;
+        }
+
         // Calculate distance and duration
         const distanceResult = await LocationService.calculateDistanceWithGoogleMaps(
           providerLocation,
           customerLocation
         );
+
+        console.log('[DEBUG] Distance result:', distanceResult);
 
         setRouteData({
           distance: distanceResult.distance,
@@ -96,9 +130,10 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
         // Generate Google Maps navigation URL
         const navigationUrl = LocationService.getGoogleMapsUrl(providerLocation, customerLocation);
         setMapUrl(navigationUrl);
+        console.log('[DEBUG] Navigation URL generated:', navigationUrl);
 
       } catch (err) {
-        console.error('Error calculating route:', err);
+        console.error('[DEBUG] Error calculating route:', err);
         setError('Could not calculate route. Please try again.');
       } finally {
         setLoading(false);

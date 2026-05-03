@@ -150,36 +150,20 @@ class LocationService {
     this.locationCallbacks = [];
   }
 
-  // Calculate distance using Google Maps Distance Matrix API
+  // Calculate distance using Google Maps Distance Matrix API via server proxy
   async calculateDistanceWithGoogleMaps(origin: Location, destination: Location): Promise<GoogleMapsDistanceResult> {
-    if (!this.GOOGLE_MAPS_API_KEY) {
-      console.warn('Google Maps API key not found, falling back to Haversine calculation');
-      const distance = this.calculateDistance(origin, destination);
-      const duration = this.calculateETA(distance);
-      return {
-        distance: {
-          text: `${distance.toFixed(1)} km`,
-          value: distance * 1000 // convert to meters
-        },
-        duration: {
-          text: `${Math.round(duration)} mins`,
-          value: duration * 60 // convert to seconds
-        },
-        status: 'OK'
-      };
-    }
-
     try {
       const originStr = `${origin.lat},${origin.lng}`;
       const destStr = `${destination.lat},${destination.lng}`;
       
+      // Use server-side proxy to avoid CORS issues
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/distancematrix/json?` +
-        `origins=${originStr}&` +
-        `destinations=${destStr}&` +
-        `key=${this.GOOGLE_MAPS_API_KEY}&` +
-        `units=metric`
+        `/api/maps/distance?origins=${originStr}&destinations=${destStr}`
       );
+
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
 
       const data = await response.json();
       
@@ -190,6 +174,8 @@ class LocationService {
           duration: element.duration,
           status: element.status
         };
+      } else if (data.error) {
+        throw new Error(`Server error: ${data.error}`);
       } else {
         throw new Error(`Google Maps API error: ${data.status}`);
       }
@@ -266,19 +252,17 @@ class LocationService {
     return url;
   }
 
-  // Geocode address to coordinates
+  // Geocode address to coordinates using server proxy
   async geocodeAddress(address: string): Promise<Location | null> {
-    if (!this.GOOGLE_MAPS_API_KEY) {
-      console.warn('Google Maps API key not found, geocoding not available');
-      return null;
-    }
-
     try {
+      // Use server-side proxy to avoid CORS issues
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?` +
-        `address=${encodeURIComponent(address)}&` +
-        `key=${this.GOOGLE_MAPS_API_KEY}`
+        `/api/maps/geocode?address=${encodeURIComponent(address)}`
       );
+
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
 
       const data = await response.json();
       
@@ -289,6 +273,8 @@ class LocationService {
           lng: location.lng,
           timestamp: Date.now()
         };
+      } else if (data.error) {
+        throw new Error(`Server error: ${data.error}`);
       } else {
         throw new Error(`Geocoding error: ${data.status}`);
       }
@@ -298,23 +284,24 @@ class LocationService {
     }
   }
 
-  // Reverse geocode coordinates to address
+  // Reverse geocode coordinates to address using server proxy
   async reverseGeocode(location: Location): Promise<string | null> {
-    if (!this.GOOGLE_MAPS_API_KEY) {
-      return `${location.lat}, ${location.lng}`;
-    }
-
     try {
+      // Use server-side proxy to avoid CORS issues
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?` +
-        `latlng=${location.lat},${location.lng}&` +
-        `key=${this.GOOGLE_MAPS_API_KEY}`
+        `/api/maps/geocode?latlng=${location.lat},${location.lng}`
       );
+
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
 
       const data = await response.json();
       
       if (data.status === 'OK' && data.results[0]) {
         return data.results[0].formatted_address;
+      } else if (data.error) {
+        throw new Error(`Server error: ${data.error}`);
       } else {
         throw new Error(`Reverse geocoding error: ${data.status}`);
       }

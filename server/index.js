@@ -141,6 +141,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/provider', ensureProviderLocation, require('./routes/provider'));
 app.use('/api', require('./routes/kyc'));
 app.use('/api/chat', require('./routes/chat'));
+app.use('/api/maps', require('./routes/maps'));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

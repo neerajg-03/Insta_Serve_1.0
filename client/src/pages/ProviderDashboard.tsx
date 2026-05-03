@@ -691,8 +691,33 @@ const ProviderDashboard: React.FC = () => {
     setShowProviderCompletionModal(true);
   };
 
-  const handleNavigateToCustomer = (booking: Booking) => {
+  const handleNavigateToCustomer = async (booking: Booking) => {
     setSelectedNavigationBooking(booking);
+    
+    // Ensure we have the latest provider location
+    try {
+      console.log('📍 Getting fresh provider location for navigation...');
+      const freshLocation = await LocationService.getCurrentLocation();
+      if (freshLocation) {
+        setCurrentLocation(freshLocation);
+        console.log('📍 Fresh provider location obtained:', freshLocation);
+      } else {
+        // Fallback to last known location
+        const lastLocation = LocationService.getLastKnownLocation();
+        if (lastLocation) {
+          setCurrentLocation(lastLocation);
+          console.log('📍 Using last known provider location:', lastLocation);
+        } else {
+          toast.error('Unable to determine your current location');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error getting provider location:', error);
+      toast.error('Failed to get your current location');
+      return;
+    }
+    
     setShowNavigationModal(true);
   };
 

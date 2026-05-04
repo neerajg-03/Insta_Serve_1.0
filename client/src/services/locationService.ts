@@ -213,7 +213,8 @@ class LocationService {
           return {
             distance: element.distance,
             duration: element.duration,
-            status: data.source || 'osrm'
+            status: data.source || 'osrm',
+            source: data.source || 'osrm'
           };
         }
       }
@@ -233,7 +234,8 @@ class LocationService {
           text: `${Math.round(duration)} mins`,
           value: duration * 60
         },
-        status: 'client_fallback'
+        status: 'client_fallback',
+        source: 'client_fallback'
       };
     }
   }

@@ -53,48 +53,23 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Security middleware - Configure helmet to allow CORS
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
+// Security middleware - Configure helmet to allow CORS and external APIs
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://checkout.razorpay.com", "https://maps.googleapis.com", "https://maps.gstatic.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://maps.googleapis.com", "https://api.mapbox.com", "https://nominatim.openstreetmap.org"],
+      frameSrc: ["'self'", "https://checkout.razorpay.com"]
+    }
+  }
+}));
 
-       scriptSrc: [
-  "'self'",
-  "'unsafe-inline'",
-  "'unsafe-eval'",
-  "https://checkout.razorpay.com",
-  "https://cdn.razorpay.com",
-  "https://maps.googleapis.com", 
-  "https://maps.gstatic.com"// ✅ ADD THIS LINE
-],
-
-       connectSrc: [
-  "'self'",
-  "https://insta-serve.onrender.com",
-  "https://insta-serve-1-0.onrender.com",
-  "https://checkout.razorpay.com",
-  "https://api.razorpay.com",
-  "https://maps.googleapis.com",
-  "https://lumberjack.razorpay.com",
-  "https://cdn.razorpay.com"   // ✅ ADD THIS
-],
-
-        frameSrc: [
-          "'self'",
-          "https://api.razorpay.com",
-          "https://checkout.razorpay.com"
-        ],
-
-        imgSrc: ["'self'", "data:", "blob:", "https:"],
-
-        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
-      },
-    },
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
-);// Rate limiting
+// Rate limiting
 app.set('trust proxy', 1);
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -140,6 +115,7 @@ app.use('/api/wallet', require('./routes/wallet'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/provider', ensureProviderLocation, require('./routes/provider'));
 app.use('/api', require('./routes/kyc'));
+app.use('/api/razorpay-route', require('./routes/razorpayRoute'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/maps', require('./routes/maps'));
 
@@ -204,14 +180,6 @@ if (process.env.NODE_ENV === 'production') {
     res.status(404).json({ message: 'Route not found' });
   });
 }
-// Serve React build
-app.use(express.static(path.join(__dirname, "../client/build")));
-
-// Handle React routes
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/build/index.html"));
-});
-
 
 // Socket.IO connection handler
 io.on('connection', (socket) => {
@@ -413,6 +381,106 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle provider location updates for tracking
+  socket.on('provider_location_update', (data) => {
+    const user = connectedUsers.get(socket.id);
+    if (user && user.role === 'provider') {
+      const { providerId, location, timestamp } = data;
+      
+      // Update provider location
+      userLocations.set(providerId, {
+        ...location,
+        timestamp: new Date(timestamp),
+        userName: user.name,
+        userRole: 'provider'
+      });
+      
+      console.log(`📍 [TRACKING] Provider ${user.name} location updated:`, location);
+      
+      // Find all active bookings for this provider and notify customers
+      // This would typically come from database, but for now we'll broadcast
+      socket.broadcast.emit('provider_location_update', {
+        providerId,
+        providerName: user.name,
+        location,
+        timestamp,
+        bookingId: data.bookingId // If specific booking
+      });
+    }
+  });
+
+  // Handle joining booking tracking
+  socket.on('join_booking_tracking', (data) => {
+    const user = connectedUsers.get(socket.id);
+    if (user && data.bookingId) {
+      socket.join(`tracking_${data.bookingId}`);
+      console.log(`📍 [TRACKING] ${user.name} joined tracking for booking ${data.bookingId}`);
+    }
+  });
+
+  // Handle leaving booking tracking
+  socket.on('leave_booking_tracking', (data) => {
+    const user = connectedUsers.get(socket.id);
+    if (user && data.bookingId) {
+      socket.leave(`tracking_${data.bookingId}`);
+      console.log(`📍 [TRACKING] ${user.name} left tracking for booking ${data.bookingId}`);
+    }
+  });
+
+  // Handle tracking status updates
+  socket.on('tracking_status_update', (data) => {
+    const user = connectedUsers.get(socket.id);
+    if (user && data.bookingId) {
+      const statusUpdate = {
+        ...data,
+        providerId: user.userId,
+        providerName: user.name,
+        timestamp: new Date()
+      };
+      
+      // Send to tracking room
+      socket.to(`tracking_${data.bookingId}`).emit('tracking_status_update', statusUpdate);
+      console.log(`📍 [TRACKING] Status update for booking ${data.bookingId}:`, data.status);
+    }
+  });
+
+  // Handle getting tracking status
+  socket.on('get_tracking_status', async (data) => {
+    const user = connectedUsers.get(socket.id);
+    if (user && data.bookingId) {
+      // Get current provider location for this booking
+      // This would typically query the database for booking details
+      const providerLocation = userLocations.get(user.userId); // Simplified
+      
+      if (providerLocation) {
+        socket.emit('tracking_status_response', {
+          bookingId: data.bookingId,
+          providerId: user.userId,
+          location: providerLocation,
+          status: 'moving',
+          timestamp: providerLocation.timestamp
+        });
+      } else {
+        socket.emit('tracking_status_response', null);
+      }
+    }
+  });
+
+  // Handle stopping location sharing
+  socket.on('stop_location_sharing', () => {
+    const user = connectedUsers.get(socket.id);
+    if (user) {
+      console.log(`📍 [TRACKING] ${user.name} stopped location sharing`);
+      userLocations.delete(user.userId);
+      
+      // Notify all tracking rooms
+      socket.broadcast.emit('provider_location_stopped', {
+        providerId: user.userId,
+        providerName: user.name
+      });
+    }
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     const user = connectedUsers.get(socket.id);
@@ -420,6 +488,14 @@ io.on('connection', (socket) => {
       console.log(`🔌 User disconnected: ${user.name} (${user.role})`);
       connectedUsers.delete(socket.id);
       userLocations.delete(user.userId);
+      
+      // Notify about provider disconnection
+      if (user.role === 'provider') {
+        socket.broadcast.emit('provider_disconnected', {
+          providerId: user.userId,
+          providerName: user.name
+        });
+      }
     }
   });
 });

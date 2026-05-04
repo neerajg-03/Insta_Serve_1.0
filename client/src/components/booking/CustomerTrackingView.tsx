@@ -24,10 +24,6 @@ interface CustomerTrackingViewProps {
   googleMapsData: OSMRouteResult | null;
 }
 
-// Helper function to get static map URL
-  const getStaticMapUrl = (center: Location, zoom: number = 15, markers?: Array<{location: Location, color?: string, label?: string}>) => {
-    return `https://via.placeholder.com/600x400?text=Map+Preview`;
-  };
 
 const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
   booking,
@@ -58,10 +54,37 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
         ? booking.address 
         : `${booking.address?.street || ''}, ${booking.address?.city || ''}, ${booking.address?.state || ''} - ${booking.address?.pincode || ''}`;
       
-      const url = `https://www.google.com/maps/dir/?api=1&origin=${providerLocation.lat},${providerLocation.lng}&destination=${encodeURIComponent(addressString)}&travelmode=driving`;
-      setMapUrl(url);
+      // Use OSM navigation instead of Google Maps
+      const osmUrl = LocationService.getOSMNavigationUrl(providerLocation, addressString);
+      setMapUrl(osmUrl);
     }
   }, [providerLocation, booking.address]);
+
+  useEffect(() => {
+    const loadStaticMap = async () => {
+      if (currentLocation && providerLocation) {
+        try {
+          const url = await LocationService.getStaticMapUrl(
+            {
+              lat: (currentLocation.lat + providerLocation.lat) / 2,
+              lng: (currentLocation.lng + providerLocation.lng) / 2,
+              timestamp: Date.now()
+            },
+            13,
+            [
+              { location: currentLocation, color: 'green', label: 'C' },
+              { location: providerLocation, color: 'red', label: 'P' }
+            ]
+          );
+          setStaticMapUrl(url);
+        } catch (error) {
+          console.error('Failed to load static map:', error);
+        }
+      }
+    };
+
+    loadStaticMap();
+  }, [currentLocation, providerLocation]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -297,19 +320,9 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
                     <p className="text-xs text-gray-600">Real-time tracking</p>
                   </div>
                   
-                  {currentLocation && providerLocation ? (
+                  {staticMapUrl ? (
                     <img 
-                      src={getStaticMapUrl({
-                        lat: (currentLocation.lat + providerLocation.lat) / 2,
-                        lng: (currentLocation.lng + providerLocation.lng) / 2,
-                        timestamp: Date.now()
-                      }, 
-                      13, 
-                      [
-                        { location: currentLocation, color: 'green', label: 'C' },
-                        { location: providerLocation, color: 'red', label: 'P' }
-                      ]
-                    )} 
+                      src={staticMapUrl}
                       alt="Live tracking map"
                       className="w-full h-full object-cover"
                       onError={(e) => {

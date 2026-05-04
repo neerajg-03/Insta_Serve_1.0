@@ -4,381 +4,288 @@ const Message = require('../models/Message');
 const { protect } = require('../middleware/auth');
 const Booking = require('../models/Booking');
 
-// Get all messages for a booking
+// Utility function to check access
+const hasChatAccess = (booking, userId) => {
+  const userIdStr = userId.toString();
+
+  const isCustomer = booking.customer?.toString() === userIdStr;
+  const isProvider = booking.provider?.toString() === userIdStr;
+
+  const isInBroadcastList = booking.broadcastTo?.some(
+    id => id.toString() === userIdStr
+  );
+
+  const isBroadcastAcceptor =
+    booking.broadcastAcceptedBy?.toString() === userIdStr;
+
+  return {
+    isCustomer,
+    isProvider,
+    isInBroadcastList,
+    isBroadcastAcceptor,
+    hasAccess:
+      isCustomer || isProvider || isInBroadcastList || isBroadcastAcceptor,
+  };
+};
+
+// ===================== GET MESSAGES =====================
 router.get('/messages/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user._id.toString();
 
-    console.log('🔍 [CHAT DEBUG] GET messages request:', {
+    console.log('🔍 [CHAT DEBUG] GET messages:', {
       bookingId,
       userId,
-      userRole: req.user.role,
-      userEmail: req.user.email
+      role: req.user.role,
     });
 
-    // Verify user is part of this booking
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: 'Booking not found',
       });
     }
 
-    // Check if user is either the customer or provider
-    const isCustomer = booking.customer?.toString() === userId;
-    const isProvider = booking.provider?.toString() === userId;
-    
-    // For broadcast bookings, also check if user is in broadcastTo list or is the one who accepted
-    const isInBroadcastList = booking.broadcastTo?.some(id => id.toString() === userId);
-    const isBroadcastAcceptor = booking.broadcastAcceptedBy?.toString() === userId;
+    const access = hasChatAccess(booking, userId);
 
-    console.log('🔍 [CHAT DEBUG] Access check for GET messages:', {
+    console.log('🔍 [ACCESS CHECK]', {
       bookingId,
       userId,
-      userRole: req.user.role,
-      bookingCustomer: booking.customer?.toString(),
-      bookingProvider: booking.provider?.toString(),
-      isCustomer,
-      isProvider,
-      isInBroadcastList,
-      isBroadcastAcceptor,
-      hasAccess: isCustomer || isProvider || isInBroadcastList || isBroadcastAcceptor,
-      bookingStatus: booking.status
+      ...access,
     });
 
-    if (!isCustomer && !isProvider && !isInBroadcastList && !isBroadcastAcceptor) {
+    if (!access.hasAccess) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied - You are not authorized to access this chat'
+        message: 'Access denied - Not part of this booking',
       });
     }
 
-    // Get messages for this booking
-    const messages = await Message.find({ bookingId })
-      .sort({ createdAt: 1 });
+    const messages = await Message.find({ bookingId }).sort({ createdAt: 1 });
 
-    // Mark unread messages as read for this user
+    // Mark messages as read
     await Message.updateMany(
-      { 
-        bookingId, 
-        recipientId: userId, 
-        isRead: false 
+      {
+        bookingId,
+        recipientId: userId,
+        isRead: false,
       },
-      { 
-        isRead: true, 
-        readAt: new Date() 
+      {
+        isRead: true,
+        readAt: new Date(),
       }
     );
 
     res.json({
       success: true,
-      data: messages
+      data: messages,
     });
-
   } catch (error) {
-    console.error('Error fetching messages:', error);
+    console.error('❌ Error fetching messages:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch messages'
+      message: 'Failed to fetch messages',
     });
   }
 });
 
-// Send a message
+// ===================== SEND MESSAGE =====================
 router.post('/send', protect, async (req, res) => {
   try {
-    console.log('🔍 [DEBUG] Chat send request received:', {
-      body: req.body,
-      user: req.user ? {
-        id: req.user._id,
-        name: req.user.name,
-        role: req.user.role
-      } : 'No user found'
+    const userId = req.user._id.toString();
+    const { bookingId, recipientId, message, type = 'text' } = req.body;
+
+    console.log('🔍 [SEND MESSAGE DEBUG]', {
+      bookingId,
+      sender: userId,
+      recipientId,
+      message,
     });
 
-    const { bookingId, recipientId, message, type = 'text' } = req.body;
-    
-    if (!req.user) {
-      console.error('❌ [ERROR] No user found in request');
-      return res.status(401).json({
-        success: false,
-        message: 'User not authenticated'
-      });
-    }
-    
-    const senderId = req.user._id;
-    const senderName = req.user.name;
-    const senderRole = req.user.role;
-
-    // Validate required fields
     if (!bookingId || !recipientId || !message) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields'
+        message: 'Missing required fields',
       });
     }
 
-    // Verify booking exists and user is part of it
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: 'Booking not found',
       });
     }
 
-    // Check if user is either the customer or provider
-    const isCustomer = booking.customer?.toString() === senderId;
-    const isProvider = booking.provider?.toString() === senderId;
-    
-    // For broadcast bookings, also check if user is in broadcastTo list or is the one who accepted
-    const isInBroadcastList = booking.broadcastTo?.some(id => id.toString() === senderId);
-    const isBroadcastAcceptor = booking.broadcastAcceptedBy?.toString() === senderId;
+    const access = hasChatAccess(booking, userId);
 
-    console.log('🔍 [CHAT DEBUG] POST send message access check:', {
-      bookingId,
-      senderId,
-      senderRole,
-      recipientId,
-      bookingCustomer: booking.customer?.toString(),
-      bookingProvider: booking.provider?.toString(),
-      isCustomer,
-      isProvider,
-      isInBroadcastList,
-      isBroadcastAcceptor,
-      hasAccess: isCustomer || isProvider || isInBroadcastList || isBroadcastAcceptor,
-      bookingStatus: booking.status
-    });
-
-    if (!isCustomer && !isProvider && !isInBroadcastList && !isBroadcastAcceptor) {
+    if (!access.hasAccess) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied - You are not authorized to send messages in this chat'
+        message: 'Access denied - Cannot send message',
       });
     }
 
-    // Get recipient details
-    let recipientName = 'Unknown';
-    if (isCustomer && booking.provider) {
+    // Resolve recipient name
+    let recipientName = 'User';
+
+    if (access.isCustomer && booking.provider) {
       const Provider = require('../models/Provider');
       const provider = await Provider.findById(booking.provider);
       recipientName = provider?.name || 'Provider';
-    } else if (isProvider && booking.customer) {
+    } else {
       const User = require('../models/User');
       const customer = await User.findById(booking.customer);
       recipientName = customer?.name || 'Customer';
-    } else if (isInBroadcastList || isBroadcastAcceptor) {
-      // For broadcast bookings, get the other party's name
-      if (isCustomer) {
-        // Customer sending to broadcast acceptor or other providers
-        if (booking.broadcastAcceptedBy) {
-          const User = require('../models/User');
-          const acceptor = await User.findById(booking.broadcastAcceptedBy);
-          recipientName = acceptor?.name || 'Service Provider';
-        } else {
-          recipientName = 'Service Providers';
-        }
-      } else {
-        // Provider sending to customer
-        const User = require('../models/User');
-        const customer = await User.findById(booking.customer);
-        recipientName = customer?.name || 'Customer';
-      }
     }
 
-    // Create and save message
     const newMessage = new Message({
       bookingId,
-      senderId,
-      senderName,
+      senderId: userId,
+      senderName: req.user.name,
       recipientId,
       recipientName,
       message: message.trim(),
       type,
-      senderRole
+      senderRole: req.user.role,
     });
 
     await newMessage.save();
 
-    // Get socket.io instance to emit real-time message
-    const io = require('socket.io');
-    const app = require('../index');
-    const socketIo = app.get('io');
-    
-    if (socketIo) {
-      // Emit message to booking room
-      const messageData = {
-        ...newMessage.toObject(),
-        timestamp: newMessage.createdAt
-      };
-      
+    // Emit via socket
+    const io = req.app.get('io');
+    if (io) {
       const bookingRoom = `booking_${bookingId}`;
-      socketIo.to(bookingRoom).emit('receive_message', messageData);
-      console.log(`💬 Message emitted to room ${bookingRoom}:`, messageData);
+      io.to(bookingRoom).emit('receive_message', newMessage);
     }
 
     res.json({
       success: true,
-      data: newMessage
+      data: newMessage,
     });
-
   } catch (error) {
-    console.error('❌ [ERROR] Error sending message:', {
-      error: error.message,
-      stack: error.stack,
-      body: req.body,
-      user: req.user ? {
-        id: req.user._id,
-        name: req.user.name,
-        role: req.user.role
-      } : 'No user'
-    });
+    console.error('❌ Error sending message:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to send message',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });
 
-// Get unread message count
+// ===================== UNREAD COUNT =====================
 router.get('/unread-count', protect, async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user._id.toString();
 
-    const unreadCount = await Message.countDocuments({
+    const count = await Message.countDocuments({
       recipientId: userId,
-      isRead: false
+      isRead: false,
     });
 
     res.json({
       success: true,
-      data: { unreadCount }
+      data: { unreadCount: count },
     });
-
   } catch (error) {
-    console.error('Error fetching unread count:', error);
+    console.error('❌ Error unread count:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch unread count'
+      message: 'Failed to fetch unread count',
     });
   }
 });
 
-// Mark messages as read
+// ===================== MARK AS READ =====================
 router.post('/mark-read/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user._id.toString();
 
-    // Verify user is part of this booking
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: 'Booking not found',
       });
     }
 
-    // Check if user is either the customer or provider
-    const isCustomer = booking.customer?.toString() === userId;
-    const isProvider = booking.provider?.toString() === userId;
-    
-    // For broadcast bookings, also check if user is in broadcastTo list or is the one who accepted
-    const isInBroadcastList = booking.broadcastTo?.some(id => id.toString() === userId);
-    const isBroadcastAcceptor = booking.broadcastAcceptedBy?.toString() === userId;
+    const access = hasChatAccess(booking, userId);
 
-    if (!isCustomer && !isProvider && !isInBroadcastList && !isBroadcastAcceptor) {
+    if (!access.hasAccess) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied'
+        message: 'Access denied',
       });
     }
 
-    // Mark unread messages as read
     const result = await Message.updateMany(
-      { 
-        bookingId, 
-        recipientId: userId, 
-        isRead: false 
+      {
+        bookingId,
+        recipientId: userId,
+        isRead: false,
       },
-      { 
-        isRead: true, 
-        readAt: new Date() 
+      {
+        isRead: true,
+        readAt: new Date(),
       }
     );
 
     res.json({
       success: true,
-      data: { 
-        markedCount: result.modifiedCount 
-      }
+      data: { markedCount: result.modifiedCount },
     });
-
   } catch (error) {
-    console.error('Error marking messages as read:', error);
+    console.error('❌ Error mark read:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to mark messages as read'
+      message: 'Failed to mark messages',
     });
   }
 });
 
-// Delete chat history (only when booking is completed)
+// ===================== DELETE HISTORY =====================
 router.delete('/history/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user._id.toString();
 
-    // Verify booking exists and is completed
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found'
+        message: 'Booking not found',
       });
     }
 
-    // Only allow deletion if booking is completed
     if (booking.status !== 'completed') {
       return res.status(400).json({
         success: false,
-        message: 'Can only delete chat history after booking completion'
+        message: 'Only allowed after completion',
       });
     }
 
-    // Check if user is either the customer or provider
-    const isCustomer = booking.customer?.toString() === userId;
-    const isProvider = booking.provider?.toString() === userId;
-    
-    // For broadcast bookings, also check if user is in broadcastTo list or is the one who accepted
-    const isInBroadcastList = booking.broadcastTo?.some(id => id.toString() === userId);
-    const isBroadcastAcceptor = booking.broadcastAcceptedBy?.toString() === userId;
+    const access = hasChatAccess(booking, userId);
 
-    if (!isCustomer && !isProvider && !isInBroadcastList && !isBroadcastAcceptor) {
+    if (!access.hasAccess) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied'
+        message: 'Access denied',
       });
     }
 
-    // Delete all messages for this booking
     const result = await Message.deleteMany({ bookingId });
 
     res.json({
       success: true,
-      data: { 
-        deletedCount: result.deletedCount 
-      }
+      data: { deletedCount: result.deletedCount },
     });
-
   } catch (error) {
-    console.error('Error deleting chat history:', error);
+    console.error('❌ Error deleting chat:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete chat history'
+      message: 'Failed to delete chat',
     });
   }
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon, MapPinIcon, PhoneIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
-import LocationService, { Location, GoogleMapsDistanceResult } from '../services/locationService';
+import LocationService, { Location, OSMRouteResult } from '../services/locationService';
 import toast from 'react-hot-toast';
 import ChatComponent from './ChatComponent';
 
@@ -20,7 +20,7 @@ interface RouteData {
     text: string;
     value: number;
   };
-  overview_polyline?: string;
+  source: string;
 }
 
 const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
@@ -32,6 +32,8 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
   const [customerLocation, setCustomerLocation] = useState<Location | null>(null);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [mapUrl, setMapUrl] = useState('');
+  const [webMapUrl, setWebMapUrl] = useState('');
+  const [staticMapUrl, setStaticMapUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
@@ -114,23 +116,45 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
           return;
         }
 
-        // Calculate distance and duration
-        const distanceResult = await LocationService.calculateDistanceWithGoogleMaps(
+        // Calculate distance and duration using OpenStreetMap
+        const distanceResult = await LocationService.calculateDistanceWithOSM(
           providerLocation,
           customerLocation
         );
 
-        console.log('[DEBUG] Distance result:', distanceResult);
+        console.log('[DEBUG] OSM distance result:', distanceResult);
 
         setRouteData({
           distance: distanceResult.distance,
-          duration: distanceResult.duration
+          duration: distanceResult.duration,
+          source: distanceResult.source
         });
 
-        // Generate Google Maps navigation URL
-        const navigationUrl = LocationService.getGoogleMapsUrl(providerLocation, customerLocation);
-        setMapUrl(navigationUrl);
-        console.log('[DEBUG] Navigation URL generated:', navigationUrl);
+        // Get OpenStreetMap navigation URLs
+        const navigationUrls = await LocationService.getNavigationUrls(providerLocation, customerLocation);
+        setMapUrl(navigationUrls.webNavigationUrl); // Use web URL for better compatibility
+        setWebMapUrl(navigationUrls.navigationUrl);
+        console.log('[DEBUG] Navigation URLs generated:', navigationUrls);
+
+        // Generate static map URL
+        try {
+          const staticUrl = await LocationService.getStaticMapUrl(
+            {
+              lat: (providerLocation.lat + customerLocation.lat) / 2,
+              lng: (providerLocation.lng + customerLocation.lng) / 2,
+              timestamp: Date.now()
+            }, 
+            13, 
+            [
+              { location: providerLocation, color: 'green', label: 'P' }, // Provider
+              { location: customerLocation, color: 'blue', label: 'C' } // Customer
+            ]
+          );
+          setStaticMapUrl(staticUrl);
+        } catch (mapError) {
+          console.error('[DEBUG] Error generating static map:', mapError);
+          setStaticMapUrl(''); // Will show fallback
+        }
 
       } catch (err) {
         console.error('[DEBUG] Error calculating route:', err);
@@ -261,29 +285,23 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
                         <p className="text-gray-600">Estimated Time</p>
                       </div>
                     </div>
+                    {routeData.source && (
+                      <div className="mt-4 text-center text-sm text-gray-500">
+                        Powered by {routeData.source === 'osrm' ? 'OpenStreetMap OSRM' : routeData.source === 'client_fallback' ? 'Local Calculation' : routeData.source}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* Map Preview */}
                 <div className="bg-gray-100 rounded-lg overflow-hidden mb-6" ref={mapRef}>
                   <div className="bg-white p-3 border-b border-gray-200">
-                    <p className="text-sm font-medium text-gray-700">Route Preview</p>
+                    <p className="text-sm font-medium text-gray-700">Route Preview (OpenStreetMap)</p>
                   </div>
                   <div className="h-96 flex items-center justify-center">
-                    {providerLocation && customerLocation ? (
+                    {staticMapUrl ? (
                       <img 
-                        src={LocationService.getStaticMapUrl(
-                          {
-                            lat: (providerLocation.lat + customerLocation.lat) / 2,
-                            lng: (providerLocation.lng + customerLocation.lng) / 2,
-                            timestamp: Date.now()
-                          }, 
-                          13, 
-                          [
-                            { location: providerLocation, color: 'green', label: 'P' }, // Provider
-                            { location: customerLocation, color: 'blue', label: 'C' } // Customer
-                          ]
-                        )}
+                        src={staticMapUrl}
                         alt="Route map"
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -293,7 +311,7 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
                             <div class="text-center p-8">
                               <span class="text-6xl mb-4 block">🗺️</span>
                               <p class="text-gray-600 text-lg">Map preview unavailable</p>
-                              <p class="text-gray-500 mt-2">Click "Navigate Now" to open in Google Maps</p>
+                              <p class="text-gray-500 mt-2">Click "Navigate Now" to open in OpenStreetMap</p>
                             </div>
                           `;
                         }}
@@ -301,7 +319,12 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
                     ) : (
                       <div className="text-center">
                         <span className="text-6xl mb-4 block">🗺️</span>
-                        <p className="text-gray-600">Loading map...</p>
+                        <p className="text-gray-600">
+                          {loading ? 'Loading map...' : 'Map preview unavailable'}
+                        </p>
+                        {!loading && (
+                          <p className="text-gray-500 mt-2">Click "Navigate Now" to open in OpenStreetMap</p>
+                        )}
                       </div>
                     )}
                   </div>

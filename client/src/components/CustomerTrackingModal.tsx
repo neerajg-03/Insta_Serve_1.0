@@ -263,9 +263,15 @@ const CustomerTrackingModal: React.FC<CustomerTrackingModalProps> = ({
                       <h3 className="font-semibold text-green-900">Provider Location</h3>
                     </div>
                     <div className="text-sm text-green-700 space-y-1">
-                      <p>Lat: {providerTracking.location.lat.toFixed(6)}</p>
-                      <p>Lng: {providerTracking.location.lng.toFixed(6)}</p>
-                      <p>Updated: {new Date(providerTracking.location.timestamp).toLocaleTimeString()}</p>
+                      {providerTracking.location ? (
+                        <>
+                          <p>Lat: {providerTracking.location.lat.toFixed(6)}</p>
+                          <p>Lng: {providerTracking.location.lng.toFixed(6)}</p>
+                          <p>Updated: {new Date(providerTracking.location.timestamp).toLocaleTimeString()}</p>
+                        </>
+                      ) : (
+                        <p className="text-green-600">Location not available</p>
+                      )}
                     </div>
                   </div>
 
@@ -276,9 +282,15 @@ const CustomerTrackingModal: React.FC<CustomerTrackingModalProps> = ({
                       <h3 className="font-semibold text-blue-900">Your Location</h3>
                     </div>
                     <div className="text-sm text-blue-700 space-y-1">
-                      <p>Lat: {customerLocation.lat.toFixed(6)}</p>
-                      <p>Lng: {customerLocation.lng.toFixed(6)}</p>
-                      <p>Service Address</p>
+                      {customerLocation ? (
+                        <>
+                          <p>Lat: {customerLocation.lat.toFixed(6)}</p>
+                          <p>Lng: {customerLocation.lng.toFixed(6)}</p>
+                          <p>Service Address</p>
+                        </>
+                      ) : (
+                        <p className="text-blue-600">Location not available</p>
+                      )}
                     </div>
                   </div>
                 </div>

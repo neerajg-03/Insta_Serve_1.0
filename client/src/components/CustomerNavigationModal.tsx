@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon, MapPinIcon, PhoneIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
-import LocationService, { Location, GoogleMapsDistanceResult } from '../services/locationService';
+import LocationService, { Location, OSMRouteResult } from '../services/locationService';
 import toast from 'react-hot-toast';
 import ChatComponent from './ChatComponent';
 import socketService from '../services/socketService';
@@ -32,6 +32,7 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
   const [customerLocation, setCustomerLocation] = useState<Location | null>(null);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [mapUrl, setMapUrl] = useState('');
+  const [staticMapUrl, setStaticMapUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
@@ -149,7 +150,7 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
 
       try {
         // Calculate distance and duration
-        const distanceResult = await LocationService.calculateDistanceWithGoogleMaps(
+        const distanceResult = await LocationService.calculateDistanceWithOSM(
           providerLocation,
           customerLocation
         );
@@ -159,9 +160,29 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
           duration: distanceResult.duration
         });
 
-        // Generate Google Maps navigation URL
-        const navigationUrl = LocationService.getGoogleMapsUrl(customerLocation, providerLocation);
+        // Generate OpenStreetMap navigation URL
+        const navigationUrl = LocationService.getOSMNavigationUrl(customerLocation, providerLocation);
         setMapUrl(navigationUrl);
+
+        // Generate static map URL
+        try {
+          const staticUrl = await LocationService.getStaticMapUrl(
+            {
+              lat: (customerLocation.lat + providerLocation.lat) / 2,
+              lng: (customerLocation.lng + providerLocation.lng) / 2,
+              timestamp: Date.now()
+            }, 
+            13, 
+            [
+              { location: customerLocation, color: 'blue', label: 'C' }, // Customer
+              { location: providerLocation, color: 'green', label: 'P' } // Provider
+            ]
+          );
+          setStaticMapUrl(staticUrl);
+        } catch (mapError) {
+          console.error('[DEBUG] Error generating static map:', mapError);
+          setStaticMapUrl('');
+        }
 
       } catch (err) {
         console.error('Error calculating route:', err);
@@ -254,8 +275,8 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
                       <h3 className="font-semibold text-blue-900">Your Location</h3>
                     </div>
                     <div className="text-sm text-blue-700 space-y-1">
-                      <p>Lat: {customerLocation.lat.toFixed(6)}</p>
-                      <p>Lng: {customerLocation.lng.toFixed(6)}</p>
+                      <p>Lat: {customerLocation?.lat?.toFixed(6)}</p>
+                      <p>Lng: {customerLocation?.lng?.toFixed(6)}</p>
                       <p className="font-medium">{formatAddress(booking.address)}</p>
                     </div>
                   </div>
@@ -268,9 +289,9 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
                         <h3 className="font-semibold text-green-900">Provider Location</h3>
                       </div>
                       <div className="text-sm text-green-700 space-y-1">
-                        <p>Lat: {providerLocation.lat.toFixed(6)}</p>
-                        <p>Lng: {providerLocation.lng.toFixed(6)}</p>
-                        <p>Updated: {new Date(providerLocation.timestamp).toLocaleTimeString()}</p>
+                        <p>Lat: {providerLocation?.lat?.toFixed(6)}</p>
+                        <p>Lng: {providerLocation?.lng?.toFixed(6)}</p>
+                        <p>Updated: {new Date(providerLocation?.timestamp).toLocaleTimeString()}</p>
                       </div>
                     </div>
                   ) : (
@@ -316,19 +337,8 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
                   <div className="h-96 flex items-center justify-center">
                     {customerLocation && providerLocation ? (
                       <img 
-                        src={LocationService.getStaticMapUrl(
-                          {
-                            lat: (customerLocation.lat + providerLocation.lat) / 2,
-                            lng: (customerLocation.lng + providerLocation.lng) / 2,
-                            timestamp: Date.now()
-                          }, 
-                          13, 
-                          [
-                            { location: customerLocation, color: 'blue', label: 'C' }, // Customer
-                            { location: providerLocation, color: 'green', label: 'P' } // Provider
-                          ]
-                        )}
-                        alt="Location map"
+                        src={staticMapUrl || 'https://via.placeholder.com/600x400?text=Map+Preview'}
+                        alt="Route map"
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
@@ -337,7 +347,7 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
                             <div class="text-center p-8">
                               <span class="text-6xl mb-4 block">🗺️</span>
                               <p class="text-gray-600 text-lg">Map preview unavailable</p>
-                              <p class="text-gray-500 mt-2">Click "Navigate Now" to open in Google Maps</p>
+                              <p class="text-gray-500 mt-2">Click "Navigate Now" to open in OpenStreetMap</p>
                             </div>
                           `;
                         }}

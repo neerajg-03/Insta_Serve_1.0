@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { bookingsAPI } from '../services/api';
-import LocationService, { Location, GoogleMapsDistanceResult } from '../services/locationService';
+import LocationService, { Location, OSMRouteResult } from '../services/locationService';
 import SocketService, { LocationData, BookingUpdate, ChatMessage } from '../services/socketService';
 import PaymentService from '../services/paymentService';
 import toast from 'react-hot-toast';

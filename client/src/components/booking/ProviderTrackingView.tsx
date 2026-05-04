@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
-import LocationService, { Location, GoogleMapsDistanceResult } from '../../services/locationService';
+import LocationService, { Location, OSMRouteResult } from '../../services/locationService';
 import toast from 'react-hot-toast';
 
 interface ProviderTrackingViewProps {
@@ -19,7 +19,7 @@ interface ProviderTrackingViewProps {
   onManualLocationUpdate: () => void;
   trackingUpdates: any[];
   getStatusIcon: (status: string) => string;
-  googleMapsData: GoogleMapsDistanceResult | null;
+  googleMapsData: OSMRouteResult | null;
 }
 
 const ProviderTrackingView: React.FC<ProviderTrackingViewProps> = ({
@@ -42,6 +42,7 @@ const ProviderTrackingView: React.FC<ProviderTrackingViewProps> = ({
   const { user } = useSelector((state: RootState) => state.auth);
   const [showMap, setShowMap] = useState(false);
   const [mapUrl, setMapUrl] = useState('');
+  const [staticMapUrl, setStaticMapUrl] = useState('');
 
   useEffect(() => {
     if (currentLocation && booking.address) {
@@ -53,6 +54,28 @@ const ProviderTrackingView: React.FC<ProviderTrackingViewProps> = ({
       setMapUrl(url);
     }
   }, [currentLocation, booking.address]);
+
+  useEffect(() => {
+    const loadStaticMap = async () => {
+      if (currentLocation && customerLocation) {
+        try {
+          const url = await LocationService.getStaticMapUrl(
+            currentLocation,
+            14,
+            [
+              { location: currentLocation, color: 'green', label: 'Y' }, // Your location
+              { location: customerLocation, color: 'blue', label: 'C' } // Customer
+            ]
+          );
+          setStaticMapUrl(url);
+        } catch (error) {
+          console.error('Failed to load static map:', error);
+        }
+      }
+    };
+
+    loadStaticMap();
+  }, [currentLocation, customerLocation]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -324,16 +347,9 @@ const ProviderTrackingView: React.FC<ProviderTrackingViewProps> = ({
                     <p className="text-xs text-gray-600">Route to customer</p>
                   </div>
                   
-                  {currentLocation && customerLocation ? (
+                  {staticMapUrl ? (
                     <img 
-                      src={LocationService.getStaticMapUrl(
-                        currentLocation, 
-                        14, 
-                        [
-                          { location: currentLocation, color: 'green', label: 'Y' }, // Your location
-                          { location: customerLocation, color: 'blue', label: 'C' } // Customer
-                        ]
-                      )}
+                      src={staticMapUrl}
                       alt="Navigation map"
                       className="w-full h-full object-cover"
                       onError={(e) => {

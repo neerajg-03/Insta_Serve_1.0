@@ -13,7 +13,6 @@ import api from '../services/api';
 
 interface ChatComponentProps {
   bookingId: string;
-  recipientId: string;
   recipientName: string;
   isOpen: boolean;
   onClose: () => void;
@@ -140,7 +139,6 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       // Send message via API
       const response = await api.post('/chat/send', {
         bookingId,
-        recipientId,
         message: messageText,
         type: 'text'
       });

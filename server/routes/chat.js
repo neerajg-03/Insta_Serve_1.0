@@ -29,6 +29,10 @@ router.get('/messages/:bookingId', protect, async (req, res) => {
     // Check if user is either the customer or provider
     const isCustomer = booking.customer?.toString() === userId;
     const isProvider = booking.provider?.toString() === userId;
+    
+    // For broadcast bookings, also check if user is in broadcastTo list or is the one who accepted
+    const isInBroadcastList = booking.broadcastTo?.some(id => id.toString() === userId);
+    const isBroadcastAcceptor = booking.broadcastAcceptedBy?.toString() === userId;
 
     console.log('🔍 [CHAT DEBUG] Access check for GET messages:', {
       bookingId,
@@ -38,11 +42,13 @@ router.get('/messages/:bookingId', protect, async (req, res) => {
       bookingProvider: booking.provider?.toString(),
       isCustomer,
       isProvider,
-      hasAccess: isCustomer || isProvider,
+      isInBroadcastList,
+      isBroadcastAcceptor,
+      hasAccess: isCustomer || isProvider || isInBroadcastList || isBroadcastAcceptor,
       bookingStatus: booking.status
     });
 
-    if (!isCustomer && !isProvider) {
+    if (!isCustomer && !isProvider && !isInBroadcastList && !isBroadcastAcceptor) {
       return res.status(403).json({
         success: false,
         message: 'Access denied - You are not authorized to access this chat'
@@ -126,6 +132,10 @@ router.post('/send', protect, async (req, res) => {
     // Check if user is either the customer or provider
     const isCustomer = booking.customer?.toString() === senderId;
     const isProvider = booking.provider?.toString() === senderId;
+    
+    // For broadcast bookings, also check if user is in broadcastTo list or is the one who accepted
+    const isInBroadcastList = booking.broadcastTo?.some(id => id.toString() === senderId);
+    const isBroadcastAcceptor = booking.broadcastAcceptedBy?.toString() === senderId;
 
     console.log('🔍 [CHAT DEBUG] POST send message access check:', {
       bookingId,
@@ -136,11 +146,13 @@ router.post('/send', protect, async (req, res) => {
       bookingProvider: booking.provider?.toString(),
       isCustomer,
       isProvider,
-      hasAccess: isCustomer || isProvider,
+      isInBroadcastList,
+      isBroadcastAcceptor,
+      hasAccess: isCustomer || isProvider || isInBroadcastList || isBroadcastAcceptor,
       bookingStatus: booking.status
     });
 
-    if (!isCustomer && !isProvider) {
+    if (!isCustomer && !isProvider && !isInBroadcastList && !isBroadcastAcceptor) {
       return res.status(403).json({
         success: false,
         message: 'Access denied - You are not authorized to send messages in this chat'
@@ -157,6 +169,23 @@ router.post('/send', protect, async (req, res) => {
       const User = require('../models/User');
       const customer = await User.findById(booking.customer);
       recipientName = customer?.name || 'Customer';
+    } else if (isInBroadcastList || isBroadcastAcceptor) {
+      // For broadcast bookings, get the other party's name
+      if (isCustomer) {
+        // Customer sending to broadcast acceptor or other providers
+        if (booking.broadcastAcceptedBy) {
+          const User = require('../models/User');
+          const acceptor = await User.findById(booking.broadcastAcceptedBy);
+          recipientName = acceptor?.name || 'Service Provider';
+        } else {
+          recipientName = 'Service Providers';
+        }
+      } else {
+        // Provider sending to customer
+        const User = require('../models/User');
+        const customer = await User.findById(booking.customer);
+        recipientName = customer?.name || 'Customer';
+      }
     }
 
     // Create and save message
@@ -256,8 +285,12 @@ router.post('/mark-read/:bookingId', protect, async (req, res) => {
     // Check if user is either the customer or provider
     const isCustomer = booking.customer?.toString() === userId;
     const isProvider = booking.provider?.toString() === userId;
+    
+    // For broadcast bookings, also check if user is in broadcastTo list or is the one who accepted
+    const isInBroadcastList = booking.broadcastTo?.some(id => id.toString() === userId);
+    const isBroadcastAcceptor = booking.broadcastAcceptedBy?.toString() === userId;
 
-    if (!isCustomer && !isProvider) {
+    if (!isCustomer && !isProvider && !isInBroadcastList && !isBroadcastAcceptor) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -319,8 +352,12 @@ router.delete('/history/:bookingId', protect, async (req, res) => {
     // Check if user is either the customer or provider
     const isCustomer = booking.customer?.toString() === userId;
     const isProvider = booking.provider?.toString() === userId;
+    
+    // For broadcast bookings, also check if user is in broadcastTo list or is the one who accepted
+    const isInBroadcastList = booking.broadcastTo?.some(id => id.toString() === userId);
+    const isBroadcastAcceptor = booking.broadcastAcceptedBy?.toString() === userId;
 
-    if (!isCustomer && !isProvider) {
+    if (!isCustomer && !isProvider && !isInBroadcastList && !isBroadcastAcceptor) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { XMarkIcon, MapPinIcon, PhoneIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
-import LocationService, { Location, OSMRouteResult } from '../services/locationService';
+import LocationService from '../services/locationService';
+import { Location, OSMRouteResult } from '../services/locationService';
 import toast from 'react-hot-toast';
 import ChatComponent from './ChatComponent';
 import socketService from '../services/socketService';

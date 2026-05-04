@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
 const Message = require('../models/Message');
 const { protect } = require('../middleware/auth');
 const Booking = require('../models/Booking');
@@ -11,21 +10,16 @@ router.get('/messages/:bookingId', protect, async (req, res) => {
     const { bookingId } = req.params;
     const userId = req.user._id;
 
-    console.log('🔍 [DEBUG] Fetching messages:', { bookingId, userId });
-
-    // Validate bookingId format
-    if (!bookingId || !mongoose.Types.ObjectId.isValid(bookingId)) {
-      console.log('❌ [ERROR] Invalid booking ID format:', bookingId);
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid booking ID format'
-      });
-    }
+    console.log('🔍 [CHAT DEBUG] GET messages request:', {
+      bookingId,
+      userId,
+      userRole: req.user.role,
+      userEmail: req.user.email
+    });
 
     // Verify user is part of this booking
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      console.log('❌ [ERROR] Booking not found:', bookingId);
       return res.status(404).json({
         success: false,
         message: 'Booking not found'
@@ -36,10 +30,22 @@ router.get('/messages/:bookingId', protect, async (req, res) => {
     const isCustomer = booking.customer?.toString() === userId;
     const isProvider = booking.provider?.toString() === userId;
 
+    console.log('🔍 [CHAT DEBUG] Access check for GET messages:', {
+      bookingId,
+      userId,
+      userRole: req.user.role,
+      bookingCustomer: booking.customer?.toString(),
+      bookingProvider: booking.provider?.toString(),
+      isCustomer,
+      isProvider,
+      hasAccess: isCustomer || isProvider,
+      bookingStatus: booking.status
+    });
+
     if (!isCustomer && !isProvider) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied'
+        message: 'Access denied - You are not authorized to access this chat'
       });
     }
 
@@ -108,19 +114,9 @@ router.post('/send', protect, async (req, res) => {
       });
     }
 
-    // Validate bookingId format
-    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
-      console.log('❌ [ERROR] Invalid booking ID format in send:', bookingId);
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid booking ID format'
-      });
-    }
-
     // Verify booking exists and user is part of it
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      console.log('❌ [ERROR] Booking not found in send:', bookingId);
       return res.status(404).json({
         success: false,
         message: 'Booking not found'
@@ -131,18 +127,31 @@ router.post('/send', protect, async (req, res) => {
     const isCustomer = booking.customer?.toString() === senderId;
     const isProvider = booking.provider?.toString() === senderId;
 
+    console.log('🔍 [CHAT DEBUG] POST send message access check:', {
+      bookingId,
+      senderId,
+      senderRole,
+      recipientId,
+      bookingCustomer: booking.customer?.toString(),
+      bookingProvider: booking.provider?.toString(),
+      isCustomer,
+      isProvider,
+      hasAccess: isCustomer || isProvider,
+      bookingStatus: booking.status
+    });
+
     if (!isCustomer && !isProvider) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied'
+        message: 'Access denied - You are not authorized to send messages in this chat'
       });
     }
 
     // Get recipient details
     let recipientName = 'Unknown';
     if (isCustomer && booking.provider) {
-      const User = require('../models/User');
-      const provider = await User.findById(booking.provider);
+      const Provider = require('../models/Provider');
+      const provider = await Provider.findById(booking.provider);
       recipientName = provider?.name || 'Provider';
     } else if (isProvider && booking.customer) {
       const User = require('../models/User');
@@ -235,14 +244,6 @@ router.post('/mark-read/:bookingId', protect, async (req, res) => {
     const { bookingId } = req.params;
     const userId = req.user._id;
 
-    // Validate bookingId format
-    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid booking ID format'
-      });
-    }
-
     // Verify user is part of this booking
     const booking = await Booking.findById(bookingId);
     if (!booking) {
@@ -297,14 +298,6 @@ router.delete('/history/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
     const userId = req.user._id;
-
-    // Validate bookingId format
-    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid booking ID format'
-      });
-    }
 
     // Verify booking exists and is completed
     const booking = await Booking.findById(bookingId);

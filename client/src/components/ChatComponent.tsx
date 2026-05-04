@@ -9,7 +9,7 @@ import {
   PaperAirplaneIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
-import { chatAPI } from '../services/api';
+import api from '../services/api';
 
 interface ChatComponentProps {
   bookingId: string;
@@ -113,10 +113,10 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const loadMessages = async () => {
     try {
-      const response = await chatAPI.getMessages(bookingId);
+      const response = await api.get(`/chat/messages/${bookingId}`);
 
-      if (response.success) {
-        setMessages(response.data);
+      if (response.data.success) {
+        setMessages(response.data.data);
       }
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -138,14 +138,14 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     
     try {
       // Send message via API
-      const response = await chatAPI.sendMessage({
+      const response = await api.post('/chat/send', {
         bookingId,
         recipientId,
         message: messageText,
         type: 'text'
       });
 
-      if (response.success) {
+      if (response.data.success) {
         // Clear input
         setNewMessage('');
 

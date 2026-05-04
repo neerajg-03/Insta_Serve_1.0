@@ -27,7 +27,7 @@ const ProfessionalCustomerTrackingView: React.FC<any> = ({
   paymentStatus,
   trackingUpdates,
   getStatusIcon,
-  googleMapsData
+  osmData
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -225,23 +225,23 @@ const ProfessionalCustomerTrackingView: React.FC<any> = ({
                 </div>
 
                 {/* Distance & ETA */}
-                {googleMapsData && (
+                {osmData && (
                   <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-4">
                     <div className="flex justify-between items-center">
                       <div>
                         <h4 className="font-semibold text-gray-900">Distance & ETA</h4>
                         <p className="text-sm text-gray-600">
-                          📍 Provider is {googleMapsData.distance.text} away
+                          📍 Provider is {osmData.distance.text} away
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-orange-600">
-                          🕒 {googleMapsData.duration.text}
+                          🕒 {osmData.duration.text}
                         </p>
                         <p className="text-sm text-gray-600">Estimated arrival</p>
                       </div>
                     </div>
-                    {googleMapsData.status === 'FALLBACK' && (
+                    {osmData.status === 'client_fallback' && (
                       <p className="text-xs text-yellow-600 mt-2">⚠️ Using approximate distance calculation</p>
                     )}
                   </div>
@@ -259,16 +259,16 @@ const ProfessionalCustomerTrackingView: React.FC<any> = ({
                       <span className="text-4xl mb-2 block">📍</span>
                       <p className="text-gray-600">Map rendering with provider location</p>
                       <p className="text-sm text-gray-500 mt-2">
-                          📍 Provider is {googleMapsData?.distance.text || `${distance?.toFixed(1)} km`} away
+                          📍 Provider is {osmData?.distance.text || `${distance?.toFixed(1)} km`} away
                       </p>
                     </div>
                   ) : (
                     <div className="text-center">
                       <span className="text-4xl mb-2 block">📍</span>
                       <p className="text-gray-600">Waiting for location data...</p>
-                      {googleMapsData && (
+                      {osmData && (
                         <p className="text-sm text-gray-500 mt-2">
-                          ð {googleMapsData.distance.text} away
+                          ð {osmData.distance.text} away
                         </p>
                       )}
                     </div>
@@ -512,7 +512,7 @@ const BookingTracking: React.FC = () => {
   const [customerLocation, setCustomerLocation] = useState<Location | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [estimatedArrival, setEstimatedArrival] = useState<string>('');
-  const [googleMapsData, setGoogleMapsData] = useState<GoogleMapsDistanceResult | null>(null);
+  const [osmData, setOsmData] = useState<OSMRouteResult | null>(null);
   const [isTracking, setIsTracking] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string>('DISCONNECTED');
   
@@ -772,14 +772,14 @@ const BookingTracking: React.FC = () => {
       
       if (userLocation && targetLocation) {
         try {
-          // Use Google Maps API for accurate distance and time
-          const googleResult = await LocationService.calculateDistanceWithGoogleMaps(userLocation, targetLocation);
-          setGoogleMapsData(googleResult);
+          // Use OpenStreetMap API for accurate distance and time
+          const osmResult = await LocationService.calculateDistanceWithOSM(userLocation, targetLocation);
+          setOsmData(osmResult);
           
-          // Update distance and ETA with Google Maps data
-          const distanceKm = googleResult.distance.value / 1000; // Convert meters to km
+          // Update distance and ETA with OSM data
+          const distanceKm = osmResult.distance.value / 1000; // Convert meters to km
           setDistance(distanceKm);
-          setEstimatedArrival(googleResult.duration.text);
+          setEstimatedArrival(osmResult.duration.text);
         } catch (error) {
           console.error('Error calculating distance with Google Maps:', error);
           // Fallback to Haversine calculation
@@ -958,12 +958,12 @@ User: ${user?.name} (${user?.email})
     if (booking?.address && currentLocation) {
       if (typeof booking.address === 'string') {
         // If address is string, use Google Maps navigation
-        const mapsUrl = LocationService.getGoogleMapsUrl(currentLocation, booking.address);
+        const mapsUrl = LocationService.getOSMNavigationUrl(currentLocation, booking.address);
         window.open(mapsUrl, '_blank');
       } else {
         // If address is object, geocode it first or use coordinates
         const addressString = `${booking.address?.street || ''}, ${booking.address?.city || ''}, ${booking.address?.state || ''} - ${booking.address?.pincode || ''}`;
-        const mapsUrl = LocationService.getGoogleMapsUrl(currentLocation, addressString);
+        const mapsUrl = LocationService.getOSMNavigationUrl(currentLocation, addressString);
         window.open(mapsUrl, '_blank');
       }
     } else {
@@ -1108,7 +1108,7 @@ User: ${user?.name} (${user?.email})
         paymentStatus={paymentStatus}
         trackingUpdates={trackingUpdates}
         getStatusIcon={getStatusIcon}
-        googleMapsData={googleMapsData}
+        osmData={osmData}
       />
     );
   } else {
@@ -1128,7 +1128,7 @@ User: ${user?.name} (${user?.email})
         onManualLocationUpdate={handleManualLocationUpdate}
         trackingUpdates={trackingUpdates}
         getStatusIcon={getStatusIcon}
-        googleMapsData={googleMapsData}
+        googleMapsData={osmData}
       />
     );
   }

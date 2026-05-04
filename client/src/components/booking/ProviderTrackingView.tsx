@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
-import LocationService, { Location, OSMRouteResult } from '../../services/locationService';
+import LocationService from '../../services/locationService';
+import { Location, OSMRouteResult } from '../../services/locationService';
 import toast from 'react-hot-toast';
 
 interface ProviderTrackingViewProps {

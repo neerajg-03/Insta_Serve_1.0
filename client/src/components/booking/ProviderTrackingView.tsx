@@ -51,8 +51,9 @@ const ProviderTrackingView: React.FC<ProviderTrackingViewProps> = ({
         ? booking.address 
         : `${booking.address?.street || ''}, ${booking.address?.city || ''}, ${booking.address?.state || ''} - ${booking.address?.pincode || ''}`;
       
-      const url = `https://www.google.com/maps/dir/?api=1&origin=${currentLocation.lat},${currentLocation.lng}&destination=${encodeURIComponent(addressString)}&travelmode=driving`;
-      setMapUrl(url);
+      // Use OSM navigation instead of Google Maps
+      const osmUrl = LocationService.getOSMNavigationUrl(currentLocation, addressString);
+      setMapUrl(osmUrl);
     }
   }, [currentLocation, booking.address]);
 

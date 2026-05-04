@@ -1,217 +1,82 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { XMarkIcon, MapPinIcon, PhoneIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
-import LocationService, { Location, OSMRouteResult } from '../services/locationService';
+import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
+import LocationService from '../../services/locationService';
+import { Location, OSMRouteResult } from '../../services/locationService';
 import toast from 'react-hot-toast';
-import ChatComponent from './ChatComponent';
-import socketService from '../services/socketService';
+import CustomerCompletionModal from '../CustomerCompletionModal';
 
-export interface CustomerNavigationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface CustomerTrackingViewProps {
   booking: any;
+  currentLocation: Location | null;
+  providerLocation: Location | null;
+  distance: number | null;
+  estimatedArrival: string;
+  connectionStatus: string;
+  isTracking: boolean;
+  onContactProvider: () => void;
+  onNavigateToLocation: () => void;
+  onPayNow: () => void;
+  onManualLocationUpdate: () => void;
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  trackingUpdates: any[];
+  getStatusIcon: (status: string) => string;
+  googleMapsData: OSMRouteResult | null;
 }
 
-interface RouteData {
-  distance: {
-    text: string;
-    value: number;
+// Helper function to get static map URL
+  const getStaticMapUrl = (center: Location, zoom: number = 15, markers?: Array<{location: Location, color?: string, label?: string}>) => {
+    return `https://via.placeholder.com/600x400?text=Map+Preview`;
   };
-  duration: {
-    text: string;
-    value: number;
-  };
-  overview_polyline?: string;
-}
 
-const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
-  isOpen,
-  onClose,
-  booking
+const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
+  booking,
+  currentLocation,
+  providerLocation,
+  distance,
+  estimatedArrival,
+  connectionStatus,
+  isTracking,
+  onContactProvider,
+  onNavigateToLocation,
+  onPayNow,
+  onManualLocationUpdate,
+  paymentStatus,
+  trackingUpdates,
+  getStatusIcon,
+  googleMapsData
 }) => {
-  const [providerLocation, setProviderLocation] = useState<Location | null>(null);
-  const [customerLocation, setCustomerLocation] = useState<Location | null>(null);
-  const [routeData, setRouteData] = useState<RouteData | null>(null);
-  const [mapUrl, setMapUrl] = useState('');
   const [staticMapUrl, setStaticMapUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showChat, setShowChat] = useState(false);
-  const mapRef = useRef<HTMLDivElement>(null);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [showMap, setShowMap] = useState(false);
+  const [mapUrl, setMapUrl] = useState('');
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
-  // Get customer location from booking
   useEffect(() => {
-    const getCustomerLocation = async () => {
-      if (!booking?.address) return;
-
-      try {
-        let customerCoords: Location | null = null;
-
-        // If booking has coordinates, use them
-        if (booking.address.coordinates?.lat && booking.address.coordinates?.lng) {
-          customerCoords = {
-            lat: booking.address.coordinates.lat,
-            lng: booking.address.coordinates.lng,
-            timestamp: Date.now()
-          };
-        } else {
-          // Otherwise geocode the address
-          const addressString = typeof booking.address === 'string' 
-            ? booking.address 
-            : `${booking.address?.street || ''}, ${booking.address?.city || ''}, ${booking.address?.state || ''} - ${booking.address?.pincode || ''}`;
-          
-          customerCoords = await LocationService.geocodeAddress(addressString);
-        }
-
-        setCustomerLocation(customerCoords);
-      } catch (err) {
-        console.error('Error getting customer location:', err);
-        setError('Could not determine your location');
-      }
-    };
-
-    if (isOpen && booking) {
-      getCustomerLocation();
-    }
-  }, [isOpen, booking]);
-
-  // Get provider location via Socket.IO
-  useEffect(() => {
-    if (!isOpen || !booking) return;
-
-    // Join the booking room for targeted location updates
-    socketService.joinBookingRoom(booking._id);
-
-    // Listen for provider location updates
-    const handleProviderLocationUpdate = (data: any) => {
-      console.log('Provider location update received in CustomerNavigationModal:', data);
+    if (providerLocation && booking.address) {
+      const addressString = typeof booking.address === 'string' 
+        ? booking.address 
+        : `${booking.address?.street || ''}, ${booking.address?.city || ''}, ${booking.address?.state || ''} - ${booking.address?.pincode || ''}`;
       
-      // Check if this update is for the current booking's provider
-      if (data.providerId === booking.provider._id && 
-          (data.bookingId === booking._id || !data.bookingId)) {
-        
-        if (data.location) {
-          setProviderLocation({
-            lat: data.location.lat,
-            lng: data.location.lng,
-            timestamp: data.timestamp || Date.now()
-          });
-          console.log('Provider location updated:', data.location);
-        }
-      }
-    };
-
-    // Subscribe to provider location updates (both targeted and broadcast)
-    socketService.on('provider_location_update', handleProviderLocationUpdate);
-    socketService.on('locationUpdate', handleProviderLocationUpdate);
-
-    // Also try to get initial provider location via API as fallback
-    const getInitialProviderLocation = async () => {
-      if (!booking?.provider?._id) return;
-
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/provider/${booking.provider._id}/location`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        if (response.ok) {
-          const contentType = response.headers.get('content-type');
-          
-          if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            if (data.success && data.location) {
-              setProviderLocation(data.location);
-            }
-          }
-        }
-      } catch (err) {
-        console.log('Initial provider location API failed, relying on Socket.IO updates');
-      }
-    };
-
-    // Get initial location and start listening for updates
-    getInitialProviderLocation();
-
-    return () => {
-      socketService.leaveBookingRoom(booking._id);
-      socketService.off('provider_location_update', handleProviderLocationUpdate);
-      socketService.off('locationUpdate', handleProviderLocationUpdate);
-    };
-  }, [isOpen, booking]);
-
-  // Calculate route when both locations are available
-  useEffect(() => {
-    const calculateRoute = async () => {
-      if (!providerLocation || !customerLocation) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Calculate distance and duration
-        const distanceResult = await LocationService.calculateDistanceWithOSM(
-          providerLocation,
-          customerLocation
-        );
-
-        setRouteData({
-          distance: distanceResult.distance,
-          duration: distanceResult.duration
-        });
-
-        // Generate OpenStreetMap navigation URL
-        const navigationUrl = LocationService.getOSMNavigationUrl(customerLocation, providerLocation);
-        setMapUrl(navigationUrl);
-
-        // Generate static map URL
-        try {
-          const staticUrl = await LocationService.getStaticMapUrl(
-            {
-              lat: (customerLocation.lat + providerLocation.lat) / 2,
-              lng: (customerLocation.lng + providerLocation.lng) / 2,
-              timestamp: Date.now()
-            }, 
-            13, 
-            [
-              { location: customerLocation, color: 'blue', label: 'C' }, // Customer
-              { location: providerLocation, color: 'green', label: 'P' } // Provider
-            ]
-          );
-          setStaticMapUrl(staticUrl);
-        } catch (mapError) {
-          console.error('[DEBUG] Error generating static map:', mapError);
-          setStaticMapUrl('');
-        }
-
-      } catch (err) {
-        console.error('Error calculating route:', err);
-        setError('Could not calculate route. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (providerLocation && customerLocation) {
-      calculateRoute();
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${providerLocation.lat},${providerLocation.lng}&destination=${encodeURIComponent(addressString)}&travelmode=driving`;
+      setMapUrl(url);
     }
-  }, [providerLocation, customerLocation]);
+  }, [providerLocation, booking.address]);
 
-  const handleNavigateNow = () => {
-    if (mapUrl) {
-      window.open(mapUrl, '_blank');
-    }
-  };
-
-  const handleChatNow = () => {
-    setShowChat(true);
-  };
-
-  const handleCallProvider = () => {
-    if (booking?.provider?.phone) {
-      window.open(`tel:${booking.provider.phone}`);
-    } else {
-      toast.error('Provider phone number not available');
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800';
+      case 'in_progress':
+        return 'bg-purple-100 text-purple-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -223,221 +88,409 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
     return 'Address not available';
   };
 
-  if (!isOpen) return null;
-
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold flex items-center">
-                  <MapPinIcon className="w-8 h-8 mr-3" />
-                  Track Provider Location
-                </h2>
-                <p className="text-blue-100 mt-1">
-                  Booking ID: #{booking?._id?.slice(-8)}
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                className="text-white hover:text-gray-200 transition-colors"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
+      <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Service Tracking</h1>
+              <p className="text-blue-100">Booking ID: #{booking._id.slice(-8)}</p>
             </div>
-          </div>
-
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-            {loading && (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-600">Calculating route...</span>
-              </div>
-            )}
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                <p className="text-red-800">{error}</p>
-              </div>
-            )}
-
-            {!loading && !error && customerLocation && (
-              <>
-                {/* Location Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  {/* Customer Location */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center mb-3">
-                      <MapPinIcon className="w-6 h-6 text-blue-600 mr-2" />
-                      <h3 className="font-semibold text-blue-900">Your Location</h3>
-                    </div>
-                    <div className="text-sm text-blue-700 space-y-1">
-                      <p>Lat: {customerLocation?.lat?.toFixed(6)}</p>
-                      <p>Lng: {customerLocation?.lng?.toFixed(6)}</p>
-                      <p className="font-medium">{formatAddress(booking.address)}</p>
-                    </div>
-                  </div>
-
-                  {/* Provider Location */}
-                  {providerLocation ? (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="flex items-center mb-3">
-                        <MapPinIcon className="w-6 h-6 text-green-600 mr-2" />
-                        <h3 className="font-semibold text-green-900">Provider Location</h3>
-                      </div>
-                      <div className="text-sm text-green-700 space-y-1">
-                        <p>Lat: {providerLocation?.lat?.toFixed(6)}</p>
-                        <p>Lng: {providerLocation?.lng?.toFixed(6)}</p>
-                        <p>Updated: {new Date(providerLocation?.timestamp).toLocaleTimeString()}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center mb-3">
-                        <MapPinIcon className="w-6 h-6 text-gray-600 mr-2" />
-                        <h3 className="font-semibold text-gray-900">Provider Location</h3>
-                      </div>
-                      <div className="text-sm text-gray-700">
-                        <p>Provider location not available</p>
-                        <p className="text-xs text-gray-500 mt-1">Provider may not be online or sharing location</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Route Information */}
-                {routeData && providerLocation && (
-                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-6 mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Provider Arrival Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-orange-600 mb-2">
-                          📍 {routeData.distance.text}
-                        </div>
-                        <p className="text-gray-600">Distance Away</p>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-600 mb-2">
-                          ⏱️ {routeData.duration.text}
-                        </div>
-                        <p className="text-gray-600">Time to Reach</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Map Preview */}
-                <div className="bg-gray-100 rounded-lg overflow-hidden mb-6" ref={mapRef}>
-                  <div className="bg-white p-3 border-b border-gray-200">
-                    <p className="text-sm font-medium text-gray-700">Location Preview</p>
-                  </div>
-                  <div className="h-96 flex items-center justify-center">
-                    {customerLocation && providerLocation ? (
-                      <img 
-                        src={staticMapUrl || 'https://via.placeholder.com/600x400?text=Map+Preview'}
-                        alt="Route map"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.parentElement!.innerHTML = `
-                            <div class="text-center p-8">
-                              <span class="text-6xl mb-4 block">🗺️</span>
-                              <p class="text-gray-600 text-lg">Map preview unavailable</p>
-                              <p class="text-gray-500 mt-2">Click "Navigate Now" to open in OpenStreetMap</p>
-                            </div>
-                          `;
-                        }}
-                      />
-                    ) : (
-                      <div className="text-center">
-                        <span className="text-6xl mb-4 block">🗺️</span>
-                        <p className="text-gray-600">
-                          {providerLocation ? 'Loading map...' : 'Waiting for provider location...'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <button
-                    onClick={handleNavigateNow}
-                    disabled={!mapUrl}
-                    className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <MapPinIcon className="w-4 h-4 mr-2" />
-                    Navigate Now
-                  </button>
-                  <button
-                    onClick={handleChatNow}
-                    className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center text-sm"
-                  >
-                    <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
-                    Chat Now
-                  </button>
-                  <button
-                    onClick={handleCallProvider}
-                    className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center text-sm"
-                  >
-                    <PhoneIcon className="w-4 h-4 mr-2" />
-                    Call Provider
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="bg-gray-200 text-gray-800 px-4 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm"
-                  >
-                    Close
-                  </button>
-                </div>
-
-                {/* Provider Info */}
-                {booking?.provider && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-semibold text-gray-900 mb-2">Provider Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-600">Name:</p>
-                        <p className="font-medium">{booking.provider.name}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Phone:</p>
-                        <p className="font-medium">{booking.provider.phone}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Service:</p>
-                        <p className="font-medium">{booking.service?.title || 'Service'}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Status:</p>
-                        <p className="font-medium capitalize">{booking.status?.replace('_', ' ')}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+            <div className="text-right">
+              <p className="text-sm text-blue-100">Current Status</p>
+              <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(booking.status)}`}>
+                {getStatusIcon(booking.status)} {booking.status.replace('_', ' ').toUpperCase()}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Chat Component */}
-      {booking?.provider && (
-        <ChatComponent
-          bookingId={booking._id}
-          recipientId={booking.provider._id}
-          recipientName={booking.provider.name}
-          isOpen={showChat}
-          onClose={() => setShowChat(false)}
-          isProvider={false}
-        />
-      )}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Tracking Area */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Live Status Card */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6">
+                <h2 className="text-xl font-bold mb-2">Live Status</h2>
+                
+                {booking.status === 'broadcast' && (
+                  <div className="flex items-center">
+                    <span className="text-3xl mr-3">ð¢</span>
+                    <div>
+                      <p className="font-semibold">Finding Providers</p>
+                      <p className="text-blue-100">Broadcasting your request to nearby providers...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {booking.status === 'confirmed' && (
+                  <div className="flex items-center">
+                    <span className="text-3xl mr-3">â</span>
+                    <div>
+                      <p className="font-semibold">Provider Confirmed!</p>
+                      <p className="text-blue-100">Your service has been accepted</p>
+                    </div>
+                  </div>
+                )}
+                
+                {booking.status === 'in_progress' && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="animate-pulse">
+                        <span className="text-3xl mr-3">ð</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold">Provider is on the way!</p>
+                        <p className="text-blue-100">
+                          {distance ? `${distance.toFixed(1)} km away` : 'Tracking location...'}
+                          {estimatedArrival && ` • ETA: ${estimatedArrival}`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowCompletionModal(true)}
+                      className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium"
+                    >
+                      Complete Service
+                    </button>
+                  </div>
+                )}
+                
+                {booking.status === 'completed' && (
+                  <div className="flex items-center">
+                    <span className="text-3xl mr-3">✓</span>
+                    <div>
+                      <p className="font-semibold">Service Completed!</p>
+                      <p className="text-blue-100">Thank you for using InstaServe</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Service Details */}
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Service</p>
+                    <p className="font-semibold text-gray-900">{booking.service.title}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Scheduled Date</p>
+                    <p className="font-semibold text-gray-900">
+                      {new Date(booking.scheduledDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Service Address</p>
+                    <p className="font-semibold text-gray-900 text-sm">
+                      {formatAddress(booking.address)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Total Amount</p>
+                    <p className="font-semibold text-gray-900">â¹{booking.totalAmount || booking.price?.totalPrice || 0}</p>
+                  </div>
+                </div>
+
+                {/* Payment Status */}
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Payment Status</p>
+                      <p className="font-semibold">
+                        {paymentStatus === 'pending' && <span className="text-yellow-600">â³ Pending</span>}
+                        {paymentStatus === 'paid' && <span className="text-green-600">â Paid</span>}
+                        {paymentStatus === 'failed' && <span className="text-red-600">â Failed</span>}
+                      </p>
+                    </div>
+                    {paymentStatus === 'pending' && (
+                      <button
+                        onClick={onPayNow}
+                        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        â³ Pay Now
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Tracking Map */}
+            {booking.status === 'in_progress' && booking.provider && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-900">ð Live Tracking</h2>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center">
+                      <div className={`w-2 h-2 rounded-full mr-2 ${
+                        connectionStatus === 'CONNECTED' ? 'bg-green-500' : 'bg-red-500'
+                      }`}></div>
+                      <span className="text-sm text-gray-600">
+                        {connectionStatus === 'CONNECTED' ? 'Live' : 'Offline'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Location Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-blue-900 mb-2">ð Your Location</h4>
+                    {currentLocation ? (
+                      <div className="text-sm text-blue-700">
+                        <p>Lat: {currentLocation.lat.toFixed(6)}</p>
+                        <p>Lng: {currentLocation.lng.toFixed(6)}</p>
+                        <p>Updated: {new Date(currentLocation.timestamp).toLocaleTimeString()}</p>
+                      </div>
+                    ) : (
+                      <p className="text-blue-600">Getting location...</p>
+                    )}
+                  </div>
+                  
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-green-900 mb-2">ð Provider Location</h4>
+                    {providerLocation ? (
+                      <div className="text-sm text-green-700">
+                        <p>Lat: {providerLocation.lat.toFixed(6)}</p>
+                        <p>Lng: {providerLocation.lng.toFixed(6)}</p>
+                        <p>Updated: {new Date(providerLocation.timestamp).toLocaleTimeString()}</p>
+                      </div>
+                    ) : (
+                      <p className="text-green-600">Waiting for provider location...</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Distance & ETA */}
+                {googleMapsData && (
+                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-semibold text-gray-900">Distance & ETA</h4>
+                        <p className="text-sm text-gray-600">
+                          ð Provider is {googleMapsData.distance.text} away
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-orange-600">
+                          ð {googleMapsData.duration.text}
+                        </p>
+                        <p className="text-sm text-gray-600">Estimated arrival</p>
+                      </div>
+                    </div>
+                    {googleMapsData.status === 'FALLBACK' && (
+                      <p className="text-xs text-yellow-600 mt-2">â Using approximate distance calculation</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Map Placeholder */}
+                <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute top-4 left-4 bg-white rounded shadow p-2 z-10">
+                    <p className="text-xs font-medium">Live Map View</p>
+                    <p className="text-xs text-gray-600">Real-time tracking</p>
+                  </div>
+                  
+                  {currentLocation && providerLocation ? (
+                    <img 
+                      src={getStaticMapUrl({
+                        lat: (currentLocation.lat + providerLocation.lat) / 2,
+                        lng: (currentLocation.lng + providerLocation.lng) / 2,
+                        timestamp: Date.now()
+                      }, 
+                      13, 
+                      [
+                        { location: currentLocation, color: 'green', label: 'C' },
+                        { location: providerLocation, color: 'red', label: 'P' }
+                      ]
+                    )} 
+                      alt="Live tracking map"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to placeholder if map fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.parentElement!.innerHTML = `
+                          <div class="text-center">
+                            <span class="text-4xl mb-2 block">ð</span>
+                            <p class="text-gray-600">Map unavailable</p>
+                            <p class="text-sm text-gray-500 mt-2">
+                              ð Provider is ${googleMapsData?.distance.text || `${distance?.toFixed(1)} km`} away
+                            </p>
+                          </div>
+                        `;
+                      }}
+                    />
+                  ) : (
+                    <div className="text-center">
+                      <span className="text-4xl mb-2 block">ð</span>
+                      <p className="text-gray-600">Waiting for location data...</p>
+                      {googleMapsData && (
+                        <p className="text-sm text-gray-500 mt-2">
+                          ð {googleMapsData.distance.text} away
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Timeline */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">ð Service Timeline</h2>
+              <div className="space-y-4">
+                {trackingUpdates.map((update, index) => (
+                  <div key={update._id} className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        index === trackingUpdates.length - 1 ? 'bg-blue-600 text-white' : 'bg-gray-300'
+                      }`}>
+                        {getStatusIcon(update.status)}
+                      </div>
+                    </div>
+                    <div className="ml-4 flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium text-gray-900">{update.message}</p>
+                        <p className="text-sm text-gray-500">
+                          {new Date(update.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                      {update.location && (
+                        <p className="text-sm text-gray-600 mt-1">ð {update.location}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Provider Information */}
+            {booking.provider && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">ð¨â§ Provider Information</h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-600">Name</p>
+                    <p className="font-medium text-gray-900">{booking.provider.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Phone</p>
+                    <p className="font-medium text-gray-900">{booking.provider.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="font-medium text-gray-900 text-sm">{booking.provider.email}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <button
+                    onClick={onContactProvider}
+                    className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    ð Call Provider
+                  </button>
+                  <button
+                    onClick={onNavigateToLocation}
+                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    ð Navigate to Location
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Broadcast Status */}
+            {!booking.provider && booking.status === 'broadcast' && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">ð¢ Broadcast Status</h3>
+                <div className="text-center py-4">
+                  <span className="text-4xl mb-3 block">ð¡</span>
+                  <p className="text-gray-600 mb-2">Finding Available Providers</p>
+                  <p className="text-sm text-gray-500">Your request has been sent to nearby providers</p>
+                  <div className="mt-4">
+                    <div className="animate-pulse bg-blue-100 rounded-lg p-3">
+                      <p className="text-blue-700 text-sm">â³ Waiting for provider acceptance...</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Service Details */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">ð¡ Service Details</h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-600">Service</p>
+                  <p className="font-medium text-gray-900">{booking.service?.title || 'Service'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Category</p>
+                  <p className="font-medium text-gray-900">
+                    {booking.service?.category?.replace(/_/g, ' ')?.replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Duration</p>
+                  <p className="font-medium text-gray-900">
+                    {booking.service?.duration?.value || 'N/A'} {booking.service?.duration?.unit || ''}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Price</p>
+                  <p className="font-medium text-gray-900">â¹{booking.service?.price || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Debug Controls */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">ð Debug Controls</h3>
+              <div className="space-y-2">
+                <button
+                  onClick={onManualLocationUpdate}
+                  className="w-full bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  ð Send Location Update
+                </button>
+                <div className="text-xs text-gray-600">
+                  <p>Connection: {connectionStatus}</p>
+                  <p>Tracking: {isTracking ? 'Active' : 'Inactive'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {booking.notes && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">ð Notes</h3>
+                <p className="text-gray-700 bg-gray-50 p-3 rounded">{booking.notes}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Customer Completion Modal */}
+    <CustomerCompletionModal
+      isOpen={showCompletionModal}
+      onClose={() => setShowCompletionModal(false)}
+      booking={booking}
+    />
     </>
   );
 };
 
-export default CustomerNavigationModal;
+export default CustomerTrackingView;

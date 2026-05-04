@@ -21,7 +21,7 @@ interface ChatComponentProps {
 
 const ChatComponent: React.FC<ChatComponentProps> = ({
   bookingId,
-  recipientId,
+
   recipientName,
   isOpen,
   onClose,

@@ -32,13 +32,7 @@ const hasChatAccess = (booking, userId) => {
 router.get('/messages/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const userId = req.user._id.toString();
-
-    console.log('🔍 [CHAT DEBUG] GET messages:', {
-      bookingId,
-      userId,
-      role: req.user.role,
-    });
+    const userId = req.user._id;
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
@@ -49,12 +43,6 @@ router.get('/messages/:bookingId', protect, async (req, res) => {
     }
 
     const access = hasChatAccess(booking, userId);
-
-    console.log('🔍 [ACCESS CHECK]', {
-      bookingId,
-      userId,
-      ...access,
-    });
 
     if (!access.hasAccess) {
       return res.status(403).json({
@@ -94,17 +82,10 @@ router.get('/messages/:bookingId', protect, async (req, res) => {
 // ===================== SEND MESSAGE =====================
 router.post('/send', protect, async (req, res) => {
   try {
-    const userId = req.user._id.toString();
-    const { bookingId, recipientId, message, type = 'text' } = req.body;
+    const { bookingId, message, type = 'text' } = req.body;
+    const senderId = req.user._id;
 
-    console.log('🔍 [SEND MESSAGE DEBUG]', {
-      bookingId,
-      sender: userId,
-      recipientId,
-      message,
-    });
-
-    if (!bookingId || !recipientId || !message) {
+    if (!bookingId || !message) {
       return res.status(400).json({
         success: false,
         message: 'Missing required fields',
@@ -119,7 +100,7 @@ router.post('/send', protect, async (req, res) => {
       });
     }
 
-    const access = hasChatAccess(booking, userId);
+    const access = hasChatAccess(booking, senderId);
 
     if (!access.hasAccess) {
       return res.status(403).json({
@@ -128,22 +109,35 @@ router.post('/send', protect, async (req, res) => {
       });
     }
 
-    // Resolve recipient name
+    // 🔥 Determine recipient properly
+    let recipientId;
     let recipientName = 'User';
 
-    if (access.isCustomer && booking.provider) {
+    if (req.user.role === 'customer') {
+      if (!booking.provider) {
+        return res.status(400).json({
+          success: false,
+          message: 'No provider assigned yet',
+        });
+      }
+
+      recipientId = booking.provider;
+
       const Provider = require('../models/Provider');
       const provider = await Provider.findById(booking.provider);
       recipientName = provider?.name || 'Provider';
     } else {
+      recipientId = booking.customer;
+
       const User = require('../models/User');
       const customer = await User.findById(booking.customer);
       recipientName = customer?.name || 'Customer';
     }
 
+    // ✅ Create message (ObjectId safe)
     const newMessage = new Message({
       bookingId,
-      senderId: userId,
+      senderId,
       senderName: req.user.name,
       recipientId,
       recipientName,
@@ -177,7 +171,7 @@ router.post('/send', protect, async (req, res) => {
 // ===================== UNREAD COUNT =====================
 router.get('/unread-count', protect, async (req, res) => {
   try {
-    const userId = req.user._id.toString();
+    const userId = req.user._id;
 
     const count = await Message.countDocuments({
       recipientId: userId,
@@ -201,7 +195,7 @@ router.get('/unread-count', protect, async (req, res) => {
 router.post('/mark-read/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const userId = req.user._id.toString();
+    const userId = req.user._id;
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
@@ -249,7 +243,7 @@ router.post('/mark-read/:bookingId', protect, async (req, res) => {
 router.delete('/history/:bookingId', protect, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const userId = req.user._id.toString();
+    const userId = req.user._id;
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {

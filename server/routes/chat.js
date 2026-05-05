@@ -114,25 +114,20 @@ router.post('/send', protect, async (req, res) => {
     let recipientName = 'User';
 
     if (req.user.role === 'customer') {
-      if (!booking.provider) {
-        return res.status(400).json({
-          success: false,
-          message: 'No provider assigned yet',
-        });
-      }
+  if (!booking.provider) {
+    return res.status(400).json({
+      success: false,
+      message: 'No provider assigned yet',
+    });
+  }
 
-      recipientId = booking.provider;
+  recipientId = booking.provider;
+  recipientName = 'Provider';
 
-      const Provider = require('../models/Provider');
-      const provider = await Provider.findById(booking.provider);
-      recipientName = provider?.name || 'Provider';
-    } else {
-      recipientId = booking.customer;
-
-      const User = require('../models/User');
-      const customer = await User.findById(booking.customer);
-      recipientName = customer?.name || 'Customer';
-    }
+} else {
+  recipientId = booking.customer;
+  recipientName = 'Customer';
+}
 
     // ✅ Create message (ObjectId safe)
     const newMessage = new Message({

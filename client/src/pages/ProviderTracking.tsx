@@ -833,7 +833,7 @@ const ProviderTrackingNew: React.FC = () => {
     {booking && booking.customer && (
       <ChatComponent
         bookingId={booking._id}
-        recipientId={booking.customer._id}
+     
         recipientName={booking.customer.name}
         isOpen={showChat}
         onClose={() => setShowChat(false)}

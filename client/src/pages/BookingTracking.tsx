@@ -533,8 +533,13 @@ const BookingTracking: React.FC = () => {
 
   useEffect(() => {
     console.log('BookingTracking component mounted with ID:', id);
-    fetchBookingDetails();
-    fetchTrackingUpdates();
+    if (id) {
+      fetchBookingDetails();
+      fetchTrackingUpdates();
+    } else {
+      setLoading(false);
+      setError('Booking ID is missing from URL');
+    }
     
     return () => {
       // Cleanup
@@ -549,16 +554,16 @@ const BookingTracking: React.FC = () => {
 
   // Separate effect for initializing real-time tracking after booking is loaded
   useEffect(() => {
-    if (booking && user && !isTracking) {
+    if (booking && user && !isTracking && id) {
       console.log('ð [EFFECT] Booking data available, initializing real-time tracking');
       initializeRealTimeTracking();
     }
-  }, [booking, user, isTracking]);
+  }, [booking, user, isTracking, id]);
 
   const initializeRealTimeTracking = async () => {
     try {
-      if (!user) {
-        console.warn('No user found for real-time tracking');
+      if (!user || !id) {
+        console.warn('No user or booking ID found for real-time tracking');
         return;
       }
 
@@ -995,8 +1000,14 @@ User: ${user?.name} (${user?.email})
   };
 
   const fetchBookingDetails = async () => {
+    if (!id) {
+      setError('Booking ID is missing');
+      setLoading(false);
+      return;
+    }
+    
     try {
-      const response = await bookingsAPI.getBooking(id!);
+      const response = await bookingsAPI.getBooking(id);
       setBooking(response.booking);
       
       // Set initial payment status
@@ -1012,26 +1023,31 @@ User: ${user?.name} (${user?.email})
   };
 
   const fetchTrackingUpdates = async () => {
+    if (!id) {
+      console.warn('Cannot fetch tracking updates - missing booking ID');
+      return;
+    }
+    
     try {
       // Mock tracking updates - in real app, this would fetch from API
       const mockUpdates: TrackingUpdate[] = [
         {
           _id: '1',
-          booking: id!,
+          booking: id,
           status: 'pending',
           message: 'Booking request sent to provider',
           timestamp: new Date(Date.now() - 3600000).toISOString(),
         },
         {
           _id: '2',
-          booking: id!,
+          booking: id,
           status: 'confirmed',
           message: 'Provider accepted the booking',
           timestamp: new Date(Date.now() - 3000000).toISOString(),
         },
         {
           _id: '3',
-          booking: id!,
+          booking: id,
           status: 'in_progress',
           message: 'Provider is on the way to your location',
           timestamp: new Date(Date.now() - 1800000).toISOString(),

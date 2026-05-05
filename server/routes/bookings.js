@@ -157,6 +157,11 @@ router.get('/reviews', async (req, res) => {
 // @access  Private
 router.get('/:id', protect, async (req, res) => {
   try {
+    // Validate booking ID parameter
+    if (!req.params.id || req.params.id === 'undefined' || req.params.id === 'null') {
+      return res.status(400).json({ message: 'Invalid booking ID provided' });
+    }
+    
     const booking = await Booking.findById(req.params.id)
       .populate('customer', 'name email phone address')
       .populate('provider', 'name email phone address ratings')

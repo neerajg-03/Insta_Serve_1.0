@@ -836,7 +836,7 @@ const UserTracking: React.FC = () => {
       {booking && booking.provider && (
         <ChatComponent
           bookingId={booking._id}
-          recipientId={booking.provider._id}
+         
           recipientName={booking.provider.name}
           isOpen={showChat}
           onClose={() => setShowChat(false)}

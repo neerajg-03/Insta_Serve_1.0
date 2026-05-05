@@ -17,6 +17,7 @@ import ProviderDashboard from './pages/ProviderDashboard';
 import KYCVerification from './pages/KYCVerification';
 import ProviderTracking from './pages/ProviderTracking';
 import UserTracking from './pages/UserTracking';
+import BookingTracking from './pages/BookingTracking';
 import Wallet from './pages/Wallet';
 import ProviderWallet from './pages/ProviderWallet';
 import EarningsDashboard from './pages/provider/EarningsDashboard';
@@ -102,6 +103,11 @@ function AppContent() {
           <Route path="tracking/:id" element={
             <ProtectedRoute requiredRole="customer">
               <UserTracking />
+            </ProtectedRoute>
+          } />
+          <Route path="booking-tracking/:id" element={
+            <ProtectedRoute>
+              <BookingTracking />
             </ProtectedRoute>
           } />
           <Route path="wallet" element={

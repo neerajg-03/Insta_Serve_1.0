@@ -224,6 +224,7 @@ const ProviderTrackingNew: React.FC = () => {
       setLoading(false);
       return;
     }
+    
     try {
       setLoading(true);
       setError(null);
@@ -340,8 +341,12 @@ const ProviderTrackingNew: React.FC = () => {
   };
 
   const handleAcceptBooking = async () => {
+    if (!id) {
+      toast.error('Booking ID is missing');
+      return;
+    }
     try {
-      await bookingsAPI.updateBooking(id!, { status: 'confirmed' });
+      await bookingsAPI.updateBooking(id, { status: 'confirmed' });
       setBooking(prev => prev ? { ...prev, status: 'confirmed' } : null);
       addTimelineEvent('confirmed');
       toast.success('Booking accepted successfully!');
@@ -351,8 +356,12 @@ const ProviderTrackingNew: React.FC = () => {
   };
 
   const handleStartService = async () => {
+    if (!id) {
+      toast.error('Booking ID is missing');
+      return;
+    }
     try {
-      await bookingsAPI.updateBooking(id!, { status: 'in_progress' });
+      await bookingsAPI.updateBooking(id, { status: 'in_progress' });
       setBooking(prev => prev ? { ...prev, status: 'in_progress' } : null);
       addTimelineEvent('in_progress');
       toast.success('Service started!');
@@ -395,7 +404,11 @@ const ProviderTrackingNew: React.FC = () => {
         serviceImages.forEach((file, index) => {
           formData.append(`images`, file);
         });
-        formData.append('bookingId', id!);
+        if (!id) {
+          toast.error('Booking ID is missing');
+          return;
+        }
+        formData.append('bookingId', id);
         
         const uploadResponse = await fetch('/api/bookings/upload-service-images', {
           method: 'POST',
@@ -414,7 +427,7 @@ const ProviderTrackingNew: React.FC = () => {
       }
       
       // Complete the service with image URLs
-      await bookingsAPI.completeBooking(id!, { images: uploadedImageUrls });
+      await bookingsAPI.completeBooking(id, { images: uploadedImageUrls });
       setBooking(prev => prev ? { ...prev, status: 'completed' } : null);
       addTimelineEvent('completed');
       
@@ -600,7 +613,148 @@ const ProviderTrackingNew: React.FC = () => {
               </div>
             )}
 
+            {/* Service Status Card */}
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+              <div className="bg-gradient-to-r from-green-500 to-teal-600 text-white p-6">
+                <h2 className="text-2xl font-bold mb-4">Service Status</h2>
+                
+                {booking.status === 'broadcast' && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="animate-pulse">
+                        <ClockIcon className="w-8 h-8 mr-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-lg">New Service Request!</p>
+                        <p className="text-green-100">Customer needs {booking.service.title}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleAcceptBooking}
+                      className="bg-white text-green-600 px-6 py-3 rounded-xl font-semibold hover:bg-green-50 transition-colors"
+                    >
+                      Accept Booking
+                    </button>
+                  </div>
+                )}
+                
+                {booking.status === 'confirmed' && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <CheckCircleIcon className="w-8 h-8 mr-4" />
+                      <div>
+                        <p className="font-semibold text-lg">Booking Confirmed</p>
+                        <p className="text-green-100">Ready to start service</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleStartService}
+                      className="bg-white text-green-600 px-6 py-3 rounded-xl font-semibold hover:bg-green-50 transition-colors flex items-center"
+                    >
+                      <PlaySolidIcon className="w-4 h-4 mr-2" />
+                      Start Service
+                    </button>
+                  </div>
+                )}
+                
+                {booking.status === 'in_progress' && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="animate-pulse">
+                        <WrenchScrewdriverIcon className="w-8 h-8 mr-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-lg">Service In Progress</p>
+                        <p className="text-green-100">Working on customer service</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleCompleteService}
+                      className="bg-white text-green-600 px-6 py-3 rounded-xl font-semibold hover:bg-green-50 transition-colors"
+                    >
+                      Complete Service
+                    </button>
+                  </div>
+                )}
+                
+                {booking.status === 'completed' && (
+                  <div className="flex items-center">
+                    <CheckSolidIcon className="w-8 h-8 mr-4" />
+                    <div>
+                      <p className="font-semibold text-lg">Service Completed!</p>
+                      <p className="text-green-100">Payment will be processed shortly</p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
+              {/* Service Information */}
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Service Type</p>
+                    <p className="font-semibold text-gray-900">{booking.service.title}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Scheduled Date</p>
+                    <p className="font-semibold text-gray-900">
+                      {new Date(booking.scheduledDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Customer Address</p>
+                    <p className="font-semibold text-gray-900 text-sm">
+                      {formatAddress(booking.address)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Your Earnings</p>
+                    <p className="font-semibold text-green-600 text-lg">¥{booking.totalAmount || booking.price?.totalPrice || 0}</p>
+                  </div>
+                </div>
+
+                {/* Customer Notes */}
+                {booking.customerNotes && (
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <p className="text-sm font-semibold text-blue-900 mb-1">Customer Notes:</p>
+                    <p className="text-sm text-blue-700">{booking.customerNotes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Navigation & Actions */}
+            {(booking.status === 'confirmed' || booking.status === 'in_progress') && (
+              <div className="bg-white rounded-2xl shadow-xl p-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                  <MapPinIcon className="w-6 h-6 mr-2 text-green-500" />
+                  Quick Actions
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <button
+                    onClick={handleNavigateToLocation}
+                    className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium flex items-center justify-center"
+                  >
+                    <MapPinIcon className="w-4 h-4 mr-2" />
+                    Navigate
+                  </button>
+                  <button
+                    onClick={handleContactCustomer}
+                    className="px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center justify-center"
+                  >
+                    <PhoneIcon className="w-4 h-4 mr-2" />
+                    Call
+                  </button>
+                  <button
+                    className="px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-medium flex items-center justify-center"
+                  >
+                    <ChatBubbleLeftIcon className="w-4 h-4 mr-2" />
+                    Chat
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -656,7 +810,59 @@ const ProviderTrackingNew: React.FC = () => {
               </div>
             </div>
 
+            {/* Service Details */}
+            <div className="bg-white rounded-2xl shadow-xl p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <CalendarIcon className="w-5 h-5 mr-2 text-green-500" />
+                Service Details
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-600">Service</p>
+                  <p className="font-medium text-gray-900">{booking.service?.title || 'Service'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Category</p>
+                  <p className="font-medium text-gray-900">
+                    {booking.service?.category?.replace(/_/g, ' ')?.replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Duration</p>
+                  <p className="font-medium text-gray-900">
+                    {booking.service?.duration?.value || 'N/A'} {booking.service?.duration?.unit || ''}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Your Earnings</p>
+                  <p className="font-medium text-green-600 text-lg">¥{booking.totalAmount || booking.price?.totalPrice || 0}</p>
+                </div>
+              </div>
+            </div>
 
+            {/* Earnings Summary */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-green-900 mb-6 flex items-center">
+                <BanknotesIcon className="w-5 h-5 mr-2" />
+                Earnings Summary
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Service Amount:</span>
+                  <span className="font-medium">¥{booking.totalAmount || booking.price?.totalPrice || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Platform Fee (10%):</span>
+                  <span className="font-medium">-¥{Math.floor((booking.totalAmount || booking.price?.totalPrice || 0) * 0.1)}</span>
+                </div>
+                <div className="border-t pt-3 flex justify-between">
+                  <span className="font-semibold text-green-900">Your Earnings:</span>
+                  <span className="font-bold text-green-900 text-lg">
+                    ¥{Math.floor((booking.totalAmount || booking.price?.totalPrice || 0) * 0.9)}
+                  </span>
+                </div>
+              </div>
+            </div>
 
             {/* Service Timeline */}
             <div className="bg-white rounded-2xl shadow-xl p-6">

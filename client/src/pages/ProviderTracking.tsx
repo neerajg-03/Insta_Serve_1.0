@@ -219,12 +219,17 @@ const ProviderTrackingNew: React.FC = () => {
   };
 
   const fetchBookingDetails = async () => {
+    if (!id) {
+      setError('Booking ID is missing');
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
       
       console.log('Fetching booking details for provider, ID:', id);
-      const response = await bookingsAPI.getBooking(id!);
+      const response = await bookingsAPI.getBooking(id);
       
       let bookingData = null;
       if (response?.booking) {

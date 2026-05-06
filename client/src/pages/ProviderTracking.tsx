@@ -427,7 +427,11 @@ const ProviderTrackingNew: React.FC = () => {
       }
       
       // Complete the service with image URLs
-      await bookingsAPI.completeBooking(id, { images: uploadedImageUrls });
+      if (id) {
+        await bookingsAPI.completeBooking(id, { images: uploadedImageUrls });
+      } else {
+        throw new Error('Booking ID is missing');
+      }
       setBooking(prev => prev ? { ...prev, status: 'completed' } : null);
       addTimelineEvent('completed');
       
@@ -1044,7 +1048,7 @@ const ProviderTrackingNew: React.FC = () => {
     {booking && booking.customer && (
       <ChatComponent
         bookingId={booking._id}
-     
+        
         recipientName={booking.customer.name}
         isOpen={showChat}
         onClose={() => setShowChat(false)}

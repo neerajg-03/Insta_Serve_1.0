@@ -13,6 +13,7 @@ import api from '../services/api';
 
 interface ChatComponentProps {
   bookingId: string;
+  recipientId: string;
   recipientName: string;
   isOpen: boolean;
   onClose: () => void;

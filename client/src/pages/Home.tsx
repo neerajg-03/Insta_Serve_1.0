@@ -198,9 +198,9 @@ const Home: React.FC = () => {
 
         .shimmer{background:linear-gradient(90deg,#fff 20%,#a78bfa 45%,#22d3ee 62%,#fff 80%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s linear infinite}
 
-        .btn-primary{display:inline-flex;align-items:center;gap:10px;padding:16px 34px;background:#fff;color:#060609;font-size:15px;font-weight:700;border-radius:100px;text-decoration:none;letter-spacing:.2px;transition:transform .22s,box-shadow .22s;box-shadow:0 0 40px rgba(255,255,255,.12)}
+        .btn-primary{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;min-height:44px;background:#fff;color:#060609;font-size:15px;font-weight:700;border-radius:100px;text-decoration:none;letter-spacing:.2px;transition:transform .22s,box-shadow .22s;box-shadow:0 0 40px rgba(255,255,255,.12)}
         .btn-primary:hover{transform:scale(1.04);box-shadow:0 0 64px rgba(255,255,255,.24)}
-        .btn-ghost{display:inline-flex;align-items:center;gap:10px;padding:16px 34px;background:transparent;color:rgba(255,255,255,.75);font-size:15px;font-weight:600;border-radius:100px;border:1px solid rgba(255,255,255,.18);text-decoration:none;transition:background .22s,color .22s}
+        .btn-ghost{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;min-height:44px;background:transparent;color:rgba(255,255,255,.75);font-size:15px;font-weight:600;border-radius:100px;border:1px solid rgba(255,255,255,.18);text-decoration:none;transition:background .22s,color .22s}
         .btn-ghost:hover{background:rgba(255,255,255,.08);color:#fff}
 
         .ccat{position:relative;overflow:hidden;background:var(--surf);border:1px solid var(--bord);border-radius:22px;cursor:pointer;text-decoration:none;color:#fff;display:block;transition:transform .35s cubic-bezier(.22,1,.36,1),border-color .3s,box-shadow .3s}
@@ -219,6 +219,10 @@ const Home: React.FC = () => {
           .rev-grid{grid-template-columns:1fr !important}
           .cta-btns{flex-direction:column !important;align-items:flex-start !important}
         }
+        @media(max-width:640px){
+          .cats-grid{grid-template-columns:1fr !important}
+          .hero-h{font-size:clamp(32px,10vw,48px) !important}
+        }
       `}</style>
 
       <div className="grain" />
@@ -230,7 +234,7 @@ const Home: React.FC = () => {
         <HeroCarousel />
 
         {/* Taglines below the image */}
-        <div style={{position:'relative',zIndex:2,background:'#060609',padding:'60px 24px 80px',textAlign:'center'}}>
+        <div className="relative z-2 bg-[#060609] px-6 py-12 md:py-16 lg:py-20 text-center">
           <div style={{maxWidth:900,margin:'0 auto'}}>
 
             <h1 className={`hero-h fu d1 ${heroSec.vis?'in':''}`} style={{fontSize:'clamp(42px,6vw,72px)',fontWeight:900,lineHeight:1.05,letterSpacing:'-2px',marginBottom:20}}>
@@ -264,7 +268,7 @@ const Home: React.FC = () => {
 
       
       {/* ══════════════ CATEGORIES ══════════════ */}
-      <section ref={catSec.ref as any} style={{padding:'100px 24px'}}>
+      <section ref={catSec.ref as any} className="px-6 py-16 md:py-20 lg:py-24">
         <div style={{maxWidth:1260,margin:'0 auto'}}>
 
           <div className={`fu ${catSec.vis?'in':''}`} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:20,marginBottom:52}}>
@@ -281,7 +285,7 @@ const Home: React.FC = () => {
             </Link>
           </div>
 
-          <div className={`cats-grid fu d1 ${catSec.vis?'in':''}`} style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:18}}>
+          <div className={`cats-grid fu d1 ${catSec.vis?'in':''} grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5`} style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:18}}>
             {CATEGORIES.map((cat,i)=>(
               <Link
                 key={cat.id}
@@ -322,7 +326,7 @@ const Home: React.FC = () => {
 
       
       {/* ══════════════ REVIEWS ══════════════ */}
-      <section ref={revSec.ref as any} style={{padding:'100px 24px'}}>
+      <section ref={revSec.ref as any} className="px-6 py-16 md:py-20 lg:py-24">
         <div style={{maxWidth:1260,margin:'0 auto'}}>
 
           <div className={`fu ${revSec.vis?'in':''}`} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:20,marginBottom:52}}>
@@ -334,7 +338,7 @@ const Home: React.FC = () => {
             </div>
           </div>
 
-          <div className={`rev-grid fu d1 ${revSec.vis?'in':''}`} style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20}}>
+          <div className={`rev-grid fu d1 ${revSec.vis?'in':''} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5`} style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20}}>
             {displayReviews.map((r:any,i)=>(
               <div key={r._id} className="rcard" style={{transitionDelay:`${i*.14}s`}}>
                 <div style={{display:'flex',gap:3,marginBottom:18}}>{[...Array(r.rating||5)].map((_,j)=><StarFill key={j}/>)}</div>
@@ -357,18 +361,18 @@ const Home: React.FC = () => {
       </section>
 
       {/* ══════════════ CTA ══════════════ */}
-      <section ref={ctaSec.ref as any} style={{padding:'0 24px 100px'}}>
+      <section ref={ctaSec.ref as any} className="px-6 pb-16 md:pb-20 lg:pb-24">
         <div style={{maxWidth:1260,margin:'0 auto'}}>
           <div style={{position:'relative',borderRadius:28,overflow:'hidden',border:'1px solid var(--bord)'}}>
             <img
               src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1400&q=80"
               alt="Happy family at home"
-              style={{width:'100%',height:520,objectFit:'cover',display:'block'}}
+              className="w-full h-80 md:h-96 lg:h-[520px] object-cover"
             />
             <div style={{position:'absolute',inset:0,background:'linear-gradient(to right,rgba(6,6,9,.97) 38%,rgba(6,6,9,.4))'}}/>
 
-            <div className={`fu ${ctaSec.vis?'in':''}`} style={{position:'absolute',inset:0,display:'flex',alignItems:'center',padding:'64px'}}>
-              <div style={{maxWidth:540}}>
+            <div className={`fu ${ctaSec.vis?'in':''} absolute inset-0 flex items-center px-6 md:px-12 lg:px-16`}>
+                <div className="max-w-lg md:max-w-xl lg:max-w-2xl">
 
                  
 
@@ -397,7 +401,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* ══════════════ FOOTER ══════════════ */}
-      <footer style={{borderTop:'1px solid var(--bord)',padding:'40px 24px',background:'var(--surf)'}}>
+      <footer className="border-t border-[rgba(255,255,255,0.08)] px-6 py-8 md:py-12 bg-[#0D0D14]">
         <div style={{maxWidth:1260,margin:'0 auto',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:16}}>
           <div style={{fontSize:22,fontWeight:900,letterSpacing:'-1px'}}>
             Insta<span style={{color:'var(--accent)'}}>Serve</span>

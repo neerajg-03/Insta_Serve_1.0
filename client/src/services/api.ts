@@ -257,17 +257,18 @@ export const adminAPI = {
   getPendingKYC: () =>
     api.get('/admin/kyc/pending').then(res => res.data),
   
-  getAllKYC: (status?: string) =>
+getAllKYC: (status?: string) =>
     api.get('/admin/kyc/all', { params: { status } }).then(res => res.data),
   
   approveKYC: (userId: string) =>
-    api.post(`/admin/kyc/${userId}/review`, { status: 'approved' }).then(res => res.data),
+    api.post(`/admin/kyc/${userId}/approve`).then(res => res.data),
   
   rejectKYC: (userId: string, reason: string) =>
-    api.post(`/admin/kyc/${userId}/review`, { status: 'rejected', reason }).then(res => res.data),
+    api.post(`/admin/kyc/${userId}/reject`, { reason }).then(res => res.data),
   
   getKYCDocumentUrl: (filename: string) =>
     `${API_BASE_URL}/uploads/kyc/${filename}`,
+  
   
   getAnalytics: () =>
     api.get('/admin/analytics').then(res => res.data),

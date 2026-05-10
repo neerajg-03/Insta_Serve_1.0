@@ -125,6 +125,48 @@ router.put('/users/:id', protect, authorize('admin'), async (req, res) => {
   }
 });
 
+// @route   GET /api/admin/kyc/all
+// @desc    Get all KYC applications by status
+// @access  Private (Admin)
+router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const query = {
+      role: 'provider'
+    };
+
+    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+      query.kycStatus = status;
+    }
+
+    const users = await User.find(query)
+      .select('name email phone kycDocuments kycStatus kycRejectionReason createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await User.countDocuments(query);
+
+    res.json({
+      users,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get all KYC error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   GET /api/admin/kyc/pending
 // @desc    Get pending KYC applications
 // @access  Private (Admin)
@@ -140,7 +182,7 @@ router.get('/kyc/pending', protect, authorize('admin'), async (req, res) => {
       role: 'provider',
       kycStatus: 'pending'
     })
-      .select('name email phone kycDocuments createdAt')
+      .select('name email phone kycDocuments kycStatus kycRejectionReason createdAt')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);

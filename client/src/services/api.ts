@@ -266,8 +266,10 @@ getAllKYC: (status?: string) =>
   rejectKYC: (userId: string, reason: string) =>
     api.post(`/admin/kyc/${userId}/reject`, { reason }).then(res => res.data),
   
-  getKYCDocumentUrl: (filename: string) =>
-    `${API_BASE_URL}/uploads/kyc/${filename}`,
+  getKYCDocumentUrl: (filename: string) => {
+    const baseUrl = API_BASE_URL.replace('/api', '');
+    return `${baseUrl}/uploads/kyc/${filename}`;
+  },
   
   
   getAnalytics: () =>

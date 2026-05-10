@@ -332,9 +332,9 @@ const Services: React.FC = () => {
         }
         html{scroll-behavior:smooth}
 
-        .btn-primary{display:inline-flex;align-items:center;gap:10px;padding:16px 34px;background:#fff;color:#060609;font-size:15px;font-weight:700;border-radius:100px;text-decoration:none;letter-spacing:.2px;transition:transform .22s,box-shadow .22s;box-shadow:0 0 40px rgba(255,255,255,.12)}
+        .btn-primary{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;min-height:44px;background:#fff;color:#060609;font-size:15px;font-weight:700;border-radius:100px;text-decoration:none;letter-spacing:.2px;transition:transform .22s,box-shadow .22s;box-shadow:0 0 40px rgba(255,255,255,.12)}
         .btn-primary:hover{transform:scale(1.04);box-shadow:0 0 64px rgba(255,255,255,.24)}
-        .btn-ghost{display:inline-flex;align-items:center;gap:10px;padding:16px 34px;background:transparent;color:rgba(255,255,255,.75);font-size:15px;font-weight:600;border-radius:100px;border:1px solid rgba(255,255,255,.18);text-decoration:none;transition:background .22s,color .22s}
+        .btn-ghost{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;min-height:44px;background:transparent;color:rgba(255,255,255,.75);font-size:15px;font-weight:600;border-radius:100px;border:1px solid rgba(255,255,255,.18);text-decoration:none;transition:background .22s,color .22s}
         .btn-ghost:hover{background:rgba(255,255,255,.08);color:#fff}
 
         .service-card{position:relative;overflow:hidden;background:var(--surf);border:1px solid var(--bord);border-radius:22px;cursor:pointer;text-decoration:none;color:#fff;display:block;transition:transform .35s cubic-bezier(.22,1,.36,1),border-color .3s,box-shadow .3s}
@@ -349,10 +349,14 @@ const Services: React.FC = () => {
           .services-grid{grid-template-columns:repeat(2,1fr) !important}
           .filter-grid{grid-template-columns:1fr !important}
         }
+        @media(max-width:640px){
+          .services-grid{grid-template-columns:1fr !important}
+          .hero-h{font-size:clamp(32px,10vw,48px) !important}
+        }
       `}</style>
 
       {/* ══════════════ HERO ══════════════ */}
-      <section style={{ position:'relative', minHeight:'60vh', display:'flex', alignItems:'center', padding:'120px 24px 80px', overflow:'hidden' }}>
+      <section className="relative min-h-[60vh] flex items-center px-6 py-16 md:py-20 lg:py-24 overflow-hidden">
         {/* Orbs */}
         <div style={{position:'absolute',top:'10%',left:'5%',width:560,height:560,borderRadius:'50%',background:'radial-gradient(circle,rgba(124,58,237,.3) 0%,transparent 70%)',animation:'orb 20s ease-in-out infinite',pointerEvents:'none'}}/>
         <div style={{position:'absolute',top:'45%',right:'3%',width:420,height:420,borderRadius:'50%',background:'radial-gradient(circle,rgba(6,182,212,.2) 0%,transparent 70%)',animation:'orb 26s ease-in-out infinite reverse',pointerEvents:'none'}}/>
@@ -404,7 +408,7 @@ const Services: React.FC = () => {
       </section>
 
       {/* ══════════════ FILTERS ══════════════ */}
-      <section style={{padding:'60px 24px', background:'var(--surf)', borderTop:'1px solid var(--bord)', borderBottom:'1px solid var(--bord)'}}>
+      <section className="px-6 py-12 md:py-16 bg-[#0D0D14] border-t border-b border-[rgba(255,255,255,0.08)]">
         <div style={{maxWidth:1260,margin:'0 auto'}}>
           <div style={{marginBottom:40}}>
             <span style={{fontSize:11,color:'var(--c2)',letterSpacing:'2.5px',textTransform:'uppercase',fontWeight:700}}>Filters</span>
@@ -413,7 +417,7 @@ const Services: React.FC = () => {
             </h2>
           </div>
           
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))',gap:20,marginBottom:32}}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))',gap:20,marginBottom:32}}>
             <div style={{position:'relative'}}>
               <label style={{display:'block',fontSize:12,fontWeight:600,color:'var(--muted)',marginBottom:12,letterSpacing:'.8px',textTransform:'uppercase'}}>
                 <SearchIcon style={{width:14,height:14,marginRight:6,verticalAlign:'middle'}}/>
@@ -502,7 +506,7 @@ const Services: React.FC = () => {
       </section>
 
       {/* ══════════════ SERVICES GRID ══════════════ */}
-      <section style={{padding:'100px 24px'}}>
+      <section className="px-6 py-16 md:py-20 lg:py-24">
         <div style={{maxWidth:1260,margin:'0 auto'}}>
           {error && (
             <div style={{marginBottom:40,padding:'20px 24px',background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',borderRadius:16,display:'flex',alignItems:'center',color:'#f87171'}}>
@@ -519,7 +523,7 @@ const Services: React.FC = () => {
               <p style={{fontSize:16,color:'var(--muted)',lineHeight:1.6}}>Try adjusting your search criteria or browse all categories</p>
             </div>
           ) : (
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(320px, 1fr))',gap:24}}>
+            <div className="services-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {services.map((service, index) => (
                 <div 
                   key={service._id} 

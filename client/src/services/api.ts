@@ -310,5 +310,11 @@ export const adminAPI = {
   getCouponStats: (id: string) =>
     api.get(`/admin/coupons/${id}/stats`).then(res => res.data),
 };
+// Booking Management
+  getBookings: (params?: any) =>
+    api.get('/admin/bookings', { params }).then(res => res.data),
 
+  updateBooking: (id: string, bookingData: any) =>
+    api.put(`/admin/bookings/${id}`, bookingData).then(res => res.data),
+};
 export default api;

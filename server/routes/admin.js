@@ -836,6 +836,105 @@ router.get('/coupons/:id/stats', protect, authorize('admin'), async (req, res) =
   }
 });
 
+// @route   GET /api/admin/bookings
+// @desc    Get all bookings for admin management
+// @access  Private (Admin)
+router.get('/bookings', protect, authorize('admin'), async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      paymentStatus,
+      dateFrom,
+      dateTo,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build query
+    const query = {};
+    
+    if (status) query.status = status;
+    if (paymentStatus) query.paymentStatus = paymentStatus;
+    
+    if (dateFrom || dateTo) {
+      query.scheduledDate = {};
+      if (dateFrom) query.scheduledDate.$gte = new Date(dateFrom);
+      if (dateTo) query.scheduledDate.$lte = new Date(dateTo);
+    }
+
+    // Sort
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const bookings = await Booking.find(query)
+      .populate('customer', 'name email phone')
+      .populate('provider', 'name email phone')
+      .populate('service', 'title category price')
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Booking.countDocuments(query);
+
+    res.json({
+      bookings,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get admin bookings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/bookings/:id
+// @desc    Update booking status (admin only)
+// @access  Private (Admin)
+router.put('/bookings/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { status, notes } = req.body;
+
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (status) {
+      booking.status = status;
+    }
+
+    if (notes) {
+      booking.providerNotes = notes;
+    }
+
+    await booking.save();
+
+    const updatedBooking = await Booking.findById(req.params.id)
+      .populate('customer', 'name email phone')
+      .populate('provider', 'name email phone')
+      .populate('service', 'title category price');
+
+    res.json({
+      message: 'Booking updated successfully',
+      booking: updatedBooking
+    });
+  } catch (error) {
+    console.error('Update booking error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   POST /api/admin/provider-services/:requestId/approve
 // @desc    Approve a provider's service request
 // @access  Private (Admin)

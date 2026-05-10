@@ -2255,17 +2255,7 @@ const AdminDashboard: React.FC = () => {
             </nav>
           </div>
           
-          {/* User Info */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-200 bg-white">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-lg">
-                <UserIcon className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Administrator</p>
-              </div>
-            </div>
-          </div>
+         
         </div>
 
         {/* Main Content */}

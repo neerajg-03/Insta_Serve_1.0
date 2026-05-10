@@ -59,16 +59,51 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://checkout.razorpay.com", "https://maps.googleapis.com", "https://maps.gstatic.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://maps.googleapis.com", "https://api.mapbox.com", "https://nominatim.openstreetmap.org"],
-      frameSrc: ["'self'", "https://checkout.razorpay.com"]
+
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        "https://checkout.razorpay.com",
+        "https://maps.googleapis.com",
+        "https://maps.gstatic.com"
+      ],
+
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "https://fonts.googleapis.com"
+      ],
+
+      fontSrc: [
+        "'self'",
+        "https://fonts.gstatic.com"
+      ],
+
+      imgSrc: [
+        "'self'",
+        "data:",
+        "https:"
+      ],
+
+      connectSrc: [
+        "'self'",
+        "https://maps.googleapis.com",
+        "https://api.mapbox.com",
+        "https://nominatim.openstreetmap.org",
+        "https://api.razorpay.com",
+        "https://lumberjack.razorpay.com",
+        "https://checkout.razorpay.com"
+      ],
+
+      frameSrc: [
+        "'self'",
+        "https://checkout.razorpay.com",
+        "https://api.razorpay.com"
+      ]
     }
   }
 }));
-
 // Rate limiting
 app.set('trust proxy', 1);
 const limiter = rateLimit({

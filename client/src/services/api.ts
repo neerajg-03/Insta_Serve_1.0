@@ -279,7 +279,7 @@ export const adminAPI = {
     api.post(`/admin/services/${serviceId}/approve`).then(res => res.data),
 
   updateService: (serviceId: string, serviceData: any) =>
-    api.put(`/admin/services/${serviceId}`, serviceData).then(res => res.data),
+    api.put(`/services/${serviceId}`, serviceData).then(res => res.data),
 
   deleteService: (serviceId: string) =>
     api.delete(`/admin/services/${serviceId}`).then(res => res.data),

@@ -281,6 +281,10 @@ export const adminAPI = {
   updateService: (serviceId: string, serviceData: any) =>
     api.put(`/admin/services/${serviceId}`, serviceData).then(res => res.data),
 
+  deleteService: (serviceId: string) =>
+    api.delete(`/admin/services/${serviceId}`).then(res => res.data),
+
+
   createService: (serviceData: any) =>
     api.post('/admin/services', serviceData).then(res => res.data),
 

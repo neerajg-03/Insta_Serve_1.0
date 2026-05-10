@@ -2257,10 +2257,7 @@ const AdminDashboard: React.FC = () => {
               <div className="p-2 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-lg">
                 <UserIcon className="w-6 h-6 text-purple-600" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Administrator</p>
-                <p className="text-xs text-gray-600">admin@instaserve.com</p>
-              </div>
+              
             </div>
           </div>
         </div>

@@ -134,6 +134,9 @@ const AdminDashboard: React.FC = () => {
   const [servicesError, setServicesError] = useState<string | null>(null);
   const [providerRequests, setProviderRequests] = useState<any[]>([]);
   const [showAddServiceForm, setShowAddServiceForm] = useState(false);
+  const [showEditServiceForm, setShowEditServiceForm] = useState(false);
+  const [showViewServiceModal, setShowViewServiceModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<any>(null);
   const [serviceFormData, setServiceFormData] = useState({
     title: '',
     description: '',
@@ -443,6 +446,79 @@ const AdminDashboard: React.FC = () => {
     } catch (err: any) {
       console.error('❌ Error rejecting provider service request:', err);
       setServicesError(err.response?.data?.message || 'Failed to reject provider service request');
+    }
+  };
+
+  const handleViewService = (service: any) => {
+    setSelectedService(service);
+    setShowViewServiceModal(true);
+  };
+
+  const handleEditService = (service: any) => {
+    setSelectedService(service);
+    setServiceFormData({
+      title: service.title,
+      description: service.description,
+      category: service.category,
+      estimatedDuration: service.duration?.value?.toString() || '',
+      basePrice: service.price?.toString() || '',
+      serviceArea: service.serviceArea || '',
+      requirements: service.subcategory || '',
+      tools: service.skills?.join(', ') || '',
+    });
+    setShowEditServiceForm(true);
+  };
+
+  const handleDeleteService = async (serviceId: string) => {
+    if (!window.confirm('Are you sure you want to delete this service?')) return;
+    
+    try {
+      setServicesLoading(true);
+      await adminAPI.deleteService(serviceId);
+      toast.success('Service deleted successfully');
+      fetchServicesWithProviders();
+      fetchAdminData();
+    } catch (err: any) {
+      console.error('Error deleting service:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete service');
+      setServicesError(err.response?.data?.message || 'Failed to delete service');
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
+  const handleUpdateService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedService) return;
+
+    try {
+      setServicesLoading(true);
+      await adminAPI.updateService(selectedService._id, {
+        ...serviceFormData,
+        estimatedDuration: parseInt(serviceFormData.estimatedDuration),
+        basePrice: parseFloat(serviceFormData.basePrice),
+      });
+      toast.success('Service updated successfully');
+      setShowEditServiceForm(false);
+      setSelectedService(null);
+      setServiceFormData({
+        title: '',
+        description: '',
+        category: '',
+        estimatedDuration: '',
+        basePrice: '',
+        serviceArea: '',
+        requirements: '',
+        tools: '',
+      });
+      fetchServicesWithProviders();
+      fetchAdminData();
+    } catch (err: any) {
+      console.error('Error updating service:', err);
+      toast.error(err.response?.data?.message || 'Failed to update service');
+      setServicesError(err.response?.data?.message || 'Failed to update service');
+    } finally {
+      setServicesLoading(false);
     }
   };
 
@@ -1259,13 +1335,22 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2 ml-6">
-                        <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleViewService(service)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
                           <EyeIcon className="w-5 h-5" />
                         </button>
-                        <button className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleEditService(service)}
+                          className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                        >
                           <PencilIcon className="w-5 h-5" />
                         </button>
-                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleDeleteService(service._id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
                           <TrashIcon className="w-5 h-5" />
                         </button>
                       </div>
@@ -1276,6 +1361,238 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* View Service Modal */}
+        {showViewServiceModal && selectedService && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-2xl font-bold text-gray-900">Service Details</h3>
+                  <button
+                    onClick={() => {
+                      setShowViewServiceModal(false);
+                      setSelectedService(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Title</label>
+                  <p className="text-lg font-semibold text-gray-900 mt-1">{selectedService.title}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Description</label>
+                  <p className="text-gray-700 mt-1">{selectedService.description}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Category</label>
+                    <p className="text-gray-900 mt-1 capitalize">{selectedService.category}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Status</label>
+                    <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full mt-1 ${
+                      selectedService.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedService.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Duration</label>
+                    <p className="text-gray-900 mt-1">{selectedService.duration?.value || 'N/A'} {selectedService.duration?.unit || 'hours'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Price</label>
+                    <p className="text-gray-900 mt-1 font-semibold text-green-600">₹{selectedService.price || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Service Area</label>
+                    <p className="text-gray-900 mt-1">{selectedService.serviceArea || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Providers</label>
+                    <p className="text-gray-900 mt-1">{selectedService.providerRequests?.filter((req: any) => req.isApproved).length || 0} approved</p>
+                  </div>
+                </div>
+                {selectedService.skills && selectedService.skills.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Skills/Tools</label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {selectedService.skills.map((skill: string, index: number) => (
+                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Service Modal */}
+        {showEditServiceForm && selectedService && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-2xl font-bold text-gray-900">Edit Service</h3>
+                  <button
+                    onClick={() => {
+                      setShowEditServiceForm(false);
+                      setSelectedService(null);
+                      setServiceFormData({
+                        title: '',
+                        description: '',
+                        category: '',
+                        estimatedDuration: '',
+                        basePrice: '',
+                        serviceArea: '',
+                        requirements: '',
+                        tools: '',
+                      });
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+              <form onSubmit={handleUpdateService} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={serviceFormData.title}
+                    onChange={(e) => setServiceFormData({ ...serviceFormData, title: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={serviceFormData.description}
+                    onChange={(e) => setServiceFormData({ ...serviceFormData, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={3}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={serviceFormData.category}
+                      onChange={(e) => setServiceFormData({ ...serviceFormData, category: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">Select category</option>
+                      <option value="electrical">Electrical</option>
+                      <option value="plumbing">Plumbing</option>
+                      <option value="home_cleaning">Home Cleaning</option>
+                      <option value="appliance_repair">Appliance Repair</option>
+                      <option value="beauty_wellness">Beauty & Wellness</option>
+                      <option value="carpentry">Carpentry</option>
+                      <option value="painting">Painting</option>
+                      <option value="pest_control">Pest Control</option>
+                      <option value="packers_movers">Packers & Movers</option>
+                      <option value="home_tutoring">Home Tutoring</option>
+                      <option value="fitness_training">Fitness Training</option>
+                      <option value="event_management">Event Management</option>
+                      <option value="photography">Photography</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Duration (hours)</label>
+                    <input
+                      type="number"
+                      value={serviceFormData.estimatedDuration}
+                      onChange={(e) => setServiceFormData({ ...serviceFormData, estimatedDuration: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Base Price (₹)</label>
+                    <input
+                      type="number"
+                      value={serviceFormData.basePrice}
+                      onChange={(e) => setServiceFormData({ ...serviceFormData, basePrice: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Service Area</label>
+                    <input
+                      type="text"
+                      value={serviceFormData.serviceArea}
+                      onChange={(e) => setServiceFormData({ ...serviceFormData, serviceArea: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Requirements/Subcategory</label>
+                  <input
+                    type="text"
+                    value={serviceFormData.requirements}
+                    onChange={(e) => setServiceFormData({ ...serviceFormData, requirements: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Skills/Tools (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={serviceFormData.tools}
+                    onChange={(e) => setServiceFormData({ ...serviceFormData, tools: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditServiceForm(false);
+                      setSelectedService(null);
+                      setServiceFormData({
+                        title: '',
+                        description: '',
+                        category: '',
+                        estimatedDuration: '',
+                        basePrice: '',
+                        serviceArea: '',
+                        requirements: '',
+                        tools: '',
+                      });
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={servicesLoading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    {servicesLoading ? 'Updating...' : 'Update Service'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -118,9 +118,9 @@ const About: React.FC = () => {
 
         .shimmer{background:linear-gradient(90deg,#fff 20%,#a78bfa 45%,#22d3ee 62%,#fff 80%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s linear infinite}
 
-        .btn-primary{display:inline-flex;align-items:center;gap:10px;padding:16px 34px;background:#fff;color:#060609;font-size:15px;font-weight:700;border-radius:100px;text-decoration:none;letter-spacing:.2px;transition:transform .22s,box-shadow .22s;box-shadow:0 0 40px rgba(255,255,255,.12);border:none;cursor:pointer}
+        .btn-primary{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;min-height:44px;background:#fff;color:#060609;font-size:15px;font-weight:700;border-radius:100px;text-decoration:none;letter-spacing:.2px;transition:transform .22s,box-shadow .22s;box-shadow:0 0 40px rgba(255,255,255,.12);border:none;cursor:pointer}
         .btn-primary:hover{transform:scale(1.04);box-shadow:0 0 64px rgba(255,255,255,.24)}
-        .btn-ghost{display:inline-flex;align-items:center;gap:10px;padding:16px 34px;background:transparent;color:rgba(255,255,255,.75);font-size:15px;font-weight:600;border-radius:100px;border:1px solid rgba(255,255,255,.18);text-decoration:none;transition:background .22s,color .22s;cursor:pointer}
+        .btn-ghost{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;min-height:44px;background:transparent;color:rgba(255,255,255,.75);font-size:15px;font-weight:600;border-radius:100px;border:1px solid rgba(255,255,255,.18);text-decoration:none;transition:background .22s,color .22s;cursor:pointer}
         .btn-ghost:hover{background:rgba(255,255,255,.08);color:#fff}
 
         .card{background:var(--surf);border:1px solid var(--bord);border-radius:22px;padding:32px 28px;transition:border-color .3s,transform .3s}
@@ -130,10 +130,14 @@ const About: React.FC = () => {
           .grid-2{grid-template-columns:1fr !important}
           .grid-4{grid-template-columns:repeat(2,1fr) !important}
         }
+        @media(max-width:640px){
+          .grid-4{grid-template-columns:1fr !important}
+          .hero-h{font-size:clamp(32px,10vw,48px) !important}
+        }
       `}</style>
 
       {/* ══════════════ HERO ══════════════ */}
-      <section style={{ position:'relative', minHeight:'50vh', display:'flex', alignItems:'center', padding:'120px 24px 80px', overflow:'hidden' }}>
+      <section className="relative min-h-[50vh] flex items-center px-6 py-16 md:py-20 lg:py-24 overflow-hidden">
         {/* Orbs */}
         <div style={{position:'absolute',top:'10%',left:'5%',width:560,height:560,borderRadius:'50%',background:'radial-gradient(circle,rgba(124,58,237,.3) 0%,transparent 70%)',animation:'orb 20s ease-in-out infinite',pointerEvents:'none'}}/>
         <div style={{position:'absolute',top:'45%',right:'3%',width:420,height:420,borderRadius:'50%',background:'radial-gradient(circle,rgba(6,182,212,.2) 0%,transparent 70%)',animation:'orb 26s ease-in-out infinite reverse',pointerEvents:'none'}}/>
@@ -165,9 +169,9 @@ const About: React.FC = () => {
       </section>
 
       {/* ══════════════ STORY & MISSION ══════════════ */}
-      <section style={{padding:'60px 24px'}}>
+      <section className="px-6 py-12 md:py-16">
         <div style={{maxWidth:1260,margin:'0 auto'}}>
-          <div className="grid-2" style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:24}}>
+          <div className="grid-2 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             
             {/* Our Story */}
             <div className="card">
@@ -233,7 +237,7 @@ const About: React.FC = () => {
       </section>
 
       {/* ══════════════ CORE VALUES ══════════════ */}
-      <section style={{padding:'60px 24px'}}>
+      <section className="px-6 py-12 md:py-16">
         <div style={{maxWidth:1260,margin:'0 auto'}}>
           <div className="card">
             <div style={{textAlign:'center',marginBottom:40}}>
@@ -246,7 +250,7 @@ const About: React.FC = () => {
               <p style={{fontSize:16,color:'var(--muted)',maxWidth:500,margin:'0 auto'}}>The principles that guide everything we do</p>
             </div>
 
-            <div className="grid-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:24}}>
+            <div className="grid-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               <div style={{textAlign:'center'}}>
                 <div style={{background:'linear-gradient(135deg,#7C3AED,#6366F1)',width:80,height:80,borderRadius:20,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16',transition:'transform .3s'}}>
                   <ShieldCheckIcon/>
@@ -281,7 +285,7 @@ const About: React.FC = () => {
       </section>
 
       {/* ══════════════ TESTIMONIALS ══════════════ */}
-      <section style={{padding:'60px 24px'}}>
+      <section className="px-6 py-12 md:py-16">
         <div style={{maxWidth:1260,margin:'0 auto'}}>
           <div className="card">
             <div style={{textAlign:'center',marginBottom:40}}>
@@ -294,7 +298,7 @@ const About: React.FC = () => {
               <p style={{fontSize:16,color:'var(--muted)',maxWidth:500,margin:'0 auto'}}>Real experiences from real customers</p>
             </div>
 
-            <div className="grid-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:20}}>
+            <div className="grid-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
               {testimonials.map((testimonial) => (
                 <div key={testimonial.id} style={{background:'var(--surf2)',borderRadius:20,padding:24,border:'1px solid var(--bord)',transition:'border-color .3s'}}>
                   <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
@@ -327,18 +331,18 @@ const About: React.FC = () => {
       </section>
 
       {/* ══════════════ CTA ══════════════ */}
-      <section style={{padding:'60px 24px 100px'}}>
+      <section className="px-6 py-12 md:py-16 lg:py-24">
         <div style={{maxWidth:1260,margin:'0 auto'}}>
           <div style={{position:'relative',borderRadius:28,overflow:'hidden',border:'1px solid var(--bord)'}}>
             <img
               src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1400&q=80"
               alt="Happy customers"
-              style={{width:'100%',height:480,objectFit:'cover',display:'block'}}
+              className="w-full h-80 md:h-96 lg:h-[480px] object-cover"
             />
             <div style={{position:'absolute',inset:0,background:'linear-gradient(to right,rgba(6,6,9,.97) 38%,rgba(6,6,9,.4))'}}/>
 
-            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',padding:'64px'}}>
-              <div style={{maxWidth:540}}>
+            <div className="absolute inset-0 flex items-center px-6 md:px-12 lg:px-16">
+              <div className="max-w-lg md:max-w-xl lg:max-w-2xl">
                 <div style={{display:'flex',justifyContent:'center',marginBottom:28}}>
                   <div style={{background:'rgba(255,255,255,.2)',backdropFilter:'blur(12px)',padding:16,borderRadius:20}}>
                     <RocketIcon/>

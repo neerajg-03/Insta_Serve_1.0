@@ -163,6 +163,12 @@ const AdminDashboard: React.FC = () => {
     endDate: ''
   });
 
+  // Booking Management State
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
+  const [bookingFilter, setBookingFilter] = useState('all');
+
   useEffect(() => {
     fetchAdminData();
   }, []);
@@ -190,6 +196,9 @@ const AdminDashboard: React.FC = () => {
     }
     if (activeTab === 'coupons') {
       fetchCoupons();
+    }
+    if (activeTab === 'bookings') {
+      fetchBookings();
     }
   }, [activeTab]);
 
@@ -560,7 +569,7 @@ const AdminDashboard: React.FC = () => {
 
   const handleDeleteCoupon = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this coupon?')) return;
-    
+
     try {
       setCouponsLoading(true);
       await adminAPI.deleteCoupon(id);
@@ -569,6 +578,39 @@ const AdminDashboard: React.FC = () => {
       setCouponsError(err.response?.data?.message || 'Failed to delete coupon');
     } finally {
       setCouponsLoading(false);
+    }
+  };
+
+  const fetchBookings = async () => {
+    try {
+      setBookingsLoading(true);
+      setBookingsError(null);
+      const params: any = {};
+      if (bookingFilter !== 'all') {
+        params.status = bookingFilter;
+      }
+      const response = await adminAPI.getBookings(params);
+      setBookings(response.bookings);
+    } catch (err: any) {
+      setBookingsError(err.response?.data?.message || 'Failed to fetch bookings');
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  const handleUpdateBookingStatus = async (bookingId: string, status: string) => {
+    try {
+      setBookingsLoading(true);
+      await adminAPI.updateBooking(bookingId, { status });
+      toast.success('Booking status updated successfully');
+      fetchBookings();
+      fetchAdminData();
+    } catch (err: any) {
+      console.error('Error updating booking status:', err);
+      toast.error(err.response?.data?.message || 'Failed to update booking status');
+      setBookingsError(err.response?.data?.message || 'Failed to update booking status');
+    } finally {
+      setBookingsLoading(false);
     }
   };
 
@@ -1598,25 +1640,142 @@ const AdminDashboard: React.FC = () => {
   );
 
   const renderBookings = () => (
-    <div className="bg-white shadow rounded-lg">
-      <div className="px-4 py-5 sm:p-6">
-        <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Booking Management</h3>
-        <div className="grid grid-cols-1 gap-4">
-          <div className="border border-gray-200 rounded-lg p-4">
-            <h4 className="font-medium text-gray-900 mb-2">Quick Actions</h4>
-            <div className="space-y-2">
-              <button className="w-full text-left px-3 py-2 bg-blue-50 text-blue-700 rounded hover:bg-blue-100">
-                View All Bookings
-              </button>
-              <button className="w-full text-left px-3 py-2 bg-yellow-50 text-yellow-700 rounded hover:bg-yellow-100">
-                Pending Bookings
-              </button>
-              <button className="w-full text-left px-3 py-2 bg-green-50 text-green-700 rounded hover:bg-green-100">
-                Completed Bookings
-              </button>
-            </div>
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Booking Management</h3>
+            <p className="text-gray-600 mt-2">Manage all platform bookings</p>
+          </div>
+          <div className="flex space-x-3">
+            <select
+              value={bookingFilter}
+              onChange={(e) => {
+                setBookingFilter(e.target.value);
+                fetchBookings();
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="broadcast">Broadcast</option>
+            </select>
+            <button
+              onClick={fetchBookings}
+              className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors flex items-center text-sm font-medium"
+            >
+              <ArrowPathIcon className="w-4 h-4 mr-1" />
+              Refresh
+            </button>
           </div>
         </div>
+
+        {bookingsError && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="flex items-start space-x-3">
+              <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-medium text-red-800">Error</h4>
+                <p className="text-sm text-red-700 mt-1">{bookingsError}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {bookingsLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : bookings.length === 0 ? (
+          <div className="text-center py-12">
+            <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
+            <p className="text-gray-600">Bookings will appear here once customers make requests</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {bookings.map((booking: any) => (
+              <div key={booking._id} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-300">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h5 className="text-lg font-semibold text-gray-900">{booking.service?.title || 'Unknown Service'}</h5>
+                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                        booking.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        booking.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                        booking.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                        booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        booking.status === 'broadcast' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {booking.status.replace('_', ' ').toUpperCase()}
+                      </span>
+                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                        booking.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                        booking.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {booking.paymentStatus.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-4">
+                      <div>
+                        <label className="text-gray-500">Customer</label>
+                        <p className="font-medium text-gray-900">{booking.customer?.name || 'N/A'}</p>
+                        <p className="text-gray-600">{booking.customer?.phone || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="text-gray-500">Provider</label>
+                        <p className="font-medium text-gray-900">{booking.provider?.name || 'Unassigned'}</p>
+                        <p className="text-gray-600">{booking.provider?.phone || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="text-gray-500">Scheduled Date</label>
+                        <p className="font-medium text-gray-900">
+                          {booking.scheduledDate ? new Date(booking.scheduledDate).toLocaleDateString() : 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-gray-500">Price</label>
+                        <p className="font-semibold text-green-600">₹{booking.price?.totalPrice || 'N/A'}</p>
+                      </div>
+                    </div>
+                    {booking.address && (
+                      <div className="mt-3 text-sm">
+                        <label className="text-gray-500">Address</label>
+                        <p className="text-gray-900">
+                          {booking.address.street && `${booking.address.street}, `}
+                          {booking.address.city && `${booking.address.city}, `}
+                          {booking.address.state && `${booking.address.state} - `}
+                          {booking.address.pincode}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="ml-6">
+                    <select
+                      value={booking.status}
+                      onChange={(e) => handleUpdateBookingStatus(booking._id, e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={bookingsLoading}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="broadcast">Broadcast</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ const HeroCarousel: React.FC = () => {
   }, []);
 
   return (
-    <div style={{position:'relative',width:'100%',height:'100vh',overflow:'hidden'}}>
+    <div style={{position:'relative',width:'100%',height:'100dvh',minHeight:'600px',overflow:'hidden'}}>
       {HERO_IMAGES.map((img, idx) => (
         <div
           key={idx}
@@ -35,7 +35,7 @@ const HeroCarousel: React.FC = () => {
           <img 
             src={img} 
             alt={`Home service ${idx + 1}`} 
-            style={{width:'100%',height:'100%',objectFit:'cover'}}
+            style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}}
           />
         </div>
       ))}

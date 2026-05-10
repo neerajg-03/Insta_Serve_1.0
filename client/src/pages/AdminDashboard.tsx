@@ -1806,7 +1806,11 @@ const AdminDashboard: React.FC = () => {
             {doc.documentUrl && (
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => window.open(adminAPI.getKYCDocumentUrl(doc.documentUrl.split('/').pop()), '_blank')}
+                  onClick={() => {
+                    const filename = doc.documentUrl.split('/').pop();
+                    const url = adminAPI.getKYCDocumentUrl(filename);
+                    window.open(url, '_blank');
+                  }}
                   className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1"
                 >
                   <EyeIcon className="w-4 h-4" />
@@ -2251,8 +2255,17 @@ const AdminDashboard: React.FC = () => {
             </nav>
           </div>
           
-         
-          
+          {/* User Info */}
+          <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-200 bg-white">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-lg">
+                <UserIcon className="w-6 h-6 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">Administrator</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Main Content */}

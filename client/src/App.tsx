@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { useDispatch } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
@@ -25,6 +25,17 @@ import BankAccount from './pages/provider/BankAccount';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import ProtectedRoute from './components/ProtectedRoute';
+
+// Scroll to top component
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
@@ -122,6 +133,7 @@ function App() {
   return (
     <Provider store={store}>
       <Router>
+        <ScrollToTop />
         <AppContent />
       </Router>
     </Provider>

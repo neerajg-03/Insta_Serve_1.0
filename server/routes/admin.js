@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Service = require('../models/Service');
 const Booking = require('../models/Booking');
+const ProviderWallet = require('../models/ProviderWallet');
 const Coupon = require('../models/Coupon');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -237,6 +238,42 @@ router.post('/kyc/:userId/approve', protect, authorize('admin'), async (req, res
     });
   } catch (error) {
     console.error('Approve KYC error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/wallet/:providerId/bonus
+// @desc    Add bonus to provider wallet (admin only)
+// @access  Private (Admin)
+router.post('/wallet/:providerId/bonus', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { amount, description } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: 'Bonus amount must be positive' });
+    }
+
+    const user = await User.findById(req.params.providerId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.role !== 'provider') {
+      return res.status(400).json({ message: 'User is not a provider' });
+    }
+
+    const wallet = await ProviderWallet.getOrCreateWallet(user._id);
+    await wallet.addBonus(amount, description || 'Bonus added by admin');
+
+    res.json({
+      message: 'Bonus added successfully',
+      providerId: user._id,
+      amount,
+      newBalance: wallet.balance
+    });
+  } catch (error) {
+    console.error('Add bonus error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

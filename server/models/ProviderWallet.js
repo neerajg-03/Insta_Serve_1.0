@@ -98,6 +98,25 @@ providerWalletSchema.methods.recharge = async function(amount, description = 'Wa
   return this.save();
 };
 
+// Instance method to add bonus (for signup bonus, referral bonus, etc.)
+providerWalletSchema.methods.addBonus = async function(amount, description = 'Bonus') {
+  if (amount <= 0) {
+    throw new Error('Bonus amount must be positive');
+  }
+  
+  this.balance += amount;
+  
+  // Add transaction record
+  this.transactions.push({
+    type: 'recharge',
+    amount: amount,
+    description: description,
+    balanceAfter: this.balance
+  });
+  
+  return this.save();
+};
+
 // Instance method to deduct commission
 providerWalletSchema.methods.deductCommission = async function(bookingId, amount, description = 'Commission deduction') {
   if (amount <= 0) {

@@ -476,18 +476,18 @@ const Dashboard: React.FC = () => {
   const renderOverview = () => (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.name}! 👋</h1>
-            <p className="text-blue-100 text-lg">Manage your bookings and discover amazing services</p>
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-4 sm:p-6 md:p-8 text-white shadow-xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="w-full sm:w-auto">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Welcome back, {user?.name}! 👋</h1>
+            <p className="text-blue-100 text-sm sm:text-lg">Manage your bookings and discover amazing services</p>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-3 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+              className="relative p-2 sm:p-3 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
             >
-              <BellIcon className="w-6 h-6" />
+              <BellIcon className="w-5 h-5 sm:w-6 sm:h-6" />
               {notifications.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {notifications.length}
@@ -496,7 +496,7 @@ const Dashboard: React.FC = () => {
             </button>
             <button
               onClick={() => dispatch(logout())}
-              className="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors font-medium"
+              className="px-3 py-2 sm:px-4 sm:py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors font-medium text-sm"
             >
               Logout
             </button>
@@ -505,102 +505,102 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border border-gray-100">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow border border-gray-100">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 font-medium">Total Bookings</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{bookings.length}</p>
-              <p className="text-xs text-green-600 mt-2 flex items-center">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">Total Bookings</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{bookings.length}</p>
+              <p className="text-xs text-green-600 mt-1 sm:mt-2 flex items-center">
                 <ArrowTrendingUpIcon className="w-3 h-3 mr-1" />
                 12% from last month
               </p>
             </div>
-            <div className="p-4 bg-blue-100 rounded-xl">
-              <CalendarIcon className="w-8 h-8 text-blue-600" />
+            <div className="p-3 sm:p-4 bg-blue-100 rounded-xl ml-2 sm:ml-0">
+              <CalendarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border border-gray-100">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow border border-gray-100">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 font-medium">Completed</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">Completed</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
                 {bookings.filter(b => b.status === 'completed').length}
               </p>
-              <p className="text-xs text-green-600 mt-2 flex items-center">
+              <p className="text-xs text-green-600 mt-1 sm:mt-2 flex items-center">
                 <CheckCircleIcon className="w-3 h-3 mr-1" />
                 Great job!
               </p>
             </div>
-            <div className="p-4 bg-green-100 rounded-xl">
-              <CheckCircleIcon className="w-8 h-8 text-green-600" />
+            <div className="p-3 sm:p-4 bg-green-100 rounded-xl ml-2 sm:ml-0">
+              <CheckCircleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border border-gray-100">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow border border-gray-100">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 font-medium">Pending</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">Pending</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
                 {bookings.filter(b => b.status === 'pending' || b.status === 'confirmed').length}
               </p>
-              <p className="text-xs text-yellow-600 mt-2 flex items-center">
+              <p className="text-xs text-yellow-600 mt-1 sm:mt-2 flex items-center">
                 <ClockIcon className="w-3 h-3 mr-1" />
                 Action needed
               </p>
             </div>
-            <div className="p-4 bg-yellow-100 rounded-xl">
-              <ClockIcon className="w-8 h-8 text-yellow-600" />
+            <div className="p-3 sm:p-4 bg-yellow-100 rounded-xl ml-2 sm:ml-0">
+              <ClockIcon className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow border border-gray-100">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow border border-gray-100">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 font-medium">Total Spent</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">Total Spent</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
                 ₹{bookings.filter(b => b.status === 'completed').reduce((sum, b) => sum + (b.totalAmount || b.price?.totalPrice || 0), 0)}
               </p>
-              <p className="text-xs text-purple-600 mt-2 flex items-center">
+              <p className="text-xs text-purple-600 mt-1 sm:mt-2 flex items-center">
                 <CurrencyDollarIcon className="w-3 h-3 mr-1" />
                 This month
               </p>
             </div>
-            <div className="p-4 bg-purple-100 rounded-xl">
-              <CurrencyDollarIcon className="w-8 h-8 text-purple-600" />
+            <div className="p-3 sm:p-4 bg-purple-100 rounded-xl ml-2 sm:ml-0">
+              <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-          <SparklesIcon className="w-6 h-6 mr-2 text-yellow-500" />
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100">
+        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center">
+          <SparklesIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-yellow-500" />
           Quick Actions
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Link
             to="/services"
-            className="group p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl hover:from-blue-100 hover:to-blue-200 transition-all duration-200 border border-blue-200"
+            className="group p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl hover:from-blue-100 hover:to-blue-200 transition-all duration-200 border border-blue-200"
           >
-            <MagnifyingGlassIcon className="w-8 h-8 text-blue-600 mb-3 group-hover:scale-110 transition-transform" />
-            <h4 className="font-semibold text-gray-900 mb-1">Browse Services</h4>
-            <p className="text-sm text-gray-600">Find what you need</p>
+            <MagnifyingGlassIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 mb-2 sm:mb-3 group-hover:scale-110 transition-transform" />
+            <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">Browse Services</h4>
+            <p className="text-xs sm:text-sm text-gray-600">Find what you need</p>
             <ArrowRightIcon className="w-4 h-4 text-blue-600 mt-2 group-hover:translate-x-1 transition-transform" />
           </Link>
 
           <button
             onClick={() => setActiveTab('bookings')}
-            className="group p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl hover:from-green-100 hover:to-green-200 transition-all duration-200 border border-green-200 text-left"
+            className="group p-4 sm:p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl hover:from-green-100 hover:to-green-200 transition-all duration-200 border border-green-200 text-left"
           >
-            <DocumentTextIcon className="w-8 h-8 text-green-600 mb-3 group-hover:scale-110 transition-transform" />
-            <h4 className="font-semibold text-gray-900 mb-1">View Bookings</h4>
-            <p className="text-sm text-gray-600">Manage bookings</p>
+            <DocumentTextIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mb-2 sm:mb-3 group-hover:scale-110 transition-transform" />
+            <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">View Bookings</h4>
+            <p className="text-xs sm:text-sm text-gray-600">Manage bookings</p>
             <ArrowRightIcon className="w-4 h-4 text-green-600 mt-2 group-hover:translate-x-1 transition-transform" />
           </button>
 
@@ -608,10 +608,10 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-gray-900 flex items-center">
-            <ChartBarIcon className="w-6 h-6 mr-2 text-blue-500" />
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-2">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center">
+            <ChartBarIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-500" />
             Recent Activity
           </h3>
           <button
@@ -623,40 +623,40 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
         {bookings.length === 0 ? (
-          <div className="text-center py-12">
-            <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No recent bookings</h3>
-            <p className="text-gray-600 mb-6">Start by browsing our services and booking your first service.</p>
+          <div className="text-center py-8 sm:py-12">
+            <CalendarIcon className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No recent bookings</h3>
+            <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 px-4">Start by browsing our services and booking your first service.</p>
             <Link
               to="/services"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
             >
               Browse Services
               <ArrowRightIcon className="w-4 h-4 ml-2" />
             </Link>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {bookings.slice(0, 3).map((booking) => (
-              <div key={booking._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-white rounded-lg shadow-sm">
+              <div key={booking._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 gap-3">
+                <div className="flex items-center space-x-3 w-full sm:w-auto">
+                  <div className="p-2 sm:p-3 bg-white rounded-lg shadow-sm flex-shrink-0">
                     {getStatusIcon(booking.status)}
                   </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{booking.service?.title || 'Service'}</p>
-                    <p className="text-sm text-gray-600 flex items-center mt-1">
-                      <CalendarIcon className="w-4 h-4 mr-1" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">{booking.service?.title || 'Service'}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 flex items-center mt-1">
+                      <CalendarIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                       {new Date(booking.createdAt).toLocaleDateString()} · {booking.provider?.name || 'No provider'}
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(booking.status)}`}>
+                <div className="flex items-center justify-between w-full sm:w-auto sm:text-right gap-2">
+                  <span className={`inline-flex items-center px-2 sm:px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(booking.status)}`}>
                     {getStatusIcon(booking.status)}
                     <span className="ml-1">{getStatusText(booking.status)}</span>
                   </span>
-                  <p className="text-sm font-semibold text-gray-900 mt-2">₹{booking.totalAmount || booking.price?.totalPrice || 'N/A'}</p>
+                  <p className="text-sm font-semibold text-gray-900">₹{booking.totalAmount || booking.price?.totalPrice || 'N/A'}</p>
                 </div>
               </div>
             ))}
@@ -667,16 +667,16 @@ const Dashboard: React.FC = () => {
   );
 
   const renderBookings = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">My Bookings</h2>
-          <p className="text-gray-600 mt-1">Manage and track all your service bookings</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">My Bookings</h2>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage and track all your service bookings</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
           <button
             onClick={fetchBookings}
-            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center"
+            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center justify-center text-sm"
             disabled={loading}
           >
             {loading ? (
@@ -691,7 +691,7 @@ const Dashboard: React.FC = () => {
               </>
             )}
           </button>
-          <Link to="/services" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center">
+          <Link to="/services" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center text-sm">
             <CalendarIcon className="w-4 h-4 mr-2" />
             Book New Service
           </Link>
@@ -711,81 +711,81 @@ const Dashboard: React.FC = () => {
       )}
 
       <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="flex justify-center py-8 sm:py-12">
+              <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
             </div>
           ) : bookings.length === 0 ? (
-            <div className="text-center py-12">
-              <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
-              <p className="text-gray-600 mb-6">Start by browsing our services and booking your first service.</p>
+            <div className="text-center py-8 sm:py-12">
+              <CalendarIcon className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
+              <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 px-4">Start by browsing our services and booking your first service.</p>
               <Link
                 to="/services"
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
               >
                 Browse Services
                 <ArrowRightIcon className="w-4 h-4 ml-2" />
               </Link>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {bookings.map((booking) => (
-                <div key={booking._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <h4 className="text-lg font-semibold text-gray-900 mb-2">{booking.service?.title || 'Service'}</h4>
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                <div key={booking._id} className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                    <div className="flex-1 w-full">
+                      <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">{booking.service?.title || 'Service'}</h4>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm text-gray-600">
                         <span className="flex items-center">
                           <span className="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
                           {booking.service?.category || 'N/A'}
                         </span>
                         {booking.provider && (
                           <span className="flex items-center">
-                            <UserIcon className="w-4 h-4 mr-1" />
+                            <UserIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                             {booking.provider.name}
                           </span>
                         )}
                       </div>
                       {booking.status === 'broadcast' ? (
-                        <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
-                          <p className="text-sm text-purple-800">
-                            <BellIcon className="w-4 h-4 inline mr-1" />
+                        <div className="mt-3 p-2 sm:p-3 bg-purple-50 rounded-lg border border-purple-200">
+                          <p className="text-xs sm:text-sm text-purple-800">
+                            <BellIcon className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
                             <span className="font-medium">Broadcast Booking</span> - Waiting for providers to accept
                           </p>
                           <p className="text-xs text-purple-600 mt-1">All nearby providers have been notified</p>
                         </div>
                       ) : booking.provider ? (
-                        <div className="mt-3 flex items-center space-x-4 text-sm text-gray-600">
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm text-gray-600">
                           <span className="flex items-center">
-                            <PhoneIcon className="w-4 h-4 mr-1" />
+                            <PhoneIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                             {booking.provider.phone}
                           </span>
                           <span className="flex items-center">
-                            <EnvelopeIcon className="w-4 h-4 mr-1" />
+                            <EnvelopeIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                             {booking.provider.email}
                           </span>
                         </div>
                       ) : (
-                        <div className="mt-3 text-sm text-gray-600">
+                        <div className="mt-3 text-xs sm:text-sm text-gray-600">
                           <span className="flex items-center">
-                            <ClockIcon className="w-4 h-4 mr-1" />
+                            <ClockIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                             Provider: Not assigned yet
                           </span>
                         </div>
                       )}
                     </div>
-                    <div className="text-right ml-4">
-                      <span className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full border ${getStatusColor(booking.status)}`}>
+                    <div className="flex items-center justify-between w-full sm:w-auto sm:text-right gap-2">
+                      <span className={`inline-flex items-center px-2 sm:px-3 py-1 text-xs sm:text-sm font-semibold rounded-full border ${getStatusColor(booking.status)}`}>
                         {getStatusIcon(booking.status)}
                         <span className="ml-1">{getStatusText(booking.status)}</span>
                       </span>
-                      <p className="text-lg font-bold text-gray-900 mt-2">₹{booking.price?.totalPrice || booking.totalAmount || 'N/A'}</p>
+                      <p className="text-sm sm:text-lg font-bold text-gray-900">₹{booking.price?.totalPrice || booking.totalAmount || 'N/A'}</p>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm mb-4">
                     <div>
                       <p className="text-gray-600 font-medium mb-1">Scheduled Date</p>
                       <p className="text-gray-900">
@@ -808,31 +808,31 @@ const Dashboard: React.FC = () => {
                   </div>
 
                   {booking.notes && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-600 font-medium mb-1">Customer Notes:</p>
-                      <p className="text-sm text-gray-900">{booking.notes}</p>
+                    <div className="mb-4 p-2 sm:p-3 bg-gray-50 rounded-lg">
+                      <p className="text-xs sm:text-sm text-gray-600 font-medium mb-1">Customer Notes:</p>
+                      <p className="text-xs sm:text-sm text-gray-900">{booking.notes}</p>
                     </div>
                   )}
 
-                  <div className="flex justify-end space-x-3">
+                  <div className="flex flex-wrap justify-end gap-2">
                     {booking.provider && (booking.status === 'confirmed' || booking.status === 'in_progress') ? (
                       <>
                         <button
                           onClick={() => handleNavigate(booking)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center"
+                          className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-xs sm:text-sm flex items-center"
                         >
-                          <MapPinIcon className="w-4 h-4 mr-2" />
+                          <MapPinIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                           Navigate
-                          {eta && <span className="ml-2 text-blue-100">• {eta}</span>}
+                          {eta && <span className="ml-1 sm:ml-2 text-blue-100">• {eta}</span>}
                         </button>
                         <button
                           onClick={() => {
                             setSelectedBookingForChat(booking);
                             setShowChat(true);
                           }}
-                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm flex items-center"
+                          className="px-3 py-2 sm:px-4 sm:py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-xs sm:text-sm flex items-center"
                         >
-                          <ChatBubbleLeftIcon className="w-4 h-4 mr-2" />
+                          <ChatBubbleLeftIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                           Chat
                         </button>
                       </>
@@ -842,16 +842,16 @@ const Dashboard: React.FC = () => {
                           setSelectedBookingForChat(booking);
                           setShowChat(true);
                         }}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm flex items-center"
+                        className="px-3 py-2 sm:px-4 sm:py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-xs sm:text-sm flex items-center"
                       >
-                        <ChatBubbleLeftIcon className="w-4 h-4 mr-2" />
+                        <ChatBubbleLeftIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                         Chat
                       </button>
                     )}
                     {booking.status === 'confirmed' && (
                       <button
                         onClick={() => handleCancelBooking(booking._id)}
-                        className="px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+                        className="px-3 py-2 sm:px-4 sm:py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-xs sm:text-sm"
                         disabled={loading}
                       >
                         Cancel Booking
@@ -860,9 +860,9 @@ const Dashboard: React.FC = () => {
                     {booking.status === 'completed' && (
                       <button
                         onClick={() => handleLeaveReview(booking)}
-                        className="px-4 py-2 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors font-medium text-sm flex items-center"
+                        className="px-3 py-2 sm:px-4 sm:py-2 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors font-medium text-xs sm:text-sm flex items-center"
                       >
-                        <StarIcon className="w-4 h-4 mr-2" />
+                        <StarIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                         Leave Review
                       </button>
                     )}
@@ -878,16 +878,16 @@ const Dashboard: React.FC = () => {
 
   const renderProfile = () => {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Profile Settings</h2>
-            <p className="text-gray-600 mt-1">Manage your personal information</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Profile Settings</h2>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage your personal information</p>
           </div>
           {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center text-sm w-full sm:w-auto justify-center"
             >
               <UserIcon className="w-4 h-4 mr-2" />
               Edit Profile
@@ -895,30 +895,30 @@ const Dashboard: React.FC = () => {
           )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <div className="flex items-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start mb-4 sm:mb-6 gap-4 text-center sm:text-left">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xl sm:text-2xl font-bold flex-shrink-0">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
-            <div className="ml-4">
-              <h3 className="text-xl font-semibold text-gray-900">{user?.name}</h3>
-              <p className="text-gray-600">{user?.email}</p>
-              <div className="flex items-center mt-1">
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900">{user?.name}</h3>
+              <p className="text-gray-600 text-sm sm:text-base">{user?.email}</p>
+              <div className="flex items-center mt-1 justify-center sm:justify-start">
                 <ShieldCheckIcon className="w-4 h-4 text-green-500 mr-1" />
                 <span className="text-sm text-green-600">Verified Account</span>
               </div>
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
                 <input
                   type="text"
                   value={profileData.name}
                   onChange={(e) => setProfileData({...profileData, name: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
                   readOnly={!isEditing}
                   disabled={!isEditing}
                 />
@@ -929,21 +929,21 @@ const Dashboard: React.FC = () => {
                   type="email"
                   value={profileData.email}
                   onChange={(e) => setProfileData({...profileData, email: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
                   readOnly={!isEditing}
                   disabled={!isEditing}
                 />
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                 <input
                   type="tel"
                   value={profileData.phone}
                   onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
                   readOnly={!isEditing}
                   disabled={!isEditing}
                 />
@@ -954,7 +954,7 @@ const Dashboard: React.FC = () => {
                   type="text"
                   value={profileData.address}
                   onChange={(e) => setProfileData({...profileData, address: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
                   readOnly={!isEditing}
                   disabled={!isEditing}
                 />
@@ -962,7 +962,7 @@ const Dashboard: React.FC = () => {
             </div>
             
             {isEditing && (
-              <div className="flex justify-end space-x-3 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t">
                 <button
                   onClick={() => {
                     setIsEditing(false);
@@ -973,14 +973,14 @@ const Dashboard: React.FC = () => {
                       address: typeof user?.address === 'string' ? user.address : user?.address?.city || ''
                     });
                   }}
-                  className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm w-full sm:w-auto"
                   disabled={profileLoading}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveProfile}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm w-full sm:w-auto"
                   disabled={profileLoading}
                 >
                   {profileLoading ? 'Saving...' : 'Save Changes'}
@@ -991,29 +991,29 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Account Actions */}
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Actions</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-100">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Account Actions</h3>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors gap-2">
               <div>
-                <h4 className="font-medium text-gray-900">Change Password</h4>
-                <p className="text-sm text-gray-600">Update your account password</p>
+                <h4 className="font-medium text-gray-900 text-sm sm:text-base">Change Password</h4>
+                <p className="text-xs sm:text-sm text-gray-600">Update your account password</p>
               </div>
               <button 
                 onClick={() => setShowChangePasswordModal(true)}
-                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                className="px-3 py-2 sm:px-4 sm:py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-xs sm:text-sm w-full sm:w-auto"
               >
                 Change Password
               </button>
             </div>
-            <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors gap-2">
               <div>
-                <h4 className="font-medium text-gray-900">Delete Account</h4>
-                <p className="text-sm text-gray-600">Permanently delete your account and data</p>
+                <h4 className="font-medium text-gray-900 text-sm sm:text-base">Delete Account</h4>
+                <p className="text-xs sm:text-sm text-gray-600">Permanently delete your account and data</p>
               </div>
               <button 
                 onClick={() => setShowDeleteAccountModal(true)}
-                className="px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+                className="px-3 py-2 sm:px-4 sm:py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors font-medium text-xs sm:text-sm w-full sm:w-auto"
               >
                 Delete Account
               </button>
@@ -1040,24 +1040,25 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-4 md:px-6 lg:px-8">
         {/* Navigation Tabs */}
-        <div className="mb-8">
-          <nav className="flex space-x-1 bg-white rounded-lg shadow-sm p-1">
+        <div className="mb-6 sm:mb-8">
+          <nav className="flex space-x-1 bg-white rounded-lg shadow-sm p-1 overflow-x-auto">
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                     activeTab === item.id
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                 >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {item.label}
+                  <Icon className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">{item.label}</span>
+                  <span className="sm:hidden">{item.label.split(' ')[0]}</span>
                 </button>
               );
             })}

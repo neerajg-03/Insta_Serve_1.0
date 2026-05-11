@@ -8,7 +8,6 @@ import socketService, { LocationData } from '../services/socketService';
 import toast from 'react-hot-toast';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import { calculateTrackingInfo, formatDistance, formatDuration, getCurrentLocation, watchLocation, stopWatchingLocation } from '../utils/geoUtils';
-import razorpayService from '../services/razorpayService';
 import {
   MapPinIcon,
   PhoneIcon,
@@ -26,6 +25,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckSolidIcon, StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import ChatComponent from '../components/ChatComponent';
+import razorpayService from '../services/razorpayService';
 
 interface Booking {
   _id: string;
@@ -40,6 +40,18 @@ interface Booking {
       unit: string;
     };
     images?: string[];
+  };
+  customer: {
+    _id: string;
+    name: string;
+    email: string;
+    phone: string;
+    address: string | {
+      street: string;
+      city: string;
+      state: string;
+      pincode: string;
+    };
   };
   provider?: {
     _id: string;
@@ -70,7 +82,7 @@ interface Booking {
   };
   createdAt: string;
   updatedAt: string;
-  customerNotes?: string;
+  paymentStatus?: 'pending' | 'paid' | 'failed';
 }
 
 interface TimelineEvent {
@@ -205,7 +217,7 @@ const UserTracking: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching booking details for user, ID:', id);
+      console.log('Fetching booking details for ID:', id);
       const response = await bookingsAPI.getBooking(id!);
       
       let bookingData = null;
@@ -217,13 +229,16 @@ const UserTracking: React.FC = () => {
       
       if (bookingData) {
         setBooking(bookingData);
+        if (bookingData.paymentStatus) {
+          setPaymentStatus(bookingData.paymentStatus);
+        }
         initializeTimeline(bookingData);
-        console.log('Successfully loaded real booking data for user');
+        console.log('Successfully loaded real booking data');
       } else {
         throw new Error('Booking not found or invalid response format');
       }
     } catch (error: any) {
-      console.error('Error fetching booking details for user:', error);
+      console.error('Error fetching booking details:', error);
       
       if (error.response?.status === 404) {
         setError('Booking not found. The booking ID may not exist in the database.');
@@ -254,12 +269,12 @@ const UserTracking: React.FC = () => {
       }
     ];
 
-    if (bookingData.status !== 'broadcast' && bookingData.status !== 'pending') {
+    if (bookingData.status !== 'broadcast' && bookingData.provider) {
       events.push({
         id: '2',
         type: 'provider_assigned',
         title: 'Provider Assigned',
-        description: `${bookingData.provider?.name || 'Provider'} has been assigned to your service`,
+        description: `${bookingData.provider.name} has been assigned to your service`,
         timestamp: new Date(bookingData.updatedAt),
         completed: true
       });
@@ -299,19 +314,19 @@ const UserTracking: React.FC = () => {
       case 'in_progress': return 'In Progress';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
-      case 'broadcast': return 'New Request';
+      case 'broadcast': return 'Finding Provider';
       default: return 'Unknown';
     }
   };
 
   const getStatusDescription = (status: string) => {
     switch (status) {
-      case 'pending': return 'Waiting for provider confirmation';
-      case 'confirmed': return 'Service has been confirmed';
-      case 'in_progress': return 'Service is currently in progress';
+      case 'pending': return 'Your booking is pending confirmation';
+      case 'confirmed': return 'Provider has confirmed your booking';
+      case 'in_progress': return 'Provider is currently working on your service';
       case 'completed': return 'Service has been completed successfully';
-      case 'cancelled': return 'Service has been cancelled';
-      case 'broadcast': return 'New service request created';
+      case 'cancelled': return 'Booking has been cancelled';
+      case 'broadcast': return 'Searching for available providers';
       default: return 'Status updated';
     }
   };
@@ -358,15 +373,15 @@ const UserTracking: React.FC = () => {
       
       // Process payment with Razorpay
       const paymentOptions = {
-        amount: booking.totalAmount || booking.price?.totalPrice || 0,
+        amount: booking?.totalAmount || booking?.price?.totalPrice || 0,
         currency: 'INR',
-        receipt: `receipt_${booking._id}`,
+        receipt: `receipt_${booking?._id}`,
         notes: {
-          bookingId: booking._id,
-          serviceTitle: booking.service.title,
+          bookingId: booking?._id,
+          serviceTitle: booking?.service?.title || 'Service',
           customerName: user?.name || 'Customer'
         },
-        bookingId: booking._id,
+        bookingId: booking?._id,
         customerName: user?.name || 'Customer',
         customerEmail: user?.email || '',
         customerPhone: user?.phone || ''
@@ -404,7 +419,7 @@ const UserTracking: React.FC = () => {
     switch (status) {
       case 'pending': return <ClockIcon className="w-5 h-5" />;
       case 'confirmed': return <CheckCircleIcon className="w-5 h-5" />;
-      case 'in_progress': return <div className="w-5 h-5 bg-purple-600 rounded-full animate-pulse"></div>;
+      case 'in_progress': return <MapPinIcon className="w-5 h-5" />;
       case 'completed': return <CheckSolidIcon className="w-5 h-5" />;
       case 'cancelled': return <ExclamationTriangleIcon className="w-5 h-5" />;
       case 'broadcast': return <ClockIcon className="w-5 h-5" />;
@@ -436,7 +451,7 @@ const UserTracking: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading service details...</p>
+          <p className="text-gray-600">Loading booking details...</p>
         </div>
       </div>
     );
@@ -503,26 +518,26 @@ const UserTracking: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Provider Location Tracking */}
-            {(booking.status === 'confirmed' || booking.status === 'in_progress') && (
+            {/* Live Tracking Map */}
+            {booking?.status && (booking.status === 'in_progress' || booking.status === 'confirmed') && (
               <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6">
+                <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-6">
                   <h2 className="text-2xl font-bold mb-4 flex items-center">
                     <MapPinIcon className="w-6 h-6 mr-2" />
-                    Provider Location
+                    Live Provider Tracking
                   </h2>
                   
                   {isTracking && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="bg-white/20 rounded-xl p-4">
-                        <p className="text-blue-100 text-sm mb-1">Provider Distance</p>
+                        <p className="text-purple-100 text-sm mb-1">Distance</p>
                         <p className="font-semibold text-lg">{formatDistance(trackingInfo.distance)}</p>
-                        <p className="text-blue-100 text-sm">From your location</p>
+                        <p className="text-purple-100 text-sm">From your location</p>
                       </div>
                       <div className="bg-white/20 rounded-xl p-4">
-                        <p className="text-blue-100 text-sm mb-1">ETA</p>
+                        <p className="text-purple-100 text-sm mb-1">ETA</p>
                         <p className="font-semibold text-lg">{formatDuration(trackingInfo.duration)}</p>
-                        <p className="text-blue-100 text-sm">Estimated arrival</p>
+                        <p className="text-purple-100 text-sm">Estimated arrival</p>
                       </div>
                     </div>
                   )}
@@ -559,30 +574,65 @@ const UserTracking: React.FC = () => {
 
             {/* Service Status Card */}
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6">
+              <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6">
                 <h2 className="text-2xl font-bold mb-4">Service Status</h2>
-                <div className="flex items-center">
-                  <div className="mr-4">
-                    {getStatusIcon(booking.status)}
+                
+                {booking?.status === 'broadcast' && (
+                  <div className="flex items-center">
+                    <div className="animate-pulse">
+                      <ClockIcon className="w-8 h-8 mr-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-lg">Waiting for Provider</p>
+                      <p className="text-blue-100">Your service request has been broadcast to nearby providers</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-lg">{getStatusText(booking.status)}</p>
-                    <p className="text-blue-100">{getStatusDescription(booking.status)}</p>
+                )}
+                
+                {booking?.status === 'confirmed' && (
+                  <div className="flex items-center">
+                    <CheckCircleIcon className="w-8 h-8 mr-4" />
+                    <div>
+                      <p className="font-semibold text-lg">Provider Confirmed</p>
+                      <p className="text-blue-100">A provider has accepted your request and is on the way</p>
+                    </div>
                   </div>
-                </div>
+                )}
+                
+                {booking?.status === 'in_progress' && (
+                  <div className="flex items-center">
+                    <div className="animate-pulse">
+                      <MapPinIcon className="w-8 h-8 mr-4" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-lg">Service In Progress</p>
+                      <p className="text-blue-100">Provider is currently working on your service</p>
+                    </div>
+                  </div>
+                )}
+                
+                {booking?.status === 'completed' && (
+                  <div className="flex items-center">
+                    <CheckSolidIcon className="w-8 h-8 mr-4" />
+                    <div>
+                      <p className="font-semibold text-lg">Service Completed</p>
+                      <p className="text-blue-100">Your service has been completed successfully</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Service Information */}
+              {/* Service Details */}
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Service Type</p>
-                    <p className="font-semibold text-gray-900">{booking.service.title}</p>
+                    <p className="text-sm text-gray-600 mb-1">Service</p>
+                    <p className="font-semibold text-gray-900">{booking.service?.title || 'Service'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Scheduled Date</p>
                     <p className="font-semibold text-gray-900">
-                      {new Date(booking.scheduledDate).toLocaleDateString()}
+                      {booking.scheduledDate ? new Date(booking.scheduledDate).toLocaleDateString() : 'Not scheduled'}
                     </p>
                   </div>
                   <div>
@@ -593,51 +643,37 @@ const UserTracking: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Total Amount</p>
-                    <p className="font-semibold text-blue-600 text-lg">¥{booking.totalAmount || booking.price?.totalPrice || 0}</p>
+                    <p className="font-semibold text-gray-900">¥{booking.totalAmount || booking.price?.totalPrice || 0}</p>
                   </div>
                 </div>
 
-                {/* Service Notes */}
-                {booking.notes && (
-                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                    <p className="text-sm font-semibold text-blue-900 mb-1">Service Notes:</p>
-                    <p className="text-sm text-blue-700">{booking.notes}</p>
+                {/* Payment Status */}
+                <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <CreditCardIcon className="w-5 h-5 mr-2 text-gray-600" />
+                      <div>
+                        <p className="text-sm text-gray-600">Payment Status</p>
+                        <p className="font-semibold">
+                          {paymentStatus === 'pending' && <span className="text-yellow-600">Pending</span>}
+                          {paymentStatus === 'paid' && <span className="text-green-600">Paid</span>}
+                          {paymentStatus === 'failed' && <span className="text-red-600">Failed</span>}
+                        </p>
+                      </div>
+                    </div>
+                    {paymentStatus === 'pending' && (
+                      <button
+                        onClick={() => setShowPaymentModal(true)}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                      >
+                        Pay Now
+                      </button>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
-            {/* Payment Section */}
-            {booking.status === 'completed' && paymentStatus === 'pending' && (
-              <div className="bg-white rounded-2xl shadow-xl p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                  <CreditCardIcon className="w-6 h-6 mr-2 text-blue-500" />
-                  Payment Required
-                </h2>
-                <div className="space-y-4">
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-600">Service Amount:</span>
-                      <span className="font-medium">¥{booking.totalAmount || booking.price?.totalPrice || 0}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-gray-900">Total:</span>
-                      <span className="font-bold text-lg text-blue-600">¥{booking.totalAmount || booking.price?.totalPrice || 0}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowPaymentModal(true)}
-                    className="w-full px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-medium"
-                  >
-                    Pay Now
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
             {/* Provider Information */}
             {booking.provider && (
               <div className="bg-white rounded-2xl shadow-xl p-6">
@@ -652,7 +688,12 @@ const UserTracking: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">{booking.provider.name}</p>
-                      <p className="text-sm text-gray-500">Service Provider</p>
+                      {booking.provider.verified && (
+                        <div className="flex items-center text-sm text-green-600">
+                          <ShieldCheckIcon className="w-4 h-4 mr-1" />
+                          Verified Provider
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -667,14 +708,8 @@ const UserTracking: React.FC = () => {
                     </div>
                     {booking.provider.rating && (
                       <div className="flex items-center text-sm">
-                        <StarIcon className="w-4 h-4 mr-2 text-yellow-400" />
-                        <span className="text-gray-600">{booking.provider.rating} ({booking.provider.totalServices} services)</span>
-                      </div>
-                    )}
-                    {booking.provider.verified && (
-                      <div className="flex items-center text-sm">
-                        <ShieldCheckIcon className="w-4 h-4 mr-2 text-green-500" />
-                        <span className="text-green-600">Verified Provider</span>
+                        <StarSolidIcon className="w-4 h-4 mr-1 text-yellow-500" />
+                        <span className="text-gray-600">{booking.provider.rating} rating</span>
                       </div>
                     )}
                   </div>
@@ -698,21 +733,54 @@ const UserTracking: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Service Timeline */}
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Service Details */}
+            <div className="bg-white rounded-2xl shadow-xl p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <CalendarIcon className="w-5 h-5 mr-2 text-blue-500" />
+                Service Details
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-600">Service</p>
+                  <p className="font-medium text-gray-900">{booking.service?.title || 'Service'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Category</p>
+                  <p className="font-medium text-gray-900">
+                    {booking.service?.category?.replace(/_/g, ' ')?.replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Duration</p>
+                  <p className="font-medium text-gray-900">
+                    {booking.service?.duration?.value || 'N/A'} {booking.service?.duration?.unit || ''}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Price</p>
+                  <p className="font-medium text-gray-900">¥{booking.service?.price || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Timeline */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <ClockIcon className="w-5 h-5 mr-2 text-blue-500" />
-                Service Timeline
+                Live Timeline
               </h3>
               <div className="space-y-4">
                 {timelineEvents.map((event, index) => (
                   <div key={event.id} className="flex items-start">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 mt-0.5 ${
-                      event.completed ? 'bg-blue-100' : 'bg-gray-100'
+                      event.completed ? 'bg-green-100' : 'bg-gray-100'
                     }`}>
                       {event.completed ? (
-                        <CheckSolidIcon className="w-4 h-4 text-blue-600" />
+                        <CheckSolidIcon className="w-4 h-4 text-green-600" />
                       ) : (
                         <div className="w-4 h-4 bg-gray-400 rounded-full animate-pulse"></div>
                       )}
@@ -725,20 +793,31 @@ const UserTracking: React.FC = () => {
                   </div>
                 ))}
                 
-                {booking.status === 'in_progress' && (
+                {booking?.status === 'in_progress' && (
                   <div className="flex items-start">
                     <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3 mt-0.5">
                       <div className="w-4 h-4 bg-purple-600 rounded-full animate-pulse"></div>
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">Service In Progress</p>
-                      <p className="text-sm text-gray-600">Provider is working on your service</p>
-                      <p className="text-xs text-gray-500">Tracking live...</p>
+                      <p className="text-sm text-gray-600">Provider is currently working on your service</p>
+                      <p className="text-xs text-gray-500">{new Date().toLocaleString()}</p>
                     </div>
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Notes */}
+            {booking.notes && (
+              <div className="bg-white rounded-2xl shadow-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <ExclamationTriangleIcon className="w-5 h-5 mr-2 text-yellow-500" />
+                  Notes
+                </h3>
+                <p className="text-gray-700 bg-gray-50 p-4 rounded-xl">{booking.notes}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -746,52 +825,40 @@ const UserTracking: React.FC = () => {
       {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-t-2xl">
-              <h3 className="text-xl font-bold">Complete Payment</h3>
-              <p className="text-purple-100">Secure payment via Razorpay</p>
-            </div>
-            
-            <div className="p-6">
-              <div className="space-y-4">
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-600">Service:</span>
-                    <span className="font-medium">{booking.service.title}</span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-600">Amount:</span>
-                    <span className="font-medium">¥{booking.totalAmount || booking.price?.totalPrice || 0}</span>
-                  </div>
-                  <div className="border-t pt-2 flex justify-between items-center">
-                    <span className="font-semibold text-gray-900">Total:</span>
-                    <span className="font-bold text-lg text-purple-600">¥{booking.totalAmount || booking.price?.totalPrice || 0}</span>
-                  </div>
-                </div>
-                
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => setShowPaymentModal(false)}
-                    className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-colors font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handlePayNow}
-                    disabled={processingPayment}
-                    className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-medium disabled:opacity-50"
-                  >
-                    {processingPayment ? 'Processing...' : 'Pay Now'}
-                  </button>
-                </div>
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Complete Payment</h3>
+            <p className="text-gray-600 mb-6">
+              Complete the payment to confirm your booking
+            </p>
+            <div className="bg-gray-50 rounded-xl p-4 mb-6">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Amount:</span>
+                <span className="text-2xl font-bold text-gray-900">
+                  ¥{booking.totalAmount || booking.price?.totalPrice || 0}
+                </span>
               </div>
+            </div>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePayNow}
+                disabled={processingPayment}
+                className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-medium disabled:opacity-50"
+              >
+                {processingPayment ? 'Processing...' : 'Pay Now'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* Chat Component */}
-      {booking.provider && (
+      {booking && booking.provider && (
         <ChatComponent
           bookingId={booking._id}
           recipientId={booking.provider._id}

@@ -2112,7 +2112,25 @@ const fetchProviderStatus = async () => {
                       <p className="text-gray-900">
                         {typeof booking.address === 'string' 
                           ? (booking.address === 'Current Location' ? 'Customer Location (Exact address will be shared after acceptance)' : booking.address)
-                          : `${booking.address?.street || 'Customer Location'}, ${booking.address?.city || ''}, ${booking.address?.state || ''} - ${booking.address?.pincode || ''}`
+                          : (() => {
+                              const street = booking.address?.street || 'Customer Location';
+                              const city = booking.address?.city;
+                              const state = booking.address?.state;
+                              const pincode = booking.address?.pincode;
+                              
+                              // Check if using current location with unknown values
+                              if (city === 'Unknown City' || state === 'Unknown State' || pincode === '000000') {
+                                return 'Customer Location (Exact address will be shared after acceptance)';
+                              }
+                              
+                              // Build address string with available parts
+                              const parts = [street];
+                              if (city) parts.push(city);
+                              if (state) parts.push(state);
+                              if (pincode) parts.push(`- ${pincode}`);
+                              
+                              return parts.join(', ');
+                            })()
                         }
                       </p>
                     </div>

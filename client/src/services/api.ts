@@ -265,6 +265,10 @@ getAllKYC: (status?: string) =>
   
   rejectKYC: (userId: string, reason: string) =>
     api.post(`/admin/kyc/${userId}/reject`, { reason }).then(res => res.data),
+
+  addProviderBonus: (providerId: string, amount: number, description?: string) =>
+    api.post(`/admin/wallet/${providerId}/bonus`, { amount, description }).then(res => res.data),
+  
   
   getKYCDocumentUrl: (filename: string) => {
     const baseUrl = API_BASE_URL.replace('/api', '');

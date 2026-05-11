@@ -571,7 +571,6 @@ const Services: React.FC = () => {
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:20,borderTop:'1px solid var(--bord)'}}>
                       <div>
                         <div style={{display:'flex',alignItems:'center'}}>
-                          <CurrencyIcon style={{width:20,height:20,color:'#4ADE80',marginRight:6,flexShrink:0}}/>
                           <p style={{fontSize:28,fontWeight:900,color:'#fff',lineHeight:1}}>{service.price}</p>
                         </div>
                         <p style={{fontSize:12,color:'var(--muted)',marginTop:4}}>{service.priceType}</p>
@@ -940,7 +939,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px'}}>
               <div style={{display: 'flex', alignItems: 'center'}}>
                 <span style={{fontSize: '24px', marginRight: '8px'}}>💰</span>
-                <p style={{fontSize: '28px', fontWeight: '800', color: '#4ADE80'}}>₹{service.price}</p>
+                <p style={{fontSize: '28px', fontWeight: '800', color: '#4ADE80'}}>{service.price}</p>
                 <span style={{color: 'var(--muted)', marginLeft: '8px'}}>{service.priceType}</span>
               </div>
               <div style={{display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px', color: 'var(--muted)'}}>

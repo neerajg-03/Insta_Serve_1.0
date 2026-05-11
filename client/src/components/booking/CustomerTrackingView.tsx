@@ -47,9 +47,23 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
 
   useEffect(() => {
     if (providerLocation && booking.address) {
-      const addressString = typeof booking.address === 'string' 
-        ? booking.address 
-        : `${booking.address?.street || ''}, ${booking.address?.city || ''}, ${booking.address?.state || ''} - ${booking.address?.pincode || ''}`;
+      let addressString: string;
+      if (typeof booking.address === 'string') {
+        addressString = booking.address;
+      } else {
+        const street = booking.address?.street || '';
+        const city = booking.address?.city;
+        const state = booking.address?.state;
+        const pincode = booking.address?.pincode;
+        
+        // Skip unknown values
+        const parts = [street];
+        if (city && city !== 'Unknown City') parts.push(city);
+        if (state && state !== 'Unknown State') parts.push(state);
+        if (pincode && pincode !== '000000') parts.push(`- ${pincode}`);
+        
+        addressString = parts.join(', ');
+      }
       
       const url = `https://www.google.com/maps/dir/?api=1&origin=${providerLocation.lat},${providerLocation.lng}&destination=${encodeURIComponent(addressString)}&travelmode=driving`;
       setMapUrl(url);
@@ -76,7 +90,18 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
   const formatAddress = (address: string | any) => {
     if (typeof address === 'string') return address;
     if (typeof address === 'object' && address !== null) {
-      return `${address.street || ''}, ${address.city || ''}, ${address.state || ''} - ${address.pincode || ''}`;
+      const street = address.street || '';
+      const city = address.city;
+      const state = address.state;
+      const pincode = address.pincode;
+      
+      // Skip unknown values
+      const parts = [street];
+      if (city && city !== 'Unknown City') parts.push(city);
+      if (state && state !== 'Unknown State') parts.push(state);
+      if (pincode && pincode !== '000000') parts.push(`- ${pincode}`);
+      
+      return parts.join(', ') || 'Address not available';
     }
     return 'Address not available';
   };

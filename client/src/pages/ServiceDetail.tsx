@@ -310,7 +310,7 @@ const ServiceDetail: React.FC = () => {
                   <span className="text-2xl mr-2">💰</span>
                   <div>
                     <p className="text-sm text-gray-600">Price</p>
-                    <p className="text-lg font-semibold">₹{service.price}/{service.priceType}</p>
+                    <p className="text-lg font-semibold">{service.price}/{service.priceType}</p>
                   </div>
                 </div>
                 <div className="flex items-center">
@@ -454,7 +454,7 @@ const ServiceDetail: React.FC = () => {
             <div className="mb-4">
               <h4 className="font-semibold text-gray-900">{service?.title || 'Service'}</h4>
               <p className="text-gray-600">Provider: {selectedProvider?.name || 'Provider'}</p>
-              <p className="text-lg font-semibold text-blue-600 mt-2">₹{service?.price || 0}/{service?.priceType || 'service'}</p>
+              <p className="text-lg font-semibold text-blue-600 mt-2">{service?.price || 0}/{service?.priceType || 'service'}</p>
             </div>
 
             <div className="space-y-4">

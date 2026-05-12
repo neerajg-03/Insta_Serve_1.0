@@ -836,7 +836,7 @@ const Dashboard: React.FC = () => {
                           Chat
                         </button>
                       </>
-                    ) : (
+                    ) :booking.status!== 'completed' && (
                       <button
                         onClick={() => {
                           setSelectedBookingForChat(booking);

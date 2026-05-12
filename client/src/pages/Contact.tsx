@@ -367,8 +367,8 @@ const Contact: React.FC = () => {
                     </div>
                     <div>
                       <h3 style={{fontSize:16,fontWeight:700,marginBottom:4}}>Phone Support</h3>
-                      <p style={{fontSize:14,color:'var(--muted)',marginBottom:4}}>+91 1800-123-4567</p>
-                      <p style={{fontSize:12,color:'#4ADE80',fontWeight:600}}>Available 9 AM - 8 PM</p>
+                      <p style={{fontSize:14,color:'var(--muted)',marginBottom:4}}>+91 8368164831</p>
+                      <p style={{fontSize:12,color:'#4ADE80',fontWeight:600}}>Available 10 AM - 8 PM</p>
                     </div>
                   </div>
 

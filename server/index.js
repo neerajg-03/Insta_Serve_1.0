@@ -153,6 +153,7 @@ app.use('/api', require('./routes/kyc'));
 app.use('/api/razorpay-route', require('./routes/razorpayRoute'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/maps', require('./routes/maps'));
+app.use('/api/contact', require('./routes/contact'));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

@@ -1173,36 +1173,36 @@ const fetchProviderStatus = async () => {
     return (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-4 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
         <div className="relative z-10">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent">
                 Welcome back, {user?.name}!
               </h1>
-              <p className="text-emerald-100 text-lg">Manage your services and grow your business</p>
-              <div className="mt-4 flex items-center space-x-4">
-                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg">
-                  <CheckBadgeIcon className="w-5 h-5 text-emerald-200" />
-                  <span className="text-sm font-medium">Professional Provider</span>
+              <p className="text-emerald-100 text-sm sm:text-base md:text-lg">Manage your services and grow your business</p>
+              <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-2 sm:gap-4">
+                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-2 sm:px-3 py-2 rounded-lg">
+                  <CheckBadgeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-200" />
+                  <span className="text-xs sm:text-sm font-medium">Professional Provider</span>
                 </div>
-                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg">
-                  <StarSolidIcon className="w-5 h-5 text-yellow-300" />
-                  <span className="text-sm font-medium">{earningsData.averageRating.toFixed(1)} Rating</span>
+                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-2 sm:px-3 py-2 rounded-lg">
+                  <StarSolidIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-300" />
+                  <span className="text-xs sm:text-sm font-medium">{earningsData.averageRating.toFixed(1)} Rating</span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className={`px-4 py-2 rounded-full text-sm font-medium flex items-center backdrop-blur-sm ${getKycStatusColor(kycStatus)}`}>
+            <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end">
+              <div className={`px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center backdrop-blur-sm ${getKycStatusColor(kycStatus)}`}>
                 {getKycStatusIcon(kycStatus)}
-                <span className="ml-2">KYC {kycStatus?.toUpperCase() || 'NOT SUBMITTED'}</span>
+                <span className="ml-1 sm:ml-2">KYC {kycStatus?.toUpperCase() || 'NOT SUBMITTED'}</span>
               </div>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-3 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-all duration-200 hover:scale-105"
+                className="relative p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-all duration-200 hover:scale-105"
               >
-                <BellIcon className="w-6 h-6" />
+                <BellIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                 {notifications.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
                     {notifications.length}
@@ -1215,25 +1215,25 @@ const fetchProviderStatus = async () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div 
-          className="group bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105 cursor-pointer"
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <div
+          className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105 cursor-pointer"
           onClick={() => navigate('/provider/wallet')}
         >
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 font-medium flex items-center">
-                <BanknotesIcon className="w-4 h-4 mr-1 text-green-500" />
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
+                <BanknotesIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-green-500" />
                 Wallet Balance
               </p>
-              <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mt-2">
+              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mt-1 sm:mt-2">
                 {walletLoading ? (
                   <span className="animate-pulse">₹0</span>
                 ) : (
                   <>₹{walletData.balance.toLocaleString()}</>
                 )}
               </p>
-              <p className="text-xs text-green-600 mt-2 flex items-center font-medium">
+              <p className="text-xs text-green-600 mt-1 sm:mt-2 flex items-center font-medium">
                 <ShieldCheckIcon className="w-3 h-3 mr-1" />
                 {walletLoading ? (
                   <span className="animate-pulse">Loading...</span>
@@ -1242,27 +1242,27 @@ const fetchProviderStatus = async () => {
                 )}
               </p>
             </div>
-            <div className="p-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl group-hover:scale-110 transition-transform">
-              <CurrencyDollarIcon className="w-8 h-8 text-green-600" />
+            <div className="p-3 sm:p-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl ml-2 sm:ml-0 group-hover:scale-110 transition-transform">
+              <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="group bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
+        <div className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 font-medium flex items-center">
-                <ExclamationTriangleIcon className="w-4 h-4 mr-1 text-blue-500" />
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
+                <ExclamationTriangleIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-blue-500" />
                 Minimum Balance
               </p>
-              <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-2">
+              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-1 sm:mt-2">
                 {walletLoading ? (
                   <span className="animate-pulse">₹0</span>
                 ) : (
                   <>₹{walletData.minimumBalance.toLocaleString()}</>
                 )}
               </p>
-              <p className="text-xs text-blue-600 mt-2 flex items-center font-medium">
+              <p className="text-xs text-blue-600 mt-1 sm:mt-2 flex items-center font-medium">
                 <CheckCircleIcon className="w-3 h-3 mr-1" />
                 Required to receive requests
               </p>
@@ -1270,21 +1270,21 @@ const fetchProviderStatus = async () => {
           </div>
         </div>
 
-        <div className="group bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
+        <div className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 font-medium flex items-center">
-                <CalendarIcon className="w-4 h-4 mr-1 text-blue-500" />
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
+                <CalendarIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-blue-500" />
                 Completed Bookings
               </p>
-              <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-2">
+              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-1 sm:mt-2">
                 {overviewLoading ? (
                   <span className="animate-pulse">0</span>
                 ) : (
                   <>{bookings.filter(b => b.status === 'completed').length}</>
                 )}
               </p>
-              <p className="text-xs text-blue-600 mt-2 flex items-center font-medium">
+              <p className="text-xs text-blue-600 mt-1 sm:mt-2 flex items-center font-medium">
                 <CheckCircleIcon className="w-3 h-3 mr-1" />
                 {overviewLoading ? (
                   <span className="animate-pulse">Loading...</span>
@@ -1293,27 +1293,27 @@ const fetchProviderStatus = async () => {
                 )}
               </p>
             </div>
-            <div className="p-4 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl group-hover:scale-110 transition-transform">
-              <CalendarIcon className="w-8 h-8 text-blue-600" />
+            <div className="p-3 sm:p-4 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl ml-2 sm:ml-0 group-hover:scale-110 transition-transform">
+              <CalendarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="group bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
+        <div className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 font-medium flex items-center">
-                <WrenchScrewdriverIcon className="w-4 h-4 mr-1 text-purple-500" />
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
+                <WrenchScrewdriverIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-purple-500" />
                 Active Services
               </p>
-              <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mt-2">
+              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mt-1 sm:mt-2">
                 {overviewLoading ? (
                   <span className="animate-pulse">0</span>
                 ) : (
                   <>{myServices.filter(s => s.isApproved && s.isActive).length}</>
                 )}
               </p>
-              <p className="text-xs text-purple-600 mt-2 flex items-center font-medium">
+              <p className="text-xs text-purple-600 mt-1 sm:mt-2 flex items-center font-medium">
                 <WrenchScrewdriverIcon className="w-3 h-3 mr-1" />
                 {overviewLoading ? (
                   <span className="animate-pulse">Loading...</span>
@@ -1322,27 +1322,27 @@ const fetchProviderStatus = async () => {
                 )}
               </p>
             </div>
-            <div className="p-4 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl group-hover:scale-110 transition-transform">
-              <WrenchScrewdriverIcon className="w-8 h-8 text-purple-600" />
+            <div className="p-3 sm:p-4 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl ml-2 sm:ml-0 group-hover:scale-110 transition-transform">
+              <WrenchScrewdriverIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
             </div>
           </div>
         </div>
 
-        <div className="group bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
+        <div className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 font-medium flex items-center">
-                <StarIcon className="w-4 h-4 mr-1 text-yellow-500" />
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
+                <StarIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-yellow-500" />
                 Average Rating
               </p>
-              <p className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mt-2">
+              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mt-1 sm:mt-2">
                 {overviewLoading ? (
                   <span className="animate-pulse">0.0</span>
                 ) : (
                   <>{earningsData.averageRating.toFixed(1)}</>
                 )}
               </p>
-              <p className="text-xs text-yellow-600 mt-2 flex items-center font-medium">
+              <p className="text-xs text-yellow-600 mt-1 sm:mt-2 flex items-center font-medium">
                 <StarSolidIcon className="w-3 h-3 mr-1 text-yellow-500" />
                 {overviewLoading ? (
                   <span className="animate-pulse">Loading...</span>
@@ -1351,8 +1351,8 @@ const fetchProviderStatus = async () => {
                 )}
               </p>
             </div>
-            <div className="p-4 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-xl group-hover:scale-110 transition-transform">
-              <StarIcon className="w-8 h-8 text-yellow-600" />
+            <div className="p-3 sm:p-4 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-xl ml-2 sm:ml-0 group-hover:scale-110 transition-transform">
+              <StarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
             </div>
           </div>
         </div>
@@ -1360,20 +1360,20 @@ const fetchProviderStatus = async () => {
 
       {/* Balance Warning Banner */}
       {!walletData.canReceiveRequests && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex items-start">
-            <ExclamationTriangleIcon className="w-6 h-6 text-red-600 mt-0.5 mr-4 flex-shrink-0" />
-            <div>
-              <h3 className="text-lg font-semibold text-red-800 mb-2">Insufficient Wallet Balance</h3>
-              <p className="text-red-700 mb-4">
-                You need a minimum balance of ₹{walletData.minimumBalance} to receive service requests. 
+            <ExclamationTriangleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 mt-0.5 mr-3 sm:mr-4 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-base sm:text-lg font-semibold text-red-800 mb-2">Insufficient Wallet Balance</h3>
+              <p className="text-sm sm:text-base text-red-700 mb-3 sm:mb-4">
+                You need a minimum balance of ₹{walletData.minimumBalance} to receive service requests.
                 Your current balance is ₹{walletData.balance}.
               </p>
               <button
                 onClick={() => navigate('/provider/wallet')}
-                className="inline-flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm w-full sm:w-auto"
               >
-                <BanknotesIcon className="w-5 h-5 mr-2" />
+                <BanknotesIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 Recharge Wallet Now
               </button>
             </div>
@@ -1382,7 +1382,7 @@ const fetchProviderStatus = async () => {
       )}
 
       {/* Compact Status Box - Top Right Corner */}
-      <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-64">
+      <div className="hidden sm:fixed sm:top-4 sm:right-4 sm:z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-64">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -1390,7 +1390,7 @@ const fetchProviderStatus = async () => {
           </div>
           <div className="text-xs text-green-600 font-medium">Available</div>
         </div>
-        
+
         {currentLocation && (
           <div className="space-y-1">
             <div className="flex items-center justify-between">
@@ -1415,48 +1415,48 @@ const fetchProviderStatus = async () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-          <SparklesIcon className="w-6 h-6 mr-2 text-yellow-500" />
+      <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-100">
+        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center">
+          <SparklesIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-yellow-500" />
           Quick Actions
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <button
             onClick={() => setActiveTab('services')}
-            className="group p-6 bg-gradient-to-br from-blue-50 via-blue-100 to-indigo-100 rounded-xl hover:from-blue-100 hover:via-indigo-100 hover:to-indigo-200 transition-all duration-300 border border-blue-200 text-left hover:shadow-lg hover:scale-105"
+            className="group p-4 sm:p-6 bg-gradient-to-br from-blue-50 via-blue-100 to-indigo-100 rounded-xl hover:from-blue-100 hover:via-indigo-100 hover:to-indigo-200 transition-all duration-300 border border-blue-200 text-left hover:shadow-lg hover:scale-105"
           >
-            <div className="flex items-center justify-between mb-3">
-              <WrenchScrewdriverIcon className="w-8 h-8 text-blue-600 group-hover:scale-110 transition-transform" />
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <WrenchScrewdriverIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 group-hover:scale-110 transition-transform" />
               <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full">{myServices.length}</span>
             </div>
-            <h4 className="font-semibold text-gray-900 mb-1">Manage Services</h4>
-            <p className="text-sm text-gray-600">Add or edit services</p>
+            <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">Manage Services</h4>
+            <p className="text-xs sm:text-sm text-gray-600">Add or edit services</p>
             <ArrowRightIcon className="w-4 h-4 text-blue-600 mt-2 group-hover:translate-x-1 transition-transform" />
           </button>
 
           <button
             onClick={() => setActiveTab('incoming')}
-            className="group p-6 bg-gradient-to-br from-purple-50 via-purple-100 to-pink-100 rounded-xl hover:from-purple-100 hover:via-pink-100 hover:to-pink-200 transition-all duration-300 border border-purple-200 text-left hover:shadow-lg hover:scale-105"
+            className="group p-4 sm:p-6 bg-gradient-to-br from-purple-50 via-purple-100 to-pink-100 rounded-xl hover:from-purple-100 hover:via-pink-100 hover:to-pink-200 transition-all duration-300 border border-purple-200 text-left hover:shadow-lg hover:scale-105"
           >
-            <div className="flex items-center justify-between mb-3">
-              <BellAlertIcon className="w-8 h-8 text-purple-600 group-hover:scale-110 transition-transform" />
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <BellAlertIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 group-hover:scale-110 transition-transform" />
               <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded-full">{incomingRequests.length}</span>
             </div>
-            <h4 className="font-semibold text-gray-900 mb-1">Incoming Requests</h4>
-            <p className="text-sm text-gray-600">View new bookings</p>
+            <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">Incoming Requests</h4>
+            <p className="text-xs sm:text-sm text-gray-600">View new bookings</p>
             <ArrowRightIcon className="w-4 h-4 text-purple-600 mt-2 group-hover:translate-x-1 transition-transform" />
           </button>
 
           <button
             onClick={() => setActiveTab('bookings')}
-            className="group p-6 bg-gradient-to-br from-green-50 via-green-100 to-emerald-100 rounded-xl hover:from-green-100 hover:via-emerald-100 hover:to-emerald-200 transition-all duration-300 border border-green-200 text-left hover:shadow-lg hover:scale-105"
+            className="group p-4 sm:p-6 bg-gradient-to-br from-green-50 via-green-100 to-emerald-100 rounded-xl hover:from-green-100 hover:via-emerald-100 hover:to-emerald-200 transition-all duration-300 border border-green-200 text-left hover:shadow-lg hover:scale-105"
           >
-            <div className="flex items-center justify-between mb-3">
-              <CalendarIcon className="w-8 h-8 text-green-600 group-hover:scale-110 transition-transform" />
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <CalendarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 group-hover:scale-110 transition-transform" />
               <span className="text-xs bg-green-600 text-white px-2 py-1 rounded-full">{bookings.length}</span>
             </div>
-            <h4 className="font-semibold text-gray-900 mb-1">My Bookings</h4>
-            <p className="text-sm text-gray-600">Manage appointments</p>
+            <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">My Bookings</h4>
+            <p className="text-xs sm:text-sm text-gray-600">Manage appointments</p>
             <ArrowRightIcon className="w-4 h-4 text-green-600 mt-2 group-hover:translate-x-1 transition-transform" />
           </button>
 
@@ -2805,22 +2805,22 @@ const fetchProviderStatus = async () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Provider Dashboard</h1>
-              <p className="text-gray-600 mt-2">Manage your services and grow your business</p>
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-4 md:px-6 lg:px-8">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Provider Dashboard</h1>
+              <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your services and grow your business</p>
             </div>
-            
+
             {/* API Status Indicator */}
-            <div className="flex items-center">
+            <div className="flex items-center w-full sm:w-auto justify-start sm:justify-end">
               <div className={`w-2 h-2 rounded-full mr-2 ${
-                apiStatus === 'connected' ? 'bg-green-500' : 
+                apiStatus === 'connected' ? 'bg-green-500' :
                 apiStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'
               }`}></div>
-              <span className="text-sm text-gray-600">
-                {apiStatus === 'connected' ? 'API Connected' : 
+              <span className="text-xs sm:text-sm text-gray-600">
+                {apiStatus === 'connected' ? 'API Connected' :
                  apiStatus === 'checking' ? 'Checking API...' : 'API Disconnected'}
               </span>
             </div>
@@ -2828,25 +2828,25 @@ const fetchProviderStatus = async () => {
           
           {/* KYC Status Alert */}
           {kycStatus && kycStatus !== 'approved' && (
-            <div className={`mt-4 border rounded-lg p-4 ${
-              kycStatus === 'pending' 
-                ? 'bg-yellow-50 border-yellow-200' 
+            <div className={`mt-4 border rounded-lg p-3 sm:p-4 ${
+              kycStatus === 'pending'
+                ? 'bg-yellow-50 border-yellow-200'
                 : kycStatus === 'rejected'
                 ? 'bg-red-50 border-red-200'
                 : 'bg-blue-50 border-blue-200'
             }`}>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center">
                   <div className={`w-2 h-2 rounded-full mr-2 ${
-                    kycStatus === 'pending' 
-                      ? 'bg-yellow-500 animate-pulse' 
+                    kycStatus === 'pending'
+                      ? 'bg-yellow-500 animate-pulse'
                       : kycStatus === 'rejected'
                       ? 'bg-red-500'
                       : 'bg-blue-500'
                   }`}></div>
-                  <span className={`font-medium ${
-                    kycStatus === 'pending' 
-                      ? 'text-yellow-800' 
+                  <span className={`font-medium text-sm sm:text-base ${
+                    kycStatus === 'pending'
+                      ? 'text-yellow-800'
                       : kycStatus === 'rejected'
                       ? 'text-red-800'
                       : 'text-blue-800'
@@ -2858,55 +2858,55 @@ const fetchProviderStatus = async () => {
                 </div>
                 <Link
                   to="/provider/kyc"
-                  className="btn btn-primary text-sm"
+                  className="btn btn-primary text-xs sm:text-sm w-full sm:w-auto text-center"
                 >
                   {kycStatus === 'pending' ? 'View Documents' : 'Complete KYC'}
                 </Link>
               </div>
               {kycStatus === 'rejected' && (
-                <p className="mt-2 text-sm text-red-700">
+                <p className="mt-2 text-xs sm:text-sm text-red-700">
                   Your KYC documents were rejected. Please re-submit with correct documents.
                 </p>
               )}
               {!kycStatus && (
-                <p className="mt-2 text-sm text-blue-700">
+                <p className="mt-2 text-xs sm:text-sm text-blue-700">
                   Complete your KYC verification to start offering services and receive bookings.
                 </p>
               )}
             </div>
           )}
-          
+
           {/* KYC Approved Badge */}
           {kycStatus === 'approved' && (
-            <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
               <div className="flex items-center">
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span className="text-green-800 font-medium">
+                <span className="text-green-800 font-medium text-sm sm:text-base">
                   ✅ KYC Verified - Your account is fully verified
                 </span>
               </div>
             </div>
           )}
-          
+
           {/* Location Tracking Status */}
           {isTrackingLocation && (
-            <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
+            <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                  <span className="text-green-800 font-medium">
+                  <span className="text-green-800 font-medium text-sm sm:text-base">
                     📍 Location Tracking Active for Booking #{activeBookingId?.slice(-8)}
                   </span>
                 </div>
                 <button
                   onClick={stopLocationTracking}
-                  className="btn btn-outline text-sm text-red-600 hover:text-red-700"
+                  className="btn btn-outline text-xs sm:text-sm text-red-600 hover:text-red-700 w-full sm:w-auto"
                 >
                   Stop Tracking
                 </button>
               </div>
               {currentLocation && (
-                <div className="mt-2 text-sm text-green-700">
+                <div className="mt-2 text-xs sm:text-sm text-green-700">
                   📍 Current: {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
                 </div>
               )}

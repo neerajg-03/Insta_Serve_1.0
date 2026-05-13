@@ -18,7 +18,9 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: function() {
+      return this.authMethod !== 'google';
+    },
     minlength: [6, 'Password must be at least 6 characters long']
   },
   phone: {
@@ -31,11 +33,7 @@ const userSchema = new mongoose.Schema({
     enum: ['customer', 'provider', 'admin'],
     default: 'customer'
   },
-  profilePicture: {
-    type: String,
-    default: ''
-  },
-  address: {
+    address: {
     street: String,
     city: String,
     state: String,
@@ -157,6 +155,20 @@ const userSchema = new mongoose.Schema({
     ifscCode: String,
     bankName: String,
     branchName: String
+  },
+  // Google OAuth fields
+  googleId: {
+    type: String,
+    sparse: true
+  },
+  authMethod: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
+  profilePicture: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true
@@ -164,6 +176,9 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
+  // Skip password hashing for Google OAuth users
+  if (this.authMethod === 'google') return next();
+  
   if (!this.isModified('password')) return next();
   
   try {

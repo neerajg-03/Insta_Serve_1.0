@@ -3,27 +3,35 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { LocationData } from '../services/socketService';
+import { calculateDistance, formatDistance, formatDuration, calculateETA } from '../utils/geoUtils';
 
 interface LiveTrackingMapProps {
   providerLocation?: LocationData | null;
   customerLocation?: LocationData | null;
   isProvider?: boolean;
   bookingId?: string;
+  distance?: number;
+  duration?: number;
 }
 
 const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({ 
   providerLocation, 
   customerLocation, 
   isProvider = false,
-  bookingId
+  bookingId,
+  distance: propDistance,
+  duration: propDuration
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const providerMarkerRef = useRef<L.Marker | null>(null);
   const customerMarkerRef = useRef<L.Marker | null>(null);
   const routeLineRef = useRef<L.Polyline | null>(null);
+  const progressMarkersRef = useRef<L.Marker[]>([]);
   const [mapReady, setMapReady] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
+  const [calculatedDistance, setCalculatedDistance] = useState<number>(0);
+  const [calculatedDuration, setCalculatedDuration] = useState<number>(0);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -48,8 +56,28 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
     };
   }, []);
 
+  // Calculate distance when locations change
+  useEffect(() => {
+    if (providerLocation && customerLocation) {
+      const dist = calculateDistance(
+        { lat: providerLocation.lat, lng: providerLocation.lng },
+        { lat: customerLocation.lat, lng: customerLocation.lng }
+      );
+      setCalculatedDistance(dist);
+      setCalculatedDuration(calculateETA(dist));
+    }
+  }, [providerLocation, customerLocation]);
+
+  // Use provided distance/duration or calculated values
+  const displayDistance = propDistance !== undefined ? propDistance : calculatedDistance;
+  const displayDuration = propDuration !== undefined ? propDuration : calculatedDuration;
+
   useEffect(() => {
     if (!mapReady || !mapInstanceRef.current) return;
+
+    // Clear existing progress markers
+    progressMarkersRef.current.forEach(marker => marker.remove());
+    progressMarkersRef.current = [];
 
     // Custom animated icons
     const providerIcon = L.divIcon({
@@ -57,23 +85,23 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
         <div class="provider-marker" style="
           background: linear-gradient(135deg, #10b981, #059669);
           border-radius: 50%;
-          width: 40px;
-          height: 40px;
+          width: 45px;
+          height: 45px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 3px solid white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          border: 4px solid white;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4);
           animation: pulse 2s infinite;
         ">
-          <svg width="20" height="20" fill="white" viewBox="0 0 20 20">
+          <svg width="22" height="22" fill="white" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l4.05-4.95a7 7 0 11-9.9-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
           </svg>
         </div>
       `,
       className: 'provider-marker',
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
+      iconSize: [45, 45],
+      iconAnchor: [22, 22],
     });
 
     const customerIcon = L.divIcon({
@@ -81,22 +109,22 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
         <div class="customer-marker" style="
           background: linear-gradient(135deg, #3b82f6, #1d4ed8);
           border-radius: 50%;
-          width: 40px;
-          height: 40px;
+          width: 45px;
+          height: 45px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 3px solid white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          border: 4px solid white;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         ">
-          <svg width="20" height="20" fill="white" viewBox="0 0 20 20">
+          <svg width="22" height="22" fill="white" viewBox="0 0 20 20">
             <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
           </svg>
         </div>
       `,
       className: 'customer-marker',
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
+      iconSize: [45, 45],
+      iconAnchor: [22, 22],
     });
 
     // Update provider marker
@@ -124,7 +152,7 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
       }
     }
 
-    // Draw route between provider and customer
+    // Draw route between provider and customer with progress markers
     if (providerLocation && customerLocation) {
       if (routeLineRef.current) {
         routeLineRef.current.setLatLngs([
@@ -137,12 +165,50 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
           [customerLocation.lat, customerLocation.lng]
         ], {
           color: '#3b82f6',
-          weight: 4,
-          opacity: 0.7,
-          dashArray: '10, 10',
+          weight: 5,
+          opacity: 0.8,
+          dashArray: '15, 10',
           className: 'route-line'
         }).addTo(mapInstanceRef.current);
       }
+
+      // Add progress markers along the route (25%, 50%, 75%)
+      const progressPoints = [0.25, 0.5, 0.75];
+      progressPoints.forEach(progress => {
+        const lat = providerLocation.lat + (customerLocation.lat - providerLocation.lat) * progress;
+        const lng = providerLocation.lng + (customerLocation.lng - providerLocation.lng) * progress;
+        
+        const progressIcon = L.divIcon({
+          html: `
+            <div style="
+              background: rgba(59, 130, 246, 0.9);
+              border-radius: 50%;
+              width: 20px;
+              height: 20px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              border: 2px solid white;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            ">
+              <div style="
+                background: white;
+                border-radius: 50%;
+                width: 8px;
+                height: 8px;
+              "></div>
+            </div>
+          `,
+          className: 'progress-marker',
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
+        });
+
+        if (mapInstanceRef.current) {
+          const marker = L.marker([lat, lng], { icon: progressIcon }).addTo(mapInstanceRef.current);
+          progressMarkersRef.current.push(marker);
+        }
+      });
     }
 
     // Fit map to show both markers with route
@@ -151,7 +217,7 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
         [providerLocation.lat, providerLocation.lng],
         [customerLocation.lat, customerLocation.lng]
       ]);
-      mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+      mapInstanceRef.current.fitBounds(bounds, { padding: [80, 80] });
     } else if (isProvider && customerLocation) {
       mapInstanceRef.current.setView([customerLocation.lat, customerLocation.lng], 15);
     } else if (!isProvider && providerLocation) {
@@ -195,15 +261,68 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
       
       {/* Tracking Status Overlay */}
       {isTracking && (
-        <div className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center">
+        <div className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center shadow-lg">
           <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
           LIVE TRACKING
         </div>
       )}
 
+      {/* Distance & ETA Overlay */}
+      {isTracking && (displayDistance > 0 || displayDuration > 0) && (
+        <div className="absolute bottom-4 left-4 right-4 bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-2xl p-4 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Distance</p>
+                  <p className="text-lg font-bold text-gray-900">{formatDistance(displayDistance)}</p>
+                </div>
+              </div>
+              
+              <div className="h-10 w-px bg-gray-300"></div>
+              
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">ETA</p>
+                  <p className="text-lg font-bold text-gray-900">{formatDuration(displayDuration)}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Progress Indicator */}
+            <div className="flex items-center">
+              <div className="text-right">
+                <p className="text-xs text-gray-500">Progress</p>
+                <div className="flex items-center space-x-1">
+                  {[0.25, 0.5, 0.75, 1].map((progress, index) => (
+                    <div
+                      key={index}
+                      className={`w-2 h-2 rounded-full ${
+                        index < 3 ? 'bg-blue-500' : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Booking ID Overlay */}
       {bookingId && (
-        <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-lg text-xs">
+        <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded-lg text-xs font-medium backdrop-blur-sm">
           #{bookingId.slice(-8)}
         </div>
       )}

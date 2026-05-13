@@ -7,7 +7,6 @@ const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
 require('dotenv').config();
-const session = require('express-session');
 
 require('dotenv').config({ path: './server/.env' });
 const passport = require('./config/googleAuth');

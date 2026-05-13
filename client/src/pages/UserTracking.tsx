@@ -550,6 +550,8 @@ const UserTracking: React.FC = () => {
                     customerLocation={customerLocation}
                     isProvider={false}
                     bookingId={booking._id}
+                    distance={trackingInfo.distance}
+                    duration={trackingInfo.duration}
                   />
                   
                   <div className="mt-4 grid grid-cols-2 gap-4">

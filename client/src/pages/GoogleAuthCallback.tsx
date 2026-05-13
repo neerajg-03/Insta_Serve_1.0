@@ -43,7 +43,21 @@ const GoogleAuthCallback: React.FC = () => {
 
         const user = JSON.parse(decodeURIComponent(userParam));
         
-        // Store token and user data in Redux
+        // Check if this is a new user (isNewUser flag from backend)
+        if (user.isNewUser) {
+          // Redirect to completion page for new users
+          const googleData = {
+            googleId: user.googleId,
+            email: user.email,
+            name: user.name,
+            profilePicture: user.profilePicture
+          };
+          const redirectUrl = `/auth/google/complete?googleData=${encodeURIComponent(JSON.stringify(googleData))}`;
+          navigate(redirectUrl, { replace: true });
+          return;
+        }
+        
+        // Store token and user data in Redux for existing users
         await dispatch(loginUser({ token, user }) as any);
         
         toast.success('Login successful with Google!');

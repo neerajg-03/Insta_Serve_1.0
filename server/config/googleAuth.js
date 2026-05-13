@@ -65,7 +65,7 @@ if (
             return done(null, user);
           }
 
-          // Create new user
+          // For new users, create with placeholder values that will be updated via completion flow
           const newUser = new User({
             googleId: profile.id,
             email: profile.emails[0].value,
@@ -77,14 +77,14 @@ if (
             password:
               Math.random().toString(36).slice(-8) +
               'Google123!',
-            phone: '9999999999',
-            role: 'customer'
+            phone: '9999999999', // Placeholder - will be updated
+            role: 'customer' // Placeholder - will be updated
           });
 
           await newUser.save();
 
           console.log(
-            '✅ New Google user created successfully'
+            '✅ New Google user created with placeholder data - awaiting completion'
           );
 
           return done(null, newUser);

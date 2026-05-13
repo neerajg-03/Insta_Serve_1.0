@@ -39,9 +39,22 @@ const initialState: AuthState = {
 // Async thunks
 export const loginUser = createAsyncThunk(
   'auth/login',
-  async (credentials: { email: string; password: string }, { rejectWithValue }) => {
+  async (credentials: { email: string; password: string } | { token: string; user: User }, { rejectWithValue }) => {
     try {
-      const response = await authAPI.login(credentials);
+      let response;
+      
+      // Handle Google OAuth login
+      if ('token' in credentials && 'user' in credentials) {
+        response = {
+          token: credentials.token,
+          user: credentials.user,
+          message: 'Login successful'
+        };
+      } else {
+        // Handle regular email/password login
+        response = await authAPI.login(credentials as { email: string; password: string });
+      }
+      
       localStorage.setItem('token', response.token);
       return response;
     } catch (error: any) {

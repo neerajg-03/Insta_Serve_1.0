@@ -109,7 +109,7 @@ router.post(
             );
 
           await wallet.addBonus(
-            100,
+            300,
             'Signup bonus - Welcome to InstaServe!'
           );
 

@@ -326,10 +326,17 @@ router.get('/google/callback', (req, res, next) => {
         user.lastLogin = new Date();
         await user.save();
 
+        const userProfile = user.getProfile();
+        
+        // Add isNewUser flag for new users
+        if (user.authMethod === 'google' && !user.phone || user.phone === '9999999999') {
+          userProfile.isNewUser = true;
+        }
+
         const redirectUrl =
           `http://localhost:3000/auth/callback?token=${token}&user=${encodeURIComponent(
             JSON.stringify(
-              user.getProfile()
+              userProfile
             )
           )}`;
 
@@ -365,6 +372,117 @@ router.post(
     res.json({
       message: 'Logout successful'
     });
+  }
+);
+
+// @route   POST /api/auth/google/complete
+// @desc    Complete Google sign-up with additional info
+// @access  Public
+router.post(
+  '/google/complete',
+  async (req, res) => {
+    try {
+      const {
+        googleData,
+        phone,
+        role,
+        address
+      } = req.body;
+
+      if (!googleData || !googleData.googleId || !googleData.email) {
+        return res.status(400).json({
+          message: 'Invalid Google data'
+        });
+      }
+
+      if (!phone) {
+        return res.status(400).json({
+          message: 'Phone number is required'
+        });
+      }
+
+      if (!role || !['customer', 'provider'].includes(role)) {
+        return res.status(400).json({
+          message: 'Valid role is required'
+        });
+      }
+
+      // Check if user already exists
+      let user = await User.findOne({
+        googleId: googleData.googleId
+      });
+
+      if (user) {
+        // Update existing user with new info
+        user.phone = phone;
+        user.role = role;
+        if (address) {
+          user.address = address;
+        }
+        await user.save();
+      } else {
+        // Create new user with Google data and additional info
+        const newUser = new User({
+          googleId: googleData.googleId,
+          email: googleData.email,
+          name: googleData.name,
+          profilePicture: googleData.profilePicture || '',
+          authMethod: 'google',
+          emailVerified: true,
+          password:
+            Math.random().toString(36).slice(-8) +
+            'Google123!',
+          phone,
+          role,
+          address
+        });
+
+        await newUser.save();
+        user = newUser;
+      }
+
+      // Provider signup bonus
+      if (user.role === 'provider') {
+        try {
+          const wallet =
+            await ProviderWallet.getOrCreateWallet(
+              user._id
+            );
+
+          await wallet.addBonus(
+            100,
+            'Signup bonus - Welcome to InstaServe!'
+          );
+
+          console.log(
+            `💰 Added 100 Rs signup bonus to provider wallet: ${user.email}`
+          );
+        } catch (walletError) {
+          console.error(
+            'Wallet bonus error:',
+            walletError
+          );
+        }
+      }
+
+      const token = generateToken(user._id);
+
+      res.status(201).json({
+        message: 'Google sign-up completed successfully',
+        token,
+        user: user.getProfile()
+      });
+    } catch (error) {
+      console.error(
+        'Google completion error:',
+        error
+      );
+
+      res.status(500).json({
+        message:
+          'Server error during Google sign-up completion'
+      });
+    }
   }
 );
 

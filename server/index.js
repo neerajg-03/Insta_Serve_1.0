@@ -12,7 +12,7 @@ require('dotenv').config({ path: './server/.env' });
 const passport = require('./config/googleAuth');
 console.log(process.env.GOOGLE_CLIENT_ID);
 console.log(process.env.GOOGLE_CLIENT_SECRET);
-
+const session = require('express-session');
 const app = express();
 const server = http.createServer(app);
 

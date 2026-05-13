@@ -7,6 +7,12 @@ const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
 require('dotenv').config();
+const session = require('express-session');
+
+require('dotenv').config({ path: './server/.env' });
+const passport = require('./config/googleAuth');
+console.log(process.env.GOOGLE_CLIENT_ID);
+console.log(process.env.GOOGLE_CLIENT_SECRET);
 
 const app = express();
 const server = http.createServer(app);
@@ -126,6 +132,22 @@ app.use((req, res, next) => {
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Session middleware for Passport
+app.use(session({
+  secret: process.env.JWT_SECRET || 'your_session_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

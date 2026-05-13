@@ -18,6 +18,7 @@ import ProviderDashboard from './pages/ProviderDashboard';
 import KYCVerification from './pages/KYCVerification';
 import ProviderTracking from './pages/ProviderTracking';
 import UserTracking from './pages/UserTracking';
+import GoogleSignupComplete from './pages/GoogleSignupComplete';
 import Wallet from './pages/Wallet';
 import ProviderWallet from './pages/ProviderWallet';
 import EarningsDashboard from './pages/provider/EarningsDashboard';
@@ -60,6 +61,7 @@ function AppContent() {
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
           <Route path="auth/callback" element={<GoogleAuthCallback />} />
+          <Route path="auth/google/complete" element={<GoogleSignupComplete />} />
           <Route path="services" element={<Services />} />
           <Route path="services/:id" element={<ServiceDetail />} />
           <Route path="dashboard" element={

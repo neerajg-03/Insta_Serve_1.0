@@ -8,6 +8,7 @@ import { getCurrentUser } from './store/slices/authSlice';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import GoogleAuthCallback from './pages/GoogleAuthCallback';
 import Register from './pages/Register';
 import Services from './pages/Services';
 import ServiceDetail from './pages/ServiceDetail';
@@ -58,6 +59,7 @@ function AppContent() {
           <Route index element={<Home />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
+          <Route path="auth/callback" element={<GoogleAuthCallback />} />
           <Route path="services" element={<Services />} />
           <Route path="services/:id" element={<ServiceDetail />} />
           <Route path="dashboard" element={

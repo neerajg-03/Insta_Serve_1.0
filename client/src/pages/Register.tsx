@@ -264,7 +264,7 @@ const Register: React.FC = () => {
               type="button"
               onClick={async () => {
                 try {
-                  const response = await fetch('http://localhost:5000/api/auth/google', {
+                  const response = await fetch('https://insta-serve-1-0.onrender.com/api/auth/google/complete', {
                     method: 'GET',
                     redirect: 'manual'
                   });
@@ -274,9 +274,9 @@ const Register: React.FC = () => {
                     return;
                   }
                   
-                  window.location.href = 'http://localhost:5000/api/auth/google';
+                  window.location.href = 'https://insta-serve-1-0.onrender.com/api/auth/google/complete';
                 } catch (error) {
-                  window.location.href = 'http://localhost:5000/api/auth/google';
+                  window.location.href = 'https://insta-serve-1-0.onrender.com/api/auth/google/complete';
                 }
               }}
               className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"

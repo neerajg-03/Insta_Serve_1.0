@@ -62,7 +62,7 @@ const GoogleSignupComplete: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/google/complete', {
+      const response = await fetch('https://insta-serve-1-0.onrender.com//api/auth/google/complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

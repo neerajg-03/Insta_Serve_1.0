@@ -334,7 +334,7 @@ router.get('/google/callback', (req, res, next) => {
         }
 
         const redirectUrl =
-          `http://localhost:3000/auth/callback?token=${token}&user=${encodeURIComponent(
+          `https://insta-serve-1-0.onrender.com/auth/callback?token=${token}&user=${encodeURIComponent(
             JSON.stringify(
               userProfile
             )

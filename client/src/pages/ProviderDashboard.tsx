@@ -817,6 +817,10 @@ const ProviderDashboard: React.FC = () => {
       console.log('Starting automatic location tracking for provider...');
       console.log('???? Starting automatic location tracking for provider...');
       
+      // Clear any stored location to force fresh GPS data
+      LocationService.clearStoredLocation();
+      console.log('???? Cleared stored location to force fresh GPS data');
+      
       // Check if geolocation is supported
       if (!navigator.geolocation) {
         throw new Error('Geolocation is not supported by this browser');
@@ -831,7 +835,7 @@ const ProviderDashboard: React.FC = () => {
       } catch (locationError) {
         console.warn('???? Failed to get current location, trying last known location:', locationError);
         
-        // Fallback to last known location
+        // Fallback to last known location (should be fresh now)
         location = LocationService.getLastKnownLocation();
         if (location) {
           console.log('???? Using last known location:', location);
@@ -880,8 +884,8 @@ const ProviderDashboard: React.FC = () => {
         }
       }
 
-      // Start continuous location tracking (only if we got real location)
-      if (location && !LocationService.getLastKnownLocation()) {
+      // Start continuous location tracking whenever we have a valid location
+      if (location) {
         console.log('???? Starting continuous location tracking...');
         
         // Throttle database updates to every 30 seconds

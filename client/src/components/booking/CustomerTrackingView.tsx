@@ -4,6 +4,7 @@ import { RootState } from '../../store';
 import LocationService, { Location, GoogleMapsDistanceResult } from '../../services/locationService';
 import toast from 'react-hot-toast';
 import CustomerCompletionModal from '../CustomerCompletionModal';
+import CustomerNavigationModal from '../CustomerNavigationModal';
 
 interface CustomerTrackingViewProps {
   booking: any;
@@ -44,6 +45,7 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
   const [showMap, setShowMap] = useState(false);
   const [mapUrl, setMapUrl] = useState('');
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [showNavigationModal, setShowNavigationModal] = useState(false);
 
   useEffect(() => {
     if (providerLocation && booking.address) {
@@ -413,13 +415,13 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
                     onClick={onContactProvider}
                     className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
                   >
-                    ð Call Provider
+                    📞 Call Provider
                   </button>
                   <button
-                    onClick={onNavigateToLocation}
+                    onClick={() => setShowNavigationModal(true)}
                     className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    ð Navigate to Location
+                    📍 Navigate to Location
                   </button>
                 </div>
               </div>
@@ -428,14 +430,14 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
             {/* Broadcast Status */}
             {!booking.provider && booking.status === 'broadcast' && (
               <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">ð¢ Broadcast Status</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">📢 Broadcast Status</h3>
                 <div className="text-center py-4">
-                  <span className="text-4xl mb-3 block">ð¡</span>
+                  <span className="text-4xl mb-3 block">🔍</span>
                   <p className="text-gray-600 mb-2">Finding Available Providers</p>
                   <p className="text-sm text-gray-500">Your request has been sent to nearby providers</p>
                   <div className="mt-4">
                     <div className="animate-pulse bg-blue-100 rounded-lg p-3">
-                      <p className="text-blue-700 text-sm">â³ Waiting for provider acceptance...</p>
+                      <p className="text-blue-700 text-sm">⏳ Waiting for provider acceptance...</p>
                     </div>
                   </div>
                 </div>
@@ -505,6 +507,15 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
       bookingId={booking._id}
       serviceTitle={booking.service?.title || 'Service'}
       providerName={booking.provider?.name || 'Provider'}
+    />
+
+    {/* Customer Navigation Modal */}
+    <CustomerNavigationModal
+      isOpen={showNavigationModal}
+      onClose={() => setShowNavigationModal(false)}
+      booking={booking}
+      providerLocation={providerLocation}
+      customerLocation={currentLocation}
     />
     </>
   );

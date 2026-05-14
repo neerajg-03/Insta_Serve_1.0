@@ -657,14 +657,14 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate
-    if (!bookingData.useCurrentLocation && !bookingData.address.street) {
-      toast.error('Please select an address from the search suggestions or use current location');
+    // Validate - current location is mandatory
+    if (!bookingData.useCurrentLocation) {
+      toast.error('Please use current location to proceed');
       return;
     }
     
-    if (bookingData.useCurrentLocation && !bookingData.address.coordinates.lat) {
-      toast.error('Please enable location detection or enter address manually');
+    if (!bookingData.address.coordinates.lat) {
+      toast.error('Please enable location detection to proceed');
       return;
     }
 
@@ -962,63 +962,38 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
               </label>
               
               <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                <div style={{display: 'flex', gap: '12px'}}>
-                  <button
-                    type="button"
-                    onClick={handleGetCurrentLocation}
-                    disabled={locationLoading}
-                    style={{
-                      flex: 1,
-                      padding: '14px 20px',
-                      borderRadius: '12px',
-                      border: bookingData.useCurrentLocation ? '2px solid var(--accent)' : '1px solid var(--bord)',
-                      background: bookingData.useCurrentLocation ? 'rgba(124,58,237,0.1)' : 'var(--surf2)',
-                      color: bookingData.useCurrentLocation ? 'var(--accent)' : '#fff',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: locationLoading ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.3s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    {locationLoading ? (
-                      <>
-                        <div style={{width: '16px', height: '16px', border: '2px solid var(--accent)', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite'}}></div>
-                        Detecting Location...
-                      </>
-                    ) : (
-                      <>
-                        📍 Use Current Location
-                      </>
-                    )}
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={handleManualAddress}
-                    style={{
-                      flex: 1,
-                      padding: '14px 20px',
-                      borderRadius: '12px',
-                      border: !bookingData.useCurrentLocation ? '2px solid var(--accent)' : '1px solid var(--bord)',
-                      background: !bookingData.useCurrentLocation ? 'rgba(124,58,237,0.1)' : 'var(--surf2)',
-                      color: !bookingData.useCurrentLocation ? 'var(--accent)' : '#fff',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    🏠 Enter Address Manually
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleGetCurrentLocation}
+                  disabled={locationLoading}
+                  style={{
+                    width: '100%',
+                    padding: '14px 20px',
+                    borderRadius: '12px',
+                    border: bookingData.useCurrentLocation ? '2px solid var(--accent)' : '1px solid var(--bord)',
+                    background: bookingData.useCurrentLocation ? 'rgba(124,58,237,0.1)' : 'var(--surf2)',
+                    color: bookingData.useCurrentLocation ? 'var(--accent)' : '#fff',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: locationLoading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {locationLoading ? (
+                    <>
+                      <div style={{width: '16px', height: '16px', border: '2px solid var(--accent)', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite'}}></div>
+                      Detecting Location...
+                    </>
+                  ) : (
+                    <>
+                      📍 Use Current Location
+                    </>
+                  )}
+                </button>
                 
                 {locationError && (
                   <div style={{padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', color: '#f87171'}}>
@@ -1026,114 +1001,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
                   </div>
                 )}
                 
-                {!bookingData.useCurrentLocation && (
-                  <div style={{padding: '20px', background: 'var(--surf2)', borderRadius: '16px', border: '1px solid var(--bord)'}}>
-                    <div style={{position: 'relative', marginBottom: '16px'}}>
-                      <input
-                        type="text"
-                        placeholder="Search for your address..."
-                        value={addressSearch}
-                        onChange={handleAddressSearch}
-                        onBlur={handleAddressBlur}
-                        onFocus={() => addressSuggestions.length > 0 && setShowSuggestions(true)}
-                        style={{
-                          width: '100%',
-                          padding: '14px 16px',
-                          background: 'var(--surf)',
-                          border: '1px solid var(--bord)',
-                          borderRadius: '12px',
-                          color: '#fff',
-                          fontSize: '14px',
-                          outline: 'none'
-                        }}
-                        required
-                      />
-                      {searchLoading && (
-                        <div style={{position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)'}}>
-                          <div style={{width: '16px', height: '16px', border: '2px solid var(--accent)', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite'}}></div>
-                        </div>
-                      )}
-                      
-                      {showSuggestions && addressSuggestions.length > 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          marginTop: '8px',
-                          background: 'var(--surf)',
-                          border: '1px solid var(--bord)',
-                          borderRadius: '12px',
-                          maxHeight: '240px',
-                          overflowY: 'auto',
-                          zIndex: 10
-                        }}>
-                          {addressSuggestions.map((suggestion, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onClick={() => selectAddress(suggestion)}
-                              style={{
-                                width: '100%',
-                                padding: '12px 16px',
-                                textAlign: 'left',
-                                background: 'transparent',
-                                border: 'none',
-                                borderBottom: index < addressSuggestions.length - 1 ? '1px solid var(--bord)' : 'none',
-                                color: '#fff',
-                                cursor: 'pointer',
-                                transition: 'background 0.2s',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: '12px'
-                              }}
-                              onMouseEnter={(e) => {e.currentTarget.style.background = 'rgba(124,58,237,0.1)';}}
-                              onMouseLeave={(e) => {e.currentTarget.style.background = 'transparent';}}
-                            >
-                              <span style={{fontSize: '16px', marginTop: '2px', flexShrink: 0}}>📍</span>
-                              <div style={{flex: 1, minWidth: 0}}>
-                                <p style={{fontSize: '14px', fontWeight: '500', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{suggestion.display_name}</p>
-                                <p style={{fontSize: '12px', color: 'var(--muted)', marginTop: '4px'}}>
-                                  {suggestion.address.city && `${suggestion.address.city}, `}
-                                  {suggestion.address.state && `${suggestion.address.state} `}
-                                  {suggestion.address.pincode && suggestion.address.pincode}
-                                </p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {bookingData.address.street && (
-                      <div style={{padding: '12px 16px', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: '12px'}}>
-                        <div style={{display: 'flex', alignItems: 'center', marginBottom: '8px'}}>
-                          <span style={{fontSize: '16px', marginRight: '8px'}}>📍</span>
-                          <p style={{fontSize: '14px', fontWeight: '600', color: '#4ADE80'}}>Selected Address</p>
-                        </div>
-                        <p style={{fontSize: '14px', color: '#4ADE80'}}>
-                          {bookingData.address.street && `${bookingData.address.street}, `}
-                          {bookingData.address.city && `${bookingData.address.city}, `}
-                          {bookingData.address.state && `${bookingData.address.state} `}
-                          {bookingData.address.pincode && `- ${bookingData.address.pincode}`}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
                 {bookingData.useCurrentLocation && bookingData.address.coordinates.lat && (
                   <div style={{padding: '16px', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: '12px'}}>
-                    <div style={{display: 'flex', alignItems: 'center', marginBottom: '8px'}}>
+                    <div style={{display: 'flex', alignItems: 'center'}}>
                       <span style={{fontSize: '16px', marginRight: '8px'}}>📍</span>
                       <p style={{fontSize: '14px', fontWeight: '600', color: '#4ADE80'}}>Location Detected</p>
                     </div>
-                    <p style={{fontSize: '14px', color: '#4ADE80'}}>
-                      {bookingData.address.street && `${bookingData.address.street}, `}
-                      {bookingData.address.city && `${bookingData.address.city}, `}
-                      {bookingData.address.state && `${bookingData.address.state} `}
-                      {bookingData.address.pincode && `- ${bookingData.address.pincode}`}
-                    </p>
                   </div>
                 )}
               </div>

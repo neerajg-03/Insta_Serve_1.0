@@ -516,6 +516,7 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
       booking={booking}
       providerLocation={providerLocation}
       customerLocation={currentLocation}
+      serviceAddress={booking.address}
     />
     </>
   );

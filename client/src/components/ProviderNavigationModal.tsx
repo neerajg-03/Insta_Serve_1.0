@@ -29,8 +29,6 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
   providerLocation
 }) => {
   const [customerLocation, setCustomerLocation] = useState<Location | null>(null);
-  const [routeData, setRouteData] = useState<RouteData | null>(null);
-  const [mapUrl, setMapUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -85,48 +83,6 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
     }
   }, [isOpen, booking]);
 
-  // Calculate route when both locations are available
-  useEffect(() => {
-    const calculateRoute = async () => {
-      if (!providerLocation || !customerLocation) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Calculate distance and duration
-        const distanceResult = await LocationService.calculateDistanceWithGoogleMaps(
-          providerLocation,
-          customerLocation
-        );
-
-        setRouteData({
-          distance: distanceResult.distance,
-          duration: distanceResult.duration
-        });
-
-        // Generate Google Maps navigation URL
-        const navigationUrl = LocationService.getGoogleMapsUrl(providerLocation, customerLocation);
-        setMapUrl(navigationUrl);
-
-      } catch (err) {
-        console.error('Error calculating route:', err);
-        setError('Could not calculate route. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (providerLocation && customerLocation) {
-      calculateRoute();
-    }
-  }, [providerLocation, customerLocation]);
-
-  const handleNavigateNow = () => {
-    if (mapUrl) {
-      window.open(mapUrl, '_blank');
-    }
-  };
 
   const formatAddress = (address: string | any) => {
     if (typeof address === 'string') return address;
@@ -158,7 +114,7 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
             <div>
               <h2 className="text-2xl font-bold flex items-center">
                 <MapPinIcon className="w-8 h-8 mr-3" />
-                Navigation to Customer
+                Provider Live Location
               </h2>
               <p className="text-blue-100 mt-1">
                 Booking ID: #{booking?._id?.slice(-8)}
@@ -218,48 +174,35 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
                 </div>
               </div>
 
-              {/* Route Information */}
-              {routeData && (
+              {/* Distance Information */}
+              {providerLocation && customerLocation && (
                 <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Route Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-orange-600 mb-2">
-                        📍 {routeData.distance.text}
-                      </div>
-                      <p className="text-gray-600">Total Distance</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Distance to Customer</h3>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-orange-600 mb-2">
+                      📍 {LocationService.calculateDistance(providerLocation, customerLocation).toFixed(1)} km
                     </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-blue-600 mb-2">
-                        ⏱️ {routeData.duration.text}
-                      </div>
-                      <p className="text-gray-600">Estimated Time</p>
-                    </div>
+                    <p className="text-gray-600">Straight-line distance</p>
                   </div>
                 </div>
               )}
 
-              {/* Map Preview */}
+              {/* Live Location Map */}
               <div className="bg-gray-100 rounded-lg overflow-hidden mb-6" ref={mapRef}>
                 <div className="bg-white p-3 border-b border-gray-200">
-                  <p className="text-sm font-medium text-gray-700">Route Preview</p>
+                  <p className="text-sm font-medium text-gray-700">Live Location Map</p>
                 </div>
                 <div className="h-96 flex items-center justify-center">
-                  {providerLocation && customerLocation ? (
+                  {providerLocation ? (
                     <img 
                       src={LocationService.getStaticMapUrl(
-                        {
-                          lat: (providerLocation.lat + customerLocation.lat) / 2,
-                          lng: (providerLocation.lng + customerLocation.lng) / 2,
-                          timestamp: Date.now()
-                        }, 
-                        13, 
+                        providerLocation,
+                        15, 
                         [
-                          { location: providerLocation, color: 'green', label: 'P' }, // Provider
-                          { location: customerLocation, color: 'blue', label: 'C' } // Customer
+                          { location: providerLocation, color: 'green', label: 'P' } // Provider only
                         ]
                       )}
-                      alt="Route map"
+                      alt="Provider live location"
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
@@ -268,7 +211,6 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
                           <div class="text-center p-8">
                             <span class="text-6xl mb-4 block">🗺️</span>
                             <p class="text-gray-600 text-lg">Map preview unavailable</p>
-                            <p class="text-gray-500 mt-2">Click "Navigate Now" to open in Google Maps</p>
                           </div>
                         `;
                       }}
@@ -276,7 +218,7 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
                   ) : (
                     <div className="text-center">
                       <span className="text-6xl mb-4 block">🗺️</span>
-                      <p className="text-gray-600">Loading map...</p>
+                      <p className="text-gray-600">Waiting for provider location...</p>
                     </div>
                   )}
                 </div>
@@ -284,13 +226,6 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={handleNavigateNow}
-                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center"
-                >
-                  <MapPinIcon className="w-5 h-5 mr-2" />
-                  Navigate Now
-                </button>
                 <button
                   onClick={onClose}
                   className="flex-1 bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"

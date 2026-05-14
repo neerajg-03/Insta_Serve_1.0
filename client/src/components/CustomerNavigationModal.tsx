@@ -9,6 +9,7 @@ interface CustomerNavigationModalProps {
   booking: any;
   providerLocation: Location | null;
   customerLocation: Location | null;
+  serviceAddress: string | any;
 }
 
 interface RouteData {
@@ -28,27 +29,74 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
   onClose,
   booking,
   providerLocation,
-  customerLocation
+  customerLocation,
+  serviceAddress
 }) => {
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [mapUrl, setMapUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [serviceAddressCoords, setServiceAddressCoords] = useState<Location | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
+
+  // Geocode service address to get coordinates
+  useEffect(() => {
+    const geocodeServiceAddress = async () => {
+      if (!serviceAddress) return;
+
+      try {
+        let addressString: string;
+        if (typeof serviceAddress === 'string') {
+          addressString = serviceAddress;
+        } else {
+          const street = serviceAddress?.street || '';
+          const city = serviceAddress?.city;
+          const state = serviceAddress?.state;
+          const pincode = serviceAddress?.pincode;
+
+          const parts = [street];
+          if (city && city !== 'Unknown City') parts.push(city);
+          if (state && state !== 'Unknown State') parts.push(state);
+          if (pincode && pincode !== '000000') parts.push(`- ${pincode}`);
+
+          addressString = parts.join(', ');
+        }
+
+        if (addressString) {
+          const coords = await LocationService.geocodeAddress(addressString);
+          setServiceAddressCoords(coords);
+          console.log('Service address coordinates:', coords);
+        }
+      } catch (err) {
+        console.error('Error geocoding service address:', err);
+      }
+    };
+
+    if (isOpen && serviceAddress) {
+      geocodeServiceAddress();
+    }
+  }, [isOpen, serviceAddress]);
 
   // Calculate route when both locations are available
   useEffect(() => {
+    console.log('CustomerNavigationModal - isOpen:', isOpen);
+    console.log('CustomerNavigationModal - serviceAddressCoords:', serviceAddressCoords);
+    console.log('CustomerNavigationModal - providerLocation:', providerLocation);
+
     const calculateRoute = async () => {
-      if (!customerLocation || !providerLocation) return;
+      if (!serviceAddressCoords || !providerLocation) {
+        console.log('CustomerNavigationModal - Missing location data');
+        return;
+      }
 
       setLoading(true);
       setError(null);
 
       try {
-        // Calculate distance and duration
+        // Calculate distance from provider to service address
         const distanceResult = await LocationService.calculateDistanceWithGoogleMaps(
-          customerLocation,
-          providerLocation
+          providerLocation,
+          serviceAddressCoords
         );
 
         setRouteData({
@@ -56,8 +104,8 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
           duration: distanceResult.duration
         });
 
-        // Generate Google Maps navigation URL
-        const navigationUrl = LocationService.getGoogleMapsUrl(customerLocation, providerLocation);
+        // Generate Google Maps navigation URL from provider to service address
+        const navigationUrl = LocationService.getGoogleMapsUrl(providerLocation, serviceAddressCoords);
         setMapUrl(navigationUrl);
 
       } catch (err) {
@@ -68,10 +116,10 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
       }
     };
 
-    if (customerLocation && providerLocation) {
+    if (serviceAddressCoords && providerLocation) {
       calculateRoute();
     }
-  }, [customerLocation, providerLocation]);
+  }, [isOpen, serviceAddressCoords, providerLocation]);
 
   const handleNavigateNow = () => {
     if (mapUrl) {
@@ -138,23 +186,18 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
             </div>
           )}
 
-          {!loading && !error && customerLocation && providerLocation && (
+          {!loading && !error && (!serviceAddressCoords || !providerLocation) && (
+            <div className="text-center py-12">
+              <MapPinIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-2">Location information not available</p>
+              <p className="text-gray-500 text-sm">Please ensure location services are enabled and try again</p>
+            </div>
+          )}
+
+          {!loading && !error && serviceAddressCoords && providerLocation && (
             <>
               {/* Location Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {/* Customer Location */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center mb-3">
-                    <MapPinIcon className="w-6 h-6 text-blue-600 mr-2" />
-                    <h3 className="font-semibold text-blue-900">Your Location</h3>
-                  </div>
-                  <div className="text-sm text-blue-700 space-y-1">
-                    <p>Lat: {customerLocation.lat.toFixed(6)}</p>
-                    <p>Lng: {customerLocation.lng.toFixed(6)}</p>
-                    <p>Updated: {new Date(customerLocation.timestamp).toLocaleTimeString()}</p>
-                  </div>
-                </div>
-
                 {/* Provider Location */}
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex items-center mb-3">
@@ -165,6 +208,19 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
                     <p>Lat: {providerLocation.lat.toFixed(6)}</p>
                     <p>Lng: {providerLocation.lng.toFixed(6)}</p>
                     <p className="font-medium">{booking.provider?.name || 'Provider'}</p>
+                  </div>
+                </div>
+
+                {/* Service Address */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center mb-3">
+                    <MapPinIcon className="w-6 h-6 text-blue-600 mr-2" />
+                    <h3 className="font-semibold text-blue-900">Service Address</h3>
+                  </div>
+                  <div className="text-sm text-blue-700 space-y-1">
+                    <p>Lat: {serviceAddressCoords.lat.toFixed(6)}</p>
+                    <p>Lng: {serviceAddressCoords.lng.toFixed(6)}</p>
+                    <p className="font-medium">{formatAddress(serviceAddress)}</p>
                   </div>
                 </div>
               </div>
@@ -196,18 +252,18 @@ const CustomerNavigationModal: React.FC<CustomerNavigationModalProps> = ({
                   <p className="text-sm font-medium text-gray-700">Route Preview</p>
                 </div>
                 <div className="h-96 flex items-center justify-center">
-                  {customerLocation && providerLocation ? (
-                    <img 
+                  {serviceAddressCoords && providerLocation ? (
+                    <img
                       src={LocationService.getStaticMapUrl(
                         {
-                          lat: (customerLocation.lat + providerLocation.lat) / 2,
-                          lng: (customerLocation.lng + providerLocation.lng) / 2,
+                          lat: (serviceAddressCoords.lat + providerLocation.lat) / 2,
+                          lng: (serviceAddressCoords.lng + providerLocation.lng) / 2,
                           timestamp: Date.now()
-                        }, 
-                        13, 
+                        },
+                        13,
                         [
-                          { location: customerLocation, color: 'blue', label: 'Y' }, // Your location
-                          { location: providerLocation, color: 'green', label: 'P' } // Provider
+                          { location: providerLocation, color: 'green', label: 'P' }, // Provider
+                          { location: serviceAddressCoords, color: 'blue', label: 'S' } // Service Address
                         ]
                       )}
                       alt="Route map"

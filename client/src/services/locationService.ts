@@ -173,11 +173,11 @@ class LocationService {
       const originStr = `${origin.lat},${origin.lng}`;
       const destStr = `${destination.lat},${destination.lng}`;
       
-      // Use backend proxy to avoid CORS issues
       const response = await fetch(
-        `/api/maps/distance-matrix?` +
+        `https://maps.googleapis.com/maps/api/distancematrix/json?` +
         `origins=${originStr}&` +
         `destinations=${destStr}&` +
+        `key=${this.GOOGLE_MAPS_API_KEY}&` +
         `units=metric`
       );
 
@@ -268,10 +268,16 @@ class LocationService {
 
   // Geocode address to coordinates
   async geocodeAddress(address: string): Promise<Location | null> {
+    if (!this.GOOGLE_MAPS_API_KEY) {
+      console.warn('Google Maps API key not found, geocoding not available');
+      return null;
+    }
+
     try {
-      // Use backend proxy to avoid CORS and API key issues
       const response = await fetch(
-        `/api/maps/geocode?address=${encodeURIComponent(address)}`
+        `https://maps.googleapis.com/maps/api/geocode/json?` +
+        `address=${encodeURIComponent(address)}&` +
+        `key=${this.GOOGLE_MAPS_API_KEY}`
       );
 
       const data = await response.json();
@@ -294,10 +300,15 @@ class LocationService {
 
   // Reverse geocode coordinates to address
   async reverseGeocode(location: Location): Promise<string | null> {
+    if (!this.GOOGLE_MAPS_API_KEY) {
+      return `${location.lat}, ${location.lng}`;
+    }
+
     try {
-      // Use backend proxy to avoid CORS and API key issues
       const response = await fetch(
-        `/api/maps/reverse-geocode?latlng=${location.lat},${location.lng}`
+        `https://maps.googleapis.com/maps/api/geocode/json?` +
+        `latlng=${location.lat},${location.lng}&` +
+        `key=${this.GOOGLE_MAPS_API_KEY}`
       );
 
       const data = await response.json();

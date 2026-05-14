@@ -479,7 +479,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
         
         const approvedProviders = providersWithServices.filter(provider => {
           // Check if provider has any approved services for the requested category
-          const hasApprovedService = provider.services && provider.services.some((service: any) => {
+          const hasApprovedService = provider.services && provider.services.some((service) => {
             return service.category === serviceData.category && 
                    service.isActive === true && 
                    service.isApproved === true;

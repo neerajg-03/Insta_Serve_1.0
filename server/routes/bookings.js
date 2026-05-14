@@ -465,6 +465,41 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
       console.log('7km Range Filter Results:');
       console.log('  - Available Providers within 7km:', nearbyProviders.length);
       console.log('  - Nearby Provider IDs:', nearbyProviders);
+
+      // Step 3: Filter providers by service approval (must have approved service for requested category)
+      if (nearbyProviders.length > 0) {
+        console.log('\n=== SERVICE APPROVAL FILTERING ===');
+        console.log(`Requested service category: ${serviceData.category}`);
+        
+        // Get all providers with their services
+        const providersWithServices = await User.find({
+          _id: { $in: nearbyProviders },
+          role: 'provider'
+        }).populate('services').lean();
+        
+        const approvedProviders = providersWithServices.filter(provider => {
+          // Check if provider has any approved services for the requested category
+          const hasApprovedService = provider.services && provider.services.some((service: any) => {
+            return service.category === serviceData.category && 
+                   service.isActive === true && 
+                   service.isApproved === true;
+          });
+          
+          if (!hasApprovedService) {
+            console.log(`  ❌ ${provider.name}: no approved service for category ${serviceData.category}`);
+            return false;
+          }
+          
+          console.log(`  ✅ ${provider.name}: has approved service for category ${serviceData.category}`);
+          return true;
+        });
+        
+        nearbyProviders = approvedProviders.map(p => p._id);
+        
+        console.log('Service Approval Filter Results:');
+        console.log('  - Providers with approved services:', nearbyProviders.length);
+        console.log('  - Approved Provider IDs:', nearbyProviders);
+      }
       
       // If no providers found within 7km, return error (no expanded search)
       if (nearbyProviders.length === 0) {

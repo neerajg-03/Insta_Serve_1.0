@@ -41,39 +41,29 @@ const ProviderNavigationModal: React.FC<ProviderNavigationModalProps> = ({
       if (!booking?.address) return;
 
       try {
-        let customerCoords: Location | null = null;
-
-        // If booking has coordinates, use them
-        if (booking.address.coordinates?.lat && booking.address.coordinates?.lng) {
-          customerCoords = {
-            lat: booking.address.coordinates.lat,
-            lng: booking.address.coordinates.lng,
-            timestamp: Date.now()
-          };
+        let addressString: string;
+        if (typeof booking.address === 'string') {
+          addressString = booking.address;
         } else {
-          // Otherwise geocode the address
-          let addressString: string;
-          if (typeof booking.address === 'string') {
-            addressString = booking.address;
-          } else {
-            const street = booking.address?.street || '';
-            const city = booking.address?.city;
-            const state = booking.address?.state;
-            const pincode = booking.address?.pincode;
-            
-            // Skip unknown values
-            const parts = [street];
-            if (city && city !== 'Unknown City') parts.push(city);
-            if (state && state !== 'Unknown State') parts.push(state);
-            if (pincode && pincode !== '000000') parts.push(`- ${pincode}`);
-            
-            addressString = parts.join(', ');
-          }
-          
-          customerCoords = await LocationService.geocodeAddress(addressString);
+          const street = booking.address?.street || '';
+          const city = booking.address?.city;
+          const state = booking.address?.state;
+          const pincode = booking.address?.pincode;
+
+          // Skip unknown values
+          const parts = [street];
+          if (city && city !== 'Unknown City') parts.push(city);
+          if (state && state !== 'Unknown State') parts.push(state);
+          if (pincode && pincode !== '000000') parts.push(`- ${pincode}`);
+
+          addressString = parts.join(', ');
         }
 
-        setCustomerLocation(customerCoords);
+        if (addressString) {
+          const customerCoords = await LocationService.geocodeAddress(addressString);
+          console.log('ProviderNavigationModal - Geocoded customer location:', customerCoords);
+          setCustomerLocation(customerCoords);
+        }
       } catch (err) {
         console.error('Error getting customer location:', err);
         setError('Could not determine customer location');

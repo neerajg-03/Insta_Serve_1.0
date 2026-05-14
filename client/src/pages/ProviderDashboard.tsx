@@ -1194,6 +1194,16 @@ const fetchProviderStatus = async () => {
               </div>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end">
+              {(kycStatus === 'pending' || kycStatus === null) && (
+                <button
+                  onClick={() => navigate('/provider/kyc')}
+                  className="bg-white text-emerald-600 px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center hover:bg-emerald-50 transition-all duration-200"
+                >
+                  <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Upload KYC</span>
+                  <span className="sm:hidden">KYC</span>
+                </button>
+              )}
               <div className={`px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center backdrop-blur-sm ${getKycStatusColor(kycStatus)}`}>
                 {getKycStatusIcon(kycStatus)}
                 <span className="ml-1 sm:ml-2">KYC {kycStatus?.toUpperCase() || 'NOT SUBMITTED'}</span>

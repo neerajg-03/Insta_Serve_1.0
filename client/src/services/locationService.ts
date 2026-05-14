@@ -53,8 +53,8 @@ class LocationService {
       const stored = localStorage.getItem(this.LAST_LOCATION_KEY);
       if (stored) {
         const location = JSON.parse(stored) as Location;
-        // Check if location is not too old (24 hours)
-        const maxAge = 24 * 60 * 60 * 1000; // 24 hours in ms
+        // Check if location is not too old (5 minutes for live tracking)
+        const maxAge = 5 * 60 * 1000; // 5 minutes in ms
         if (Date.now() - location.timestamp < maxAge) {
           return location;
         } else {
@@ -66,6 +66,16 @@ class LocationService {
       console.error('Failed to retrieve last location:', error);
     }
     return null;
+  }
+
+  // Clear stored location
+  clearStoredLocation(): void {
+    try {
+      localStorage.removeItem(this.LAST_LOCATION_KEY);
+      console.log('Stored location cleared');
+    } catch (error) {
+      console.error('Failed to clear stored location:', error);
+    }
   }
 
   // Get current location
@@ -93,7 +103,7 @@ class LocationService {
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // 5 minutes
+          maximumAge: 0 // Force fresh location, no cache
         }
       );
     });
@@ -133,7 +143,7 @@ class LocationService {
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // 5 minutes
+          maximumAge: 0 // Force fresh location, no cache
         }
       );
 

@@ -407,16 +407,16 @@ const Dashboard: React.FC = () => {
       });
 
       // Listen for real-time provider location updates
-      SocketService.on('provider_location_update', (data: any) => {
+      SocketService.on('location_update', (data: any) => {
         console.log('📍 Provider location update received:', data);
-        
+
         // Update provider location if navigation modal is open for this booking
         if (showNavigationModal && selectedBookingForNav && data.bookingId === selectedBookingForNav._id) {
           setProviderLocation({
-            lat: data.location.lat,
-            lng: data.location.lng
+            lat: data.lat,
+            lng: data.lng
           });
-          
+
           // Re-fetch route with new location
           if (customerLocation) {
             // This will trigger route recalculation via useEffect
@@ -426,7 +426,7 @@ const Dashboard: React.FC = () => {
 
       return () => {
         SocketService.off('completion_code_generated');
-        SocketService.off('provider_location_update');
+        SocketService.off('location_update');
       };
     }
   }, [user, showNavigationModal, selectedBookingForNav, customerLocation]);

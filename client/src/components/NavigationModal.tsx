@@ -120,26 +120,27 @@ const NavigationModal: React.FC<NavigationModalProps> = ({
       console.log('Map not ready yet');
       return;
     }
-    
-    // Always try to fetch route data (will use test coordinates if real ones aren't available)
+
+    // Always try to fetch route data
     fetchRouteData();
-    
+
     // Set up real-time updates every 30 seconds
     const interval = setInterval(() => {
       fetchRouteData();
     }, 30000);
-    
+
     return () => clearInterval(interval);
-  }, [mapReady]);
+  }, [mapReady, providerLocation, customerLocation]);
 
   const fetchRouteData = async () => {
     console.log('fetchRouteData called with:', { providerLocation, customerLocation });
-    
-    // Use test coordinates if real locations are not available (for demonstration)
-    const testProviderLocation = providerLocation || { lat: 28.6139, lng: 77.2090 }; // New Delhi
-    const testCustomerLocation = customerLocation || { lat: 28.7041, lng: 77.1025 }; // Another Delhi location
-    
-    console.log('Using locations:', { testProviderLocation, testCustomerLocation });
+
+    // Require real provider and customer locations - no test coordinates
+    if (!providerLocation || !customerLocation) {
+      console.error('Missing required locations:', { providerLocation, customerLocation });
+      setError('Waiting for real-time location data from booking room...');
+      return;
+    }
 
     setLoadingRoute(true);
     setError(null);
@@ -156,10 +157,10 @@ const NavigationModal: React.FC<NavigationModalProps> = ({
 
       // Use DirectionsService (still works despite deprecation warning)
       const directionsService = new window.google.maps.DirectionsService();
-      
+
       const request: any = {
-        origin: new window.google.maps.LatLng(testProviderLocation.lat, testProviderLocation.lng),
-        destination: new window.google.maps.LatLng(testCustomerLocation.lat, testCustomerLocation.lng),
+        origin: new window.google.maps.LatLng(providerLocation.lat, providerLocation.lng),
+        destination: new window.google.maps.LatLng(customerLocation.lat, customerLocation.lng),
         travelMode: 'DRIVING',
         provideRouteAlternatives: false
       };
@@ -185,14 +186,14 @@ const NavigationModal: React.FC<NavigationModalProps> = ({
 
           console.log('Processed route:', processedRoute);
           setRouteData(processedRoute);
-          
+
           // Calculate ETA
           const arrivalTime = new Date(Date.now() + processedRoute.duration * 1000);
           setEta(arrivalTime);
           console.log('ETA set to:', arrivalTime);
-          
+
           // Update map with route
-          updateMapWithRoute(result, testProviderLocation, testCustomerLocation);
+          updateMapWithRoute(result, providerLocation, customerLocation);
         } else {
           console.error('Directions request failed:', status);
           setError('Unable to calculate route. Please try again.');

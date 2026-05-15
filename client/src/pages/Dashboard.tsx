@@ -323,7 +323,7 @@ const Dashboard: React.FC = () => {
           lat: bookingDetails.tracking.customerLocation.lat,
           lng: bookingDetails.tracking.customerLocation.lng
         };
-      } else if (booking.address?.coordinates?.lat && booking.address?.coordinates?.lng) {
+      } else if (typeof booking.address === 'object' && booking.address?.coordinates?.lat && booking.address?.coordinates?.lng) {
         custLocation = {
           lat: booking.address.coordinates.lat,
           lng: booking.address.coordinates.lng

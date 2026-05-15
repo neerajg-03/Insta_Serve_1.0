@@ -431,6 +431,21 @@ const Dashboard: React.FC = () => {
     }
   }, [user, showNavigationModal, selectedBookingForNav, customerLocation]);
 
+  // Join/leave booking room when navigation modal opens/closes
+  useEffect(() => {
+    if (showNavigationModal && selectedBookingForNav) {
+      SocketService.joinBookingRoom(selectedBookingForNav._id);
+      console.log('📍 Joined booking room:', selectedBookingForNav._id);
+    }
+
+    return () => {
+      if (showNavigationModal && selectedBookingForNav) {
+        SocketService.leaveBookingRoom(selectedBookingForNav._id);
+        console.log('📍 Left booking room:', selectedBookingForNav._id);
+      }
+    };
+  }, [showNavigationModal, selectedBookingForNav]);
+
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: HomeIcon },
     { id: 'bookings', label: 'My Bookings', icon: CalendarIcon },

@@ -65,6 +65,7 @@ const NavigationModal: React.FC<NavigationModalProps> = ({
   const [eta, setEta] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const [waitingForLocation, setWaitingForLocation] = useState(false);
 
   // Load Google Maps API
   useEffect(() => {
@@ -137,11 +138,13 @@ const NavigationModal: React.FC<NavigationModalProps> = ({
 
     // Require real provider and customer locations - no test coordinates
     if (!providerLocation || !customerLocation) {
-      console.error('Missing required locations:', { providerLocation, customerLocation });
-      setError('Waiting for real-time location data from booking room...');
+      console.log('Waiting for location data:', { providerLocation, customerLocation });
+      setWaitingForLocation(true);
+      setError(null);
       return;
     }
 
+    setWaitingForLocation(false);
     setLoadingRoute(true);
     setError(null);
 
@@ -395,6 +398,24 @@ const NavigationModal: React.FC<NavigationModalProps> = ({
                     <ArrowPathIcon className="w-4 h-4 mr-2" />
                     Retry
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Waiting for Location Overlay */}
+            {waitingForLocation && !loadingRoute && !error && (
+              <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center">
+                <div className="text-center max-w-md mx-4">
+                  <MapPinIcon className="w-16 h-16 text-blue-400 mx-auto mb-4 animate-bounce" />
+                  <p className="text-gray-800 font-semibold mb-2">Waiting for Location Data</p>
+                  <p className="text-gray-600 mb-4">
+                    Receiving real-time location updates from provider...
+                  </p>
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
                 </div>
               </div>
             )}

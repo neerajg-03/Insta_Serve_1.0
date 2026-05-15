@@ -300,15 +300,15 @@ const Dashboard: React.FC = () => {
     }
 
     setSelectedBookingForNav(booking);
-    
+
     try {
       // Fetch provider's current location from the booking
       const bookingDetails = await bookingsAPI.getBooking(booking._id);
-      
-      // Get provider location from booking details or fetch separately
+
+      // Get provider location from booking tracking data
       let provLocation = null;
       let custLocation = null;
-      
+
       // Try to get provider location from booking tracking data
       if (bookingDetails.tracking?.providerLocation) {
         provLocation = {
@@ -316,36 +316,30 @@ const Dashboard: React.FC = () => {
           lng: bookingDetails.tracking.providerLocation.lng
         };
       }
-      
-      // Try to get customer location from booking tracking data
+
+      // Try to get customer location from booking tracking data or address
       if (bookingDetails.tracking?.customerLocation) {
         custLocation = {
           lat: bookingDetails.tracking.customerLocation.lat,
           lng: bookingDetails.tracking.customerLocation.lng
         };
+      } else if (booking.address?.coordinates?.lat && booking.address?.coordinates?.lng) {
+        custLocation = {
+          lat: booking.address.coordinates.lat,
+          lng: booking.address.coordinates.lng
+        };
       }
-      
-      // If no location data, use booking address as customer location
-      if (!custLocation && booking.address) {
-        // For demo purposes, use approximate coordinates for Delhi
-        custLocation = { lat: 28.7041, lng: 77.1025 };
-      }
-      
-      // If no provider location, use approximate coordinates
-      if (!provLocation) {
-        provLocation = { lat: 28.6139, lng: 77.2090 };
-      }
-      
+
       setProviderLocation(provLocation);
       setCustomerLocation(custLocation);
-      
+
       // Calculate ETA using Google Maps Distance Matrix API
       if (provLocation && custLocation) {
         try {
           const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${provLocation.lat},${provLocation.lng}&destinations=${custLocation.lat},${custLocation.lng}&mode=driving&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
           const response = await fetch(url);
           const data = await response.json();
-        
+
           if (data.rows && data.rows[0] && data.rows[0].elements && data.rows[0].elements[0].status === 'OK') {
             const duration = data.rows[0].elements[0].duration.value; // in seconds
             const minutes = Math.round(duration / 60);
@@ -356,16 +350,16 @@ const Dashboard: React.FC = () => {
           setEta('Calculating...');
         }
       }
-      
+
       setShowNavigationModal(true);
     } catch (error: any) {
       console.error('Error fetching location:', error);
-      toast.error('Could not fetch provider location. Showing navigation with approximate data.');
-      
-      // Show modal anyway with default locations
-      setProviderLocation({ lat: 28.6139, lng: 77.2090 });
-      setCustomerLocation({ lat: 28.7041, lng: 77.1025 });
-      setEta('Calculating...');
+      toast.error('Could not fetch provider location. Waiting for real-time location data...');
+
+      // Show modal without locations - will wait for socket updates
+      setProviderLocation(null);
+      setCustomerLocation(null);
+      setEta('Waiting for location...');
       setShowNavigationModal(true);
     }
   };
@@ -375,7 +369,7 @@ const Dashboard: React.FC = () => {
     fetchBookings();
   }, [activeTab]);
 
-  // Socket connection and listeners for completion code
+  // Socket connection and listeners for completion code and location updates
   useEffect(() => {
     if (user) {
       // Connect to socket if not already connected
@@ -385,7 +379,7 @@ const Dashboard: React.FC = () => {
         email: user.email,
         role: 'customer'
       }).then(() => {
-        console.log('🔌 Dashboard socket connected');
+        console.log('🔌 Dashboard socket connected for customer');
       }).catch((err) => {
         console.error('🔌 Dashboard socket connection failed:', err);
       });
@@ -393,7 +387,7 @@ const Dashboard: React.FC = () => {
       // Listen for completion code generation
       SocketService.on('completion_code_generated', (data: any) => {
         console.log('🎯 Completion code received:', data);
-        
+
         // Show completion code modal
         setCompletionCodeData({
           bookingId: data.bookingId,
@@ -401,20 +395,37 @@ const Dashboard: React.FC = () => {
           providerName: data.providerName,
           completionCode: data.completionCode
         });
-        setShowCompletionCodeModal(true);
-        
-        // Show notification
-        toast.success(`Completion code generated for ${data.serviceTitle}`, {
-          duration: 10000,
+
+        toast.success(`Completion code: ${data.completionCode}`, {
+          duration: 5000,
           icon: '🔢'
         });
       });
 
+      // Listen for real-time provider location updates
+      SocketService.on('provider_location_update', (data: any) => {
+        console.log('📍 Provider location update received:', data);
+        
+        // Update provider location if navigation modal is open for this booking
+        if (showNavigationModal && selectedBookingForNav && data.bookingId === selectedBookingForNav._id) {
+          setProviderLocation({
+            lat: data.location.lat,
+            lng: data.location.lng
+          });
+          
+          // Re-fetch route with new location
+          if (customerLocation) {
+            // This will trigger route recalculation via useEffect
+          }
+        }
+      });
+
       return () => {
         SocketService.off('completion_code_generated');
+        SocketService.off('provider_location_update');
       };
     }
-  }, [user]);
+  }, [user, showNavigationModal, selectedBookingForNav, customerLocation]);
 
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: HomeIcon },
@@ -836,7 +847,7 @@ const Dashboard: React.FC = () => {
                           Chat
                         </button>
                       </>
-                    ) :booking.status!== 'completed' && (
+                    ) : booking.status !== 'completed' && (
                       <button
                         onClick={() => {
                           setSelectedBookingForChat(booking);

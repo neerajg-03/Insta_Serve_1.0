@@ -67,6 +67,10 @@ interface Booking {
     city: string;
     state: string;
     pincode: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
   };
 }
 

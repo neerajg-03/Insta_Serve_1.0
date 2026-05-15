@@ -407,14 +407,14 @@ const Dashboard: React.FC = () => {
       });
 
       // Listen for real-time provider location updates
-      SocketService.on('location_update', (data: any) => {
+      SocketService.on('provider_location_update', (data: any) => {
         console.log('📍 Provider location update received:', data);
 
         // Update provider location if navigation modal is open for this booking
         if (showNavigationModal && selectedBookingForNav && data.bookingId === selectedBookingForNav._id) {
           setProviderLocation({
-            lat: data.lat,
-            lng: data.lng
+            lat: data.location.lat,
+            lng: data.location.lng
           });
 
           // Re-fetch route with new location
@@ -426,7 +426,7 @@ const Dashboard: React.FC = () => {
 
       return () => {
         SocketService.off('completion_code_generated');
-        SocketService.off('location_update');
+        SocketService.off('provider_location_update');
       };
     }
   }, [user, showNavigationModal, selectedBookingForNav, customerLocation]);
@@ -434,8 +434,18 @@ const Dashboard: React.FC = () => {
   // Join/leave booking room when navigation modal opens/closes
   useEffect(() => {
     if (showNavigationModal && selectedBookingForNav) {
-      SocketService.joinBookingRoom(selectedBookingForNav._id);
-      console.log('📍 Joined booking room:', selectedBookingForNav._id);
+      // Wait for socket to be connected before joining room
+      const joinRoomWithRetry = () => {
+        if (SocketService.isConnected()) {
+          SocketService.joinBookingRoom(selectedBookingForNav._id);
+          console.log('📍 Joined booking room:', selectedBookingForNav._id);
+        } else {
+          console.log('📍 Socket not connected yet, retrying in 500ms...');
+          setTimeout(joinRoomWithRetry, 500);
+        }
+      };
+
+      joinRoomWithRetry();
     }
 
     return () => {

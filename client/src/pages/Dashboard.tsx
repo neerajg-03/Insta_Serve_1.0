@@ -411,15 +411,27 @@ const Dashboard: React.FC = () => {
         console.log('📍 Provider location update received:', data);
 
         // Update provider location if navigation modal is open for this booking
-        if (showNavigationModal && selectedBookingForNav && data.bookingId === selectedBookingForNav._id) {
-          setProviderLocation({
-            lat: data.location.lat,
-            lng: data.location.lng
-          });
+        // Accept updates with matching bookingId OR if provider matches the booking's provider (for backward compatibility)
+        if (showNavigationModal && selectedBookingForNav) {
+          const isMatchingBooking = data.bookingId === selectedBookingForNav._id;
+          const isMatchingProvider = data.providerId === selectedBookingForNav.provider?._id;
 
-          // Re-fetch route with new location
-          if (customerLocation) {
-            // This will trigger route recalculation via useEffect
+          if (isMatchingBooking || isMatchingProvider) {
+            console.log('📍 Updating provider location:', {
+              bookingId: data.bookingId,
+              providerId: data.providerId,
+              isMatchingBooking,
+              isMatchingProvider
+            });
+            setProviderLocation({
+              lat: data.location.lat,
+              lng: data.location.lng
+            });
+
+            // Re-fetch route with new location
+            if (customerLocation) {
+              // This will trigger route recalculation via useEffect
+            }
           }
         }
       });

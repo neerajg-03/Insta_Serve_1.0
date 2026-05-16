@@ -869,15 +869,21 @@ const ProviderDashboard: React.FC = () => {
 
         // Also send to Socket.io for real-time tracking
         if (SocketService.isConnected()) {
-          SocketService.sendLocationUpdate({
+          const locationData: any = {
             lat: location.lat,
             lng: location.lng,
             accuracy: 10
-          });
+          };
+          // Include bookingId if provider is navigating to a specific booking
+          if (selectedNavigationBooking) {
+            locationData.bookingId = selectedNavigationBooking._id;
+          }
+          SocketService.sendLocationUpdate(locationData);
           console.log('???? Initial provider location sent to booking room:', {
             lat: location.lat,
             lng: location.lng,
-            timestamp: new Date(location.timestamp)
+            timestamp: new Date(location.timestamp),
+            bookingId: selectedNavigationBooking?._id || 'none'
           });
         } else {
           console.warn('???? Socket not connected, cannot send initial location');
@@ -899,17 +905,23 @@ const ProviderDashboard: React.FC = () => {
           
           // Send real-time update to Socket.io
           if (SocketService.isConnected()) {
-            SocketService.sendLocationUpdate({
+            const locationData: any = {
               lat: location.lat,
               lng: location.lng,
               accuracy: 10
-            });
+            };
+            // Include bookingId if provider is navigating to a specific booking
+            if (selectedNavigationBooking) {
+              locationData.bookingId = selectedNavigationBooking._id;
+            }
+            SocketService.sendLocationUpdate(locationData);
             
             console.log('???? Provider location sent to booking room:', {
               lat: location.lat,
               lng: location.lng,
               timestamp: new Date(location.timestamp),
-              socketConnected: SocketService.isConnected()
+              socketConnected: SocketService.isConnected(),
+              bookingId: selectedNavigationBooking?._id || 'none'
             });
           } else {
             console.warn('???? Socket not connected, location update skipped');

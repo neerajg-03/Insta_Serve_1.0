@@ -411,7 +411,7 @@ io.on('connection', (socket) => {
   });
 
   // Handle real-time chat
-  socket.on('send_message', (messageData) => {
+  socket.on('send_message', async (messageData) => {
     console.log('💬 [DEBUG] Chat message received:', messageData);
     const user = connectedUsers.get(socket.id);
     if (user) {
@@ -425,24 +425,56 @@ io.on('connection', (socket) => {
       console.log('💬 [DEBUG] Processed message:', message);
       console.log('💬 [DEBUG] Booking ID:', messageData.bookingId);
       
-      // Send message to booking room (both user and provider in same room)
-      const bookingRoom = `booking_${messageData.bookingId}`;
-      const roomMembers = io.sockets.adapter.rooms.get(bookingRoom);
-      
-      if (roomMembers && roomMembers.size > 0) {
-        socket.to(bookingRoom).emit('receive_message', message);
-        console.log(`💬 [DEBUG] Message sent to booking room ${bookingRoom}:`, message);
-      } else {
-        console.log(`💬 [DEBUG] Booking room ${bookingRoom} empty, sending to user rooms as fallback`);
-        // Fallback to user rooms
-        socket.to(`user_${messageData.recipientId}`).emit('receive_message', message);
-        socket.to(`user_${user.userId}`).emit('receive_message', message);
+      // Save message to database
+      try {
+        const Chat = require('./models/Chat');
+        const chat = new Chat({
+          booking: messageData.bookingId,
+          sender: user.userId,
+          recipient: messageData.recipientId,
+          message: messageData.message,
+          type: messageData.type || 'text'
+        });
+        await chat.save();
+        console.log('💬 [DEBUG] Message saved to database:', chat._id);
+        
+        // Populate sender and recipient
+        await chat.populate('sender', 'name email');
+        await chat.populate('recipient', 'name email');
+        
+        // Create message data for socket emission
+        const messageDataForSocket = {
+          id: chat._id,
+          bookingId: chat.booking,
+          senderId: chat.sender._id,
+          senderName: chat.sender.name,
+          recipientId: chat.recipient._id,
+          recipientName: chat.recipient.name,
+          message: chat.message,
+          timestamp: chat.createdAt,
+          type: chat.type
+        };
+        
+        // Send message to booking room (both user and provider in same room)
+        const bookingRoom = `booking_${messageData.bookingId}`;
+        const roomMembers = io.sockets.adapter.rooms.get(bookingRoom);
+        
+        if (roomMembers && roomMembers.size > 0) {
+          socket.to(bookingRoom).emit('receive_message', messageDataForSocket);
+          console.log(`💬 [DEBUG] Message sent to booking room ${bookingRoom}:`, messageDataForSocket);
+        } else {
+          console.log(`💬 [DEBUG] Booking room ${bookingRoom} empty, sending to user rooms as fallback`);
+          // Fallback to user rooms
+          socket.to(`user_${messageData.recipientId}`).emit('receive_message', messageDataForSocket);
+          socket.to(`user_${user.userId}`).emit('receive_message', messageDataForSocket);
+        }
+      } catch (error) {
+        console.error('💬 [ERROR] Failed to save message to database:', error);
       }
     } else {
       console.log('💬 [ERROR] User not found for chat message');
     }
   });
-
   // Handle provider location updates for tracking
   socket.on('provider_location_update', (data) => {
     const user = connectedUsers.get(socket.id);

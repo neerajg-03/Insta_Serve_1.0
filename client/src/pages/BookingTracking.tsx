@@ -862,7 +862,7 @@ const BookingTracking: React.FC = () => {
   };
 
   // Chat functions
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!newMessage.trim() || !booking || !user) return;
     
     const recipientId = user?.role === 'customer' 
@@ -871,19 +871,51 @@ const BookingTracking: React.FC = () => {
     
     if (!recipientId) return;
     
-    SocketService.sendChatMessage({
-      id: Date.now().toString(),
-      bookingId: booking._id,
-      senderId: user._id,
-      senderName: user.name,
-      recipientId,
-      recipientName: user?.role === 'customer' ? booking.provider?.name || 'Provider' : booking.customer.name || 'Customer',
-      message: newMessage.trim(),
-      timestamp: new Date(),
-      type: 'text'
-    });
-    
+    const messageText = newMessage.trim();
     setNewMessage('');
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          bookingId: booking._id,
+          recipientId,
+          message: messageText,
+          type: 'text'
+        })
+      });
+
+      if (response.ok) {
+        const savedMessage = await response.json();
+        console.log('💬 [BOOKING TRACKING] Message saved to database:', savedMessage);
+        
+        // Add to local messages
+        setMessages(prev => [...prev, {
+          id: savedMessage._id,
+          bookingId: savedMessage.booking,
+          senderId: savedMessage.sender._id,
+          senderName: savedMessage.sender.name,
+          recipientId: savedMessage.recipient._id,
+          recipientName: savedMessage.recipient.name,
+          message: savedMessage.message,
+          timestamp: new Date(savedMessage.createdAt),
+          type: savedMessage.type || 'text'
+        }]);
+      } else {
+        console.error('Failed to send message:', await response.text());
+        toast.error('Failed to send message');
+        setNewMessage(messageText);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+      setNewMessage(messageText);
+    }
   };
 
   const handleBookingAction = async (action: 'cancel' | 'reschedule' | 'complete' | 'in_progress') => {

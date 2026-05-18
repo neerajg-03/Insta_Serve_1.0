@@ -147,32 +147,64 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !user) return;
 
-    const message: ChatMessage = {
-      id: Date.now().toString(),
-      bookingId,
-      senderId: user._id,
-      senderName: user.name,
-      recipientId,
-      recipientName,
-      message: newMessage.trim(),
-      timestamp: new Date(),
-      type: 'text'
-    };
-
-    // Send message via socket
-    socketService.sendMessage(message);
-
-    // Add to local messages
-    setMessages(prev => [...prev, message]);
-
-    // Clear input
+    const messageText = newMessage.trim();
+    
+    // Clear input immediately
     setNewMessage('');
-
+    
     // Stop typing indicator
     socketService.sendTyping(bookingId, false);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          bookingId,
+          recipientId,
+          message: messageText,
+          type: 'text'
+        })
+      });
+
+      if (response.ok) {
+        const savedMessage = await response.json();
+        console.log('💬 [CLIENT DEBUG] Message saved to database:', savedMessage);
+        
+        // Transform saved message to ChatMessage format
+        const transformedMessage: ChatMessage = {
+          id: savedMessage._id,
+          bookingId: savedMessage.booking,
+          senderId: savedMessage.sender._id,
+          senderName: savedMessage.sender.name,
+          recipientId: savedMessage.recipient._id,
+          recipientName: savedMessage.recipient.name,
+          message: savedMessage.message,
+          timestamp: new Date(savedMessage.createdAt),
+          type: savedMessage.type || 'text'
+        };
+        
+        // Add to local messages
+        setMessages(prev => [...prev, transformedMessage]);
+      } else {
+        console.error('Failed to send message:', await response.text());
+        toast.error('Failed to send message');
+        // Restore input if failed
+        setNewMessage(messageText);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+      // Restore input if failed
+      setNewMessage(messageText);
+    }
   };
 
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {

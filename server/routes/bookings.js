@@ -254,10 +254,10 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
     let nearbyProviders = [];
 
     if (bookingCoordinates && bookingCoordinates.lat && bookingCoordinates.lng) {
-      // Find all AVAILABLE providers with approved services in this category
+      // Find all AVAILABLE providers with the SPECIFIC service title being booked
       // and ensure they have location sharing enabled
       const providersWithServices = await Service.find({
-        category: serviceData.category,
+        title: serviceData.title,  // Match the exact service title
         isApproved: true,
         isActive: true,
         provider: { $exists: true, $ne: null }
@@ -265,32 +265,38 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
 
       // Group providers by ID for distance filtering first (wallet check comes later)
       const providerMap = new Map();
-      
-      console.log(`\n=== SERVICE CATEGORY MATCHING ===`);
-      console.log(`Requested service category: ${serviceData.category}`);
-      console.log(`Found ${providersWithServices.length} services in this category`);
-      
+
+      console.log(`\n=== SERVICE TITLE MATCHING ===`);
+      console.log(`Requested service title: ${serviceData.title}`);
+      console.log(`Found ${providersWithServices.length} services with this title`);
+
       providersWithServices.forEach(service => {
         if (!service.provider) {
           return;
         }
 
         const providerId = service.provider._id.toString();
-        
+
         console.log(`\nChecking service: ${service.title} (provider: ${service.provider?.name})`);
-        console.log(`  - Service category: ${service.category}`);
+        console.log(`  - Service title: ${service.title}`);
         console.log(`  - isApproved: ${service.isApproved}`);
         console.log(`  - isActive: ${service.isActive}`);
         console.log(`  - Provider isActive: ${service.provider?.isActive}`);
-        
-        // Only include active providers with approved services in this category
+        console.log(`  - Provider kycStatus: ${service.provider?.kycStatus}`);
+
+        // Only include active providers with approved KYC
         if (!service.provider.isActive) {
           console.log(`  ❌ Provider not active, skipping`);
           return;
         }
-        
-        // Only add provider if they have an approved and active service in this exact category
-        if (service.category === serviceData.category && service.isApproved && service.isActive) {
+
+        if (service.provider.kycStatus !== 'approved') {
+          console.log(`  ❌ Provider KYC not approved (status: ${service.provider.kycStatus}), skipping`);
+          return;
+        }
+
+        // Only add provider if they have an approved and active service with this exact title
+        if (service.title === serviceData.title && service.isApproved && service.isActive) {
           if (!providerMap.has(providerId)) {
             providerMap.set(providerId, service.provider);
             console.log(`  ✅ Added provider ${service.provider.name} to map`);
@@ -466,34 +472,34 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
       console.log('  - Available Providers within 7km:', nearbyProviders.length);
       console.log('  - Nearby Provider IDs:', nearbyProviders);
 
-      // Step 3: Filter providers by service approval (must have approved service for requested category)
+      // Step 3: Filter providers by service approval (must have approved service with requested title)
       if (nearbyProviders.length > 0) {
         console.log('\n=== SERVICE APPROVAL FILTERING ===');
-        console.log(`Requested service category: ${serviceData.category}`);
-        
+        console.log(`Requested service title: ${serviceData.title}`);
+
         // Get all providers with their services
         const providersWithServices = await User.find({
           _id: { $in: nearbyProviders },
           role: 'provider'
         }).populate('services').lean();
-        
+
         const approvedProviders = providersWithServices.filter(provider => {
-          // Check if provider has any approved services for the requested category
+          // Check if provider has the specific approved service with the requested title
           const hasApprovedService = provider.services && provider.services.some((service) => {
-            return service.category === serviceData.category && 
-                   service.isActive === true && 
+            return service.title === serviceData.title &&
+                   service.isActive === true &&
                    service.isApproved === true;
           });
-          
+
           if (!hasApprovedService) {
-            console.log(`  ❌ ${provider.name}: no approved service for category ${serviceData.category}`);
+            console.log(`  ❌ ${provider.name}: no approved service with title ${serviceData.title}`);
             return false;
           }
-          
-          console.log(`  ✅ ${provider.name}: has approved service for category ${serviceData.category}`);
+
+          console.log(`  ✅ ${provider.name}: has approved service with title ${serviceData.title}`);
           return true;
         });
-        
+
         nearbyProviders = approvedProviders.map(p => p._id);
         
         console.log('Service Approval Filter Results:');

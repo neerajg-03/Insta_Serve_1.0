@@ -39,6 +39,42 @@ router.post('/', protect, async (req, res) => {
 
     await chat.save();
 
+    // Populate booking to get recipient name
+    await booking.populate('customer', 'name email');
+    await booking.populate('provider', 'name email');
+
+    // Emit socket event for real-time delivery to connected users
+    const io = req.app.get('io');
+    if (io) {
+      const recipientName = recipientIdStr === booking.customer._id.toString() ? 
+        booking.customer.name : 
+        booking.provider.name;
+
+      const messageData = {
+        id: chat._id,
+        bookingId: chat.booking,
+        senderId: chat.sender,
+        senderName: req.user.name,
+        recipientId: chat.recipient,
+        recipientName,
+        message: chat.message,
+        timestamp: chat.createdAt,
+        type: chat.type
+      };
+
+      // Send to recipient's user room
+      io.to(`user_${recipientId}`).emit('receive_message', messageData);
+      
+      // Also send to booking room
+      io.to(`booking_${bookingId}`).emit('receive_message', messageData);
+      
+      console.log('💬 [SERVER] Message emitted via socket after API save:', messageData);
+    }
+
+    // Populate sender and recipient before sending response
+    await chat.populate('sender', 'name email');
+    await chat.populate('recipient', 'name email');
+
     res.status(201).json(chat);
   } catch (error) {
     console.error('Error saving chat message:', error);

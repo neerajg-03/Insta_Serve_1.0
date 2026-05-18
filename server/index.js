@@ -90,6 +90,7 @@ app.use(helmet({
         "data:",
         "https:"
       ],
+      mediaSrc: ["'self'", "blob:"],
 
       connectSrc: [
         "'self'",

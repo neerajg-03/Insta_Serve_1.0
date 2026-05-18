@@ -895,7 +895,7 @@ const BookingTracking: React.FC = () => {
         console.log('💬 [BOOKING TRACKING] Message saved to database:', savedMessage);
         
         // Add to local messages
-        setMessages(prev => [...prev, {
+        setChatMessages(prev => [...prev, {
           id: savedMessage._id,
           bookingId: savedMessage.booking,
           senderId: savedMessage.sender._id,

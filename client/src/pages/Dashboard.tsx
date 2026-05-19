@@ -400,10 +400,7 @@ const Dashboard: React.FC = () => {
           completionCode: data.completionCode
         });
 
-        toast.success(`Completion code: ${data.completionCode}`, {
-          duration: 5000,
-          icon: '🔢'
-        });
+        setShowCompletionCodeModal(true);
       });
 
       // Listen for real-time provider location updates
@@ -1206,4 +1203,3 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
-

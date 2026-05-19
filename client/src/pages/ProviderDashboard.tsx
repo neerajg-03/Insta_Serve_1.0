@@ -218,7 +218,6 @@ const ProviderDashboard: React.FC = () => {
   const [showProviderCompletionModal, setShowProviderCompletionModal] = useState(false);
   const [selectedCompletionBooking, setSelectedCompletionBooking] = useState<Booking | null>(null);
   const [completionLoading, setCompletionLoading] = useState(false);
-  const [generatedCompletionCode, setGeneratedCompletionCode] = useState('');
   
   // Navigation modal state
   const [showNavigationModal, setShowNavigationModal] = useState(false);
@@ -696,7 +695,6 @@ const ProviderDashboard: React.FC = () => {
 
   const handleCompleteBooking = (booking: Booking) => {
     setSelectedCompletionBooking(booking);
-    setGeneratedCompletionCode(''); // Reset generated code for new booking
     setShowProviderCompletionModal(true);
   };
 
@@ -713,9 +711,8 @@ const ProviderDashboard: React.FC = () => {
         // Generate completion code
         const response = await bookingsAPI.completeBooking(bookingId);
         if (response.completionCode) {
-          setGeneratedCompletionCode(response.completionCode);
-          toast.success('Completion code generated successfully', {
-            duration: 3000,
+          toast.success('Completion code generated and sent to customer', {
+            duration: 5000,
             icon: '✅'
           });
         }
@@ -726,7 +723,6 @@ const ProviderDashboard: React.FC = () => {
           toast.success(response.message);
           setShowProviderCompletionModal(false);
           setSelectedCompletionBooking(null);
-          setGeneratedCompletionCode('');
           fetchBookings(); // Refresh bookings
         }
       }
@@ -2854,14 +2850,12 @@ const fetchProviderStatus = async () => {
           onClose={() => {
             setShowProviderCompletionModal(false);
             setSelectedCompletionBooking(null);
-            setGeneratedCompletionCode('');
           }}
           bookingId={selectedCompletionBooking._id}
           serviceTitle={selectedCompletionBooking.service?.title || 'Unknown Service'}
           customerName={selectedCompletionBooking.customer?.name || 'Unknown Customer'}
           onVerify={handleProviderCompletion}
           loading={completionLoading}
-          generatedCode={generatedCompletionCode}
         />
       )}
 

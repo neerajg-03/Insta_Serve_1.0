@@ -144,6 +144,13 @@ export const bookingsAPI = {
   
   verifyCompletionCode: (id: string, data: { completionCode: string }) =>
     api.post(`/bookings/${id}/verify-completion-code`, data).then(res => res.data),
+  
+  generateStartCode: (id: string) =>
+    api.post(`/bookings/${id}/generate-start-code`).then(res => res.data),
+
+  verifyStartCode: (id: string, data: { startCode: string }) =>
+    api.post(`/bookings/${id}/verify-start-code`, data).then(res => res.data),
+
 };
 
 // Payments API

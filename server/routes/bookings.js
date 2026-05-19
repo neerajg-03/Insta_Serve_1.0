@@ -992,6 +992,17 @@ const generateCompletionCode = () => {
   return code;
 };
 
+// Helper function to generate random start code
+const generateStartCode = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    if (i === 3) code += '-';
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+};
+
 // @route   POST /api/bookings/:id/complete
 // @desc    Generate completion code for booking (Provider only)
 // @access  Private (Provider)
@@ -1241,6 +1252,148 @@ router.post('/:id/reject-broadcast', protect, authorize('provider'), async (req,
     });
   } catch (error) {
     console.error('Reject broadcast request error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/bookings/:id/generate-start-code
+// @desc    Generate start code for booking (Provider only)
+// @access  Private (Provider)
+router.post('/:id/generate-start-code', protect, authorize('provider'), async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if booking belongs to provider
+    if (booking.provider.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to generate start code for this booking' });
+    }
+
+    // Check if booking can be started
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ message: 'Booking must be confirmed to generate start code' });
+    }
+
+    // Generate start code
+    const startCode = generateStartCode();
+    
+    // Update booking with start code
+    booking.startCode = startCode;
+    booking.startCodeGeneratedAt = new Date();
+    
+    // Add timeline entry
+    booking.timeline.push({
+      status: 'confirmed',
+      timestamp: new Date(),
+      note: `Start code generated: ${startCode}`,
+      updatedBy: req.user._id
+    });
+
+    await booking.save();
+
+    // Emit Socket.IO notification to customer about start code
+    const io = req.app.get('io');
+    if (io) {
+      const startCodeData = {
+        bookingId: booking._id,
+        customerId: booking.customer,
+        providerName: req.user.name || 'Service Provider',
+        serviceTitle: booking.service?.title || 'Service',
+        startCode: startCode,
+        timestamp: new Date()
+      };
+      
+      io.to(`user_${booking.customer}`).emit('start_code_generated', startCodeData);
+      console.log(`Start code ${startCode} sent to customer ${booking.customer} for booking ${booking._id}`);
+    }
+
+    const updatedBooking = await Booking.findById(booking._id)
+      .populate('customer', 'name email phone')
+      .populate('provider', 'name email phone')
+      .populate('service', 'title category price images');
+
+    res.json({
+      message: 'Start code generated successfully',
+      startCode: startCode,
+      booking: updatedBooking
+    });
+  } catch (error) {
+    console.error('Generate start code error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/bookings/:id/verify-start-code
+// @desc    Verify start code and start service (Provider only)
+// @access  Private (Provider)
+router.post('/:id/verify-start-code', protect, authorize('provider'), async (req, res) => {
+  try {
+    const { startCode } = req.body;
+    
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if booking belongs to provider
+    if (booking.provider.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to verify this booking' });
+    }
+
+    // Check if start code exists
+    if (!booking.startCode) {
+      return res.status(400).json({ message: 'No start code generated for this booking' });
+    }
+
+    // Verify start code
+    if (booking.startCode !== startCode) {
+      return res.status(400).json({ message: 'Invalid start code' });
+    }
+
+    // Mark booking as in progress
+    booking.status = 'in_progress';
+    booking.actualStartTime = new Date();
+
+    // Clear the start code after verification
+    booking.startCode = null;
+    booking.startCodeGeneratedAt = null;
+
+    // Add timeline entry
+    booking.timeline.push({
+      status: 'in_progress',
+      timestamp: new Date(),
+      note: 'Service started with start code verification',
+      updatedBy: req.user._id
+    });
+
+    await booking.save();
+
+    // Emit Socket.IO notification to customer that service has started
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`booking_${booking._id}`).emit('booking_update', {
+        bookingId: booking._id,
+        status: 'in_progress',
+        customerId: booking.customer,
+        providerId: booking.provider,
+        message: 'Service has been started',
+        timestamp: new Date()
+      });
+    }
+
+    const updatedBooking = await Booking.findById(booking._id)
+      .populate('customer', 'name email phone')
+      .populate('provider', 'name email phone')
+      .populate('service', 'title category price images');
+
+    res.json({
+      message: 'Service started successfully',
+      booking: updatedBooking
+    });
+  } catch (error) {
+    console.error('Verify start code error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

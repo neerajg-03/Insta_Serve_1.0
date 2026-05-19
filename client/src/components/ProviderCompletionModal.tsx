@@ -10,6 +10,7 @@ interface ProviderCompletionModalProps {
   customerName: string;
   onVerify: (bookingId: string, code: string) => void;
   loading?: boolean;
+  generatedCode?: string;
 }
 
 const ProviderCompletionModal: React.FC<ProviderCompletionModalProps> = ({
@@ -19,7 +20,8 @@ const ProviderCompletionModal: React.FC<ProviderCompletionModalProps> = ({
   serviceTitle,
   customerName,
   onVerify,
-  loading = false
+  loading = false,
+  generatedCode = ''
 }) => {
   const [inputCode, setInputCode] = useState('');
 
@@ -113,6 +115,23 @@ const ProviderCompletionModal: React.FC<ProviderCompletionModalProps> = ({
               )}
             </button>
           </div>
+
+          {/* Generated Code Display - Full Screen Style */}
+          {generatedCode && (
+            <div className="mb-6 p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 shadow-lg">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-green-800 mb-3">Completion Code Generated</p>
+                <div className="bg-white rounded-lg p-6 shadow-md border border-green-300">
+                  <p className="text-4xl font-bold text-green-700 tracking-widest font-mono">
+                    {generatedCode}
+                  </p>
+                </div>
+                <p className="text-xs text-green-600 mt-3">
+                  Share this code with your customer for verification
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Code Verification Section */}
           <form onSubmit={handleSubmit} className="space-y-4">

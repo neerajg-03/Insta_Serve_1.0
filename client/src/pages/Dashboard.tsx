@@ -37,6 +37,7 @@ import ReviewModal from '../components/ReviewModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import CompletionCodeModal from '../components/CompletionCodeModal';
+import StartCodeModal from '../components/StartCodeModal';
 import NavigationModal from '../components/NavigationModal';
 import ChatComponent from '../components/ChatComponent';
 import SocketService from '../services/socketService';
@@ -129,6 +130,15 @@ const Dashboard: React.FC = () => {
     completionCode: string;
   } | null>(null);
   const [verificationLoading, setVerificationLoading] = useState(false);
+
+  // Start code modal state
+  const [showStartCodeModal, setShowStartCodeModal] = useState(false);
+  const [startCodeData, setStartCodeData] = useState<{
+    bookingId: string;
+    serviceTitle: string;
+    providerName: string;
+    startCode: string;
+  } | null>(null);
 
   // Navigation modal state
   const [showNavigationModal, setShowNavigationModal] = useState(false);
@@ -403,6 +413,21 @@ const Dashboard: React.FC = () => {
         setShowCompletionCodeModal(true);
       });
 
+      // Listen for start code generation
+      SocketService.on('start_code_generated', (data: any) => {
+        console.log('🚀 Start code received:', data);
+
+        // Show start code modal
+        setStartCodeData({
+          bookingId: data.bookingId,
+          serviceTitle: data.serviceTitle,
+          providerName: data.providerName,
+          startCode: data.startCode
+        });
+
+        setShowStartCodeModal(true);
+      });
+
       // Listen for real-time provider location updates
       SocketService.on('provider_location_update', (data: any) => {
         console.log('📍 Provider location update received:', data);
@@ -435,6 +460,7 @@ const Dashboard: React.FC = () => {
 
       return () => {
         SocketService.off('completion_code_generated');
+        SocketService.off('start_code_generated');
         SocketService.off('provider_location_update');
       };
     }
@@ -1162,6 +1188,21 @@ const Dashboard: React.FC = () => {
           completionCode={completionCodeData.completionCode}
           onVerify={handleVerifyCompletionCode}
           loading={verificationLoading}
+        />
+      )}
+
+      {/* Start Code Modal */}
+      {showStartCodeModal && startCodeData && (
+        <StartCodeModal
+          isOpen={showStartCodeModal}
+          onClose={() => {
+            setShowStartCodeModal(false);
+            setStartCodeData(null);
+          }}
+          bookingId={startCodeData.bookingId}
+          serviceTitle={startCodeData.serviceTitle}
+          providerName={startCodeData.providerName}
+          startCode={startCodeData.startCode}
         />
       )}
 

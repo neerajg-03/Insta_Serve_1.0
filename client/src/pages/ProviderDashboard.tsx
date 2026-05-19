@@ -2185,7 +2185,7 @@ const fetchProviderStatus = async () => {
                         <span className="mr-2">🎙️</span> Voice Note from Customer:
                       </p>
                       <audio controls className="w-full" style={{height: '40px'}}>
-                        <source src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api${booking.voiceNote}`} type="audio/webm" />
+                        <source src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${booking.voiceNote}`} type="audio/webm" />
                         Your browser does not support the audio element.
                       </audio>
                     </div>
@@ -2375,7 +2375,7 @@ const fetchProviderStatus = async () => {
                               <span className="mr-2">🎙️</span> Voice Note from Customer:
                             </p>
                             <audio controls className="w-full" style={{height: '40px'}}>
-                              <source src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api${booking.voiceNote}`} type="audio/webm" />
+                              <source src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${booking.voiceNote}`} type="audio/webm" />
                               Your browser does not support the audio element.
                             </audio>
                           </div>

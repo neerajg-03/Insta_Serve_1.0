@@ -69,6 +69,7 @@ import { StarIcon as StarSolidIcon, FireIcon as FireSolidIcon } from '@heroicons
 import ProviderAvailabilityToggle from '../components/ProviderAvailabilityToggle';
 import ProviderCompletionModal from '../components/ProviderCompletionModal';
 import ProviderNavigationModal from '../components/ProviderNavigationModal';
+import ProviderStartCodeModal from '../components/ProviderStartCodeModal';
 import ChatComponent from '../components/ChatComponent';
 
 interface Service {
@@ -218,7 +219,12 @@ const ProviderDashboard: React.FC = () => {
   const [showProviderCompletionModal, setShowProviderCompletionModal] = useState(false);
   const [selectedCompletionBooking, setSelectedCompletionBooking] = useState<Booking | null>(null);
   const [completionLoading, setCompletionLoading] = useState(false);
-  
+
+  // Provider start code modal state
+  const [showProviderStartCodeModal, setShowProviderStartCodeModal] = useState(false);
+  const [selectedStartCodeBooking, setSelectedStartCodeBooking] = useState<Booking | null>(null);
+  const [startCodeLoading, setStartCodeLoading] = useState(false);
+
   // Navigation modal state
   const [showNavigationModal, setShowNavigationModal] = useState(false);
   const [selectedNavigationBooking, setSelectedNavigationBooking] = useState<Booking | null>(null);
@@ -682,14 +688,53 @@ const ProviderDashboard: React.FC = () => {
     }
   };
 
-  const handleStartBooking = async (bookingId: string) => {
+  const handleStartBooking = (booking: Booking) => {
+    setSelectedStartCodeBooking(booking);
+    setShowProviderStartCodeModal(true);
+  };
+
+  const handleCancelBooking = async (bookingId: string) => {
     try {
-      await bookingsAPI.updateBooking(bookingId, { status: 'in_progress' });
-      setActiveBookingId(bookingId);
-      toast.success('Service started successfully');
+      await bookingsAPI.cancelBooking(bookingId, 'Provider cancelled the booking');
+      toast.success('Booking cancelled successfully');
       fetchBookings(); // Refresh bookings
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to start booking');
+      toast.error(err.response?.data?.message || 'Failed to cancel booking');
+    }
+  };
+
+  const handleGenerateStartCode = async (bookingId: string) => {
+    try {
+      setStartCodeLoading(true);
+      const response = await bookingsAPI.generateStartCode(bookingId);
+      if (response.startCode) {
+        toast.success('Start code generated and sent to customer', {
+          duration: 5000,
+          icon: '✅'
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to generate start code');
+    } finally {
+      setStartCodeLoading(false);
+    }
+  };
+
+  const handleVerifyStartCode = async (bookingId: string, code: string) => {
+    try {
+      setStartCodeLoading(true);
+      const response = await bookingsAPI.verifyStartCode(bookingId, { startCode: code });
+      if (response.message) {
+        toast.success(response.message);
+        setShowProviderStartCodeModal(false);
+        setSelectedStartCodeBooking(null);
+        setActiveBookingId(bookingId);
+        fetchBookings(); // Refresh bookings
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to verify start code');
+    } finally {
+      setStartCodeLoading(false);
     }
   };
 
@@ -2440,20 +2485,24 @@ const fetchProviderStatus = async () => {
                             </>
                           )}
                           {booking.status === 'confirmed' && (
-                            <button
-                              onClick={() => handleStartBooking(booking._id)}
-                              className={`btn text-sm ${
-                                activeBookingId === booking._id 
-                                  ? 'bg-green-600 text-white' 
-                                  : 'btn-primary'
-                              }`}
-                              disabled={loading || activeBookingId === booking._id}
-                            >
-                              {activeBookingId === booking._id 
-                                ? '📍 Tracking Active' 
-                                : 'Start Service'
-                              }
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleCancelBooking(booking._id)}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm flex items-center"
+                                disabled={loading}
+                              >
+                                <XMarkIcon className="w-4 h-4 mr-2" />
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleStartBooking(booking)}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center"
+                                disabled={loading}
+                              >
+                                <PlayIcon className="w-4 h-4 mr-2" />
+                                Start Service
+                              </button>
+                            </>
                           )}
                           {booking.status === 'in_progress' && (
                             <button
@@ -2856,6 +2905,23 @@ const fetchProviderStatus = async () => {
           customerName={selectedCompletionBooking.customer?.name || 'Unknown Customer'}
           onVerify={handleProviderCompletion}
           loading={completionLoading}
+        />
+      )}
+
+      {/* Provider Start Code Modal */}
+      {showProviderStartCodeModal && selectedStartCodeBooking && (
+        <ProviderStartCodeModal
+          isOpen={showProviderStartCodeModal}
+          onClose={() => {
+            setShowProviderStartCodeModal(false);
+            setSelectedStartCodeBooking(null);
+          }}
+          bookingId={selectedStartCodeBooking._id}
+          serviceTitle={selectedStartCodeBooking.service?.title || 'Unknown Service'}
+          customerName={selectedStartCodeBooking.customer?.name || 'Unknown Customer'}
+          onGenerateCode={handleGenerateStartCode}
+          onVerify={handleVerifyStartCode}
+          loading={startCodeLoading}
         />
       )}
 

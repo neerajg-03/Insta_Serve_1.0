@@ -64,6 +64,8 @@ router.get('/', protect, async (req, res) => {
     
     if (req.user.role === 'customer') {
       query.customer = req.user._id;
+      // Add status filter for customers
+      if (status) query.status = status;
     } else if (req.user.role === 'provider') {
       // For providers, get both assigned bookings AND broadcast bookings sent to them
       query.$or = [
@@ -73,10 +75,21 @@ router.get('/', protect, async (req, res) => {
           'broadcastTo': req.user._id // Broadcast bookings sent to them
         }
       ];
+      
+      // Apply status filter within the $or conditions for providers
+      if (status) {
+        query.$or = [
+          { 
+            provider: req.user._id,
+            status: status 
+          },
+          { 
+            status: status,
+            'broadcastTo': req.user._id 
+          }
+        ];
+      }
     }
-
-    // Add filters
-    if (status) query.status = status;
     if (dateFrom || dateTo) {
       query.scheduledDate = {};
       if (dateFrom) query.scheduledDate.$gte = new Date(dateFrom);
@@ -1331,11 +1344,14 @@ router.post('/:id/generate-start-code', protect, authorize('provider'), async (r
 router.post('/:id/verify-start-code', protect, authorize('provider'), async (req, res) => {
   try {
     const { startCode } = req.body;
+    console.log('🔍 Verifying start code:', startCode, 'for booking:', req.params.id);
     
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
+
+    console.log('📋 Booking found, status:', booking.status, 'startCode:', booking.startCode);
 
     // Check if booking belongs to provider
     if (booking.provider.toString() !== req.user._id.toString()) {
@@ -1344,13 +1360,17 @@ router.post('/:id/verify-start-code', protect, authorize('provider'), async (req
 
     // Check if start code exists
     if (!booking.startCode) {
-      return res.status(400).json({ message: 'No start code generated for this booking' });
+      console.log('❌ No start code found in booking');
+      return res.status(400).json({ message: 'No start code generated for this booking. Please generate a start code first.' });
     }
 
-    // Verify start code
-    if (booking.startCode !== startCode) {
-      return res.status(400).json({ message: 'Invalid start code' });
+    // Verify start code (case-insensitive)
+    if (booking.startCode.toUpperCase() !== startCode.toUpperCase()) {
+      console.log('❌ Code mismatch. Expected:', booking.startCode, 'Received:', startCode);
+      return res.status(400).json({ message: 'Invalid start code. Please check the code provided by the customer.' });
     }
+
+    console.log('✅ Start code verified successfully');
 
     // Mark booking as in progress
     booking.status = 'in_progress';

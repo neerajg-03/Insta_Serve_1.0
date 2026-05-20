@@ -197,6 +197,12 @@ class SocketService {
       console.log('Completion code generated received:', data);
       this.emitCompletionCodeGenerated(data);
     });
+
+    // Start code generated (for customers)
+    this.socket.on('start_code_generated', (data) => {
+      console.log('Start code generated received:', data);
+      this.emitStartCodeGenerated(data);
+    });
   }
 
   // Custom event emitters for components
@@ -206,6 +212,7 @@ class SocketService {
   private chatMessageCallbacks: ((data: any) => void)[] = [];
   private newServiceAvailableCallbacks: ((data: any) => void)[] = [];
   private completionCodeGeneratedCallbacks: ((data: any) => void)[] = [];
+  private startCodeGeneratedCallbacks: ((data: any) => void)[] = [];
 
   onLocationUpdate(callback: (data: any) => void): void {
     console.log('🔌 Registering location update callback');
@@ -231,6 +238,10 @@ class SocketService {
 
   onCompletionCodeGenerated(callback: (data: any) => void): void {
     this.completionCodeGeneratedCallbacks.push(callback);
+  }
+
+  onStartCodeGenerated(callback: (data: any) => void): void {
+    this.startCodeGeneratedCallbacks.push(callback);
   }
 
   private async emitLocationUpdate(data: any): Promise<void> {
@@ -267,6 +278,12 @@ class SocketService {
 
   private async emitCompletionCodeGenerated(data: any): Promise<void> {
     for (const callback of this.completionCodeGeneratedCallbacks) {
+      await callback(data);
+    }
+  }
+
+  private async emitStartCodeGenerated(data: any): Promise<void> {
+    for (const callback of this.startCodeGeneratedCallbacks) {
       await callback(data);
     }
   }

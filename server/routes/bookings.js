@@ -1311,8 +1311,18 @@ router.post('/:id/generate-start-code', protect, authorize('provider'), async (r
       updatedBy: req.user._id
     });
 
-    await booking.save();
+    const savedBooking = await booking.save();
     console.log('💾 Booking saved with start code');
+    console.log('💾 Saved booking startCode:', savedBooking.startCode);
+
+    // Verify the save was successful by fetching the booking again
+    const verificationBooking = await Booking.findById(req.params.id);
+    console.log('🔍 Verification booking startCode:', verificationBooking?.startCode);
+
+    if (!verificationBooking?.startCode) {
+      console.error('❌ CRITICAL: Start code not persisted in database after save!');
+      return res.status(500).json({ message: 'Failed to save start code to database' });
+    }
 
     // Emit Socket.IO notification to customer about start code
     const io = req.app.get('io');

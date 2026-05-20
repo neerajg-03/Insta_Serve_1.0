@@ -1303,6 +1303,8 @@ router.post('/:id/generate-start-code', protect, authorize('provider'), async (r
     booking.startCode = startCode;
     booking.startCodeGeneratedAt = new Date();
 
+    console.log('💾 Before save - Booking ID:', booking._id, 'startCode:', booking.startCode);
+
     // Add timeline entry
     booking.timeline.push({
       status: 'confirmed',
@@ -1314,7 +1316,9 @@ router.post('/:id/generate-start-code', protect, authorize('provider'), async (r
     try {
       const savedBooking = await booking.save();
       console.log('💾 Booking saved with start code');
+      console.log('💾 Saved booking ID:', savedBooking._id);
       console.log('💾 Saved booking startCode:', savedBooking.startCode);
+      console.log('💾 Saved booking full object:', JSON.stringify(savedBooking, null, 2));
     } catch (saveError) {
       console.error('❌ Error saving booking:', saveError);
       return res.status(500).json({ message: 'Failed to save booking to database', error: saveError.message });
@@ -1376,6 +1380,7 @@ router.post('/:id/verify-start-code', protect, authorize('provider'), async (req
     // Check if start code exists
     if (!booking.startCode) {
       console.log('❌ No start code found in booking');
+      console.log('❌ Booking data:', JSON.stringify(booking, null, 2));
       return res.status(400).json({ message: 'No start code generated for this booking. Please generate a start code first.' });
     }
 

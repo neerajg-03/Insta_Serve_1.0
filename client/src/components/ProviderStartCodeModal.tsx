@@ -35,13 +35,20 @@ const ProviderStartCodeModal: React.FC<ProviderStartCodeModalProps> = ({
     setInputCode(value);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputCode.length !== 7) {
       toast.error('Please enter a valid 6-character code (format: XXX-XXX)');
       return;
     }
-    onVerify(bookingId, inputCode);
+    try {
+      await onVerify(bookingId, inputCode);
+    } catch (error) {
+      console.error('Failed to verify start code:', error);
+      // If verification fails due to no code generated, reset to allow regeneration
+      setCodeGenerated(false);
+      setInputCode('');
+    }
   };
 
   const handleGenerateCode = async () => {

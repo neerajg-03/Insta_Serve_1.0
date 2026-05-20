@@ -41,6 +41,10 @@ const ProviderStartCodeModal: React.FC<ProviderStartCodeModalProps> = ({
       toast.error('Please enter a valid 6-character code (format: XXX-XXX)');
       return;
     }
+    if (!codeGenerated) {
+      toast.error('Please generate a start code first before verifying');
+      return;
+    }
     try {
       await onVerify(bookingId, inputCode);
     } catch (error) {

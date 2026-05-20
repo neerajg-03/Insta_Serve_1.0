@@ -715,6 +715,7 @@ const ProviderDashboard: React.FC = () => {
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to generate start code');
+      throw err; // Re-throw to let modal know generation failed
     } finally {
       setStartCodeLoading(false);
     }

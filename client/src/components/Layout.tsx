@@ -75,7 +75,7 @@ const Layout: React.FC = () => {
             </nav>
 
             {/* Mobile menu button */}
-            <div className="md:hidden">
+            <div className="md:hidden ml-auto">
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"

@@ -413,21 +413,6 @@ const Dashboard: React.FC = () => {
         setShowCompletionCodeModal(true);
       });
 
-      // Listen for start code generation
-      SocketService.onStartCodeGenerated((data: any) => {
-        console.log('🚀 Start code received:', data);
-
-        // Show start code modal
-        setStartCodeData({
-          bookingId: data.bookingId,
-          serviceTitle: data.serviceTitle,
-          providerName: data.providerName,
-          startCode: data.startCode
-        });
-
-        setShowStartCodeModal(true);
-      });
-
       // Listen for real-time provider location updates
       SocketService.on('provider_location_update', (data: any) => {
         console.log('📍 Provider location update received:', data);
@@ -460,11 +445,61 @@ const Dashboard: React.FC = () => {
 
       return () => {
         SocketService.off('completion_code_generated');
-        SocketService.off('start_code_generated');
         SocketService.off('provider_location_update');
       };
     }
   }, [user, showNavigationModal, selectedBookingForNav, customerLocation]);
+
+  // Poll for start codes on confirmed bookings
+  useEffect(() => {
+    if (!user) return;
+
+    const checkForStartCodes = async () => {
+      try {
+        // Fetch bookings with 'confirmed' status
+        const response = await bookingsAPI.getBookings({ status: 'confirmed' });
+        const confirmedBookings = response.bookings || [];
+
+        console.log('🔍 Checking for start codes in confirmed bookings:', confirmedBookings.length);
+
+        // Check each confirmed booking for a start code
+        for (const booking of confirmedBookings) {
+          // Fetch full booking details to check for start code
+          const bookingDetails = await bookingsAPI.getBooking(booking._id);
+
+          console.log('🔍 Checking booking:', booking._id, 'startCode:', bookingDetails.startCode);
+
+          // If start code exists and modal is not already open for this booking
+          if (bookingDetails.startCode && (!startCodeData || startCodeData.bookingId !== booking._id)) {
+            console.log('🚀 Start code found for booking:', booking._id, bookingDetails.startCode);
+
+            // Show start code modal
+            setStartCodeData({
+              bookingId: bookingDetails._id,
+              serviceTitle: bookingDetails.service?.title || 'Service',
+              providerName: bookingDetails.provider?.name || 'Service Provider',
+              startCode: bookingDetails.startCode
+            });
+
+            setShowStartCodeModal(true);
+
+            // Only show one modal at a time
+            break;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for start codes:', error);
+      }
+    };
+
+    // Check immediately on mount
+    checkForStartCodes();
+
+    // Then check every 5 seconds
+    const interval = setInterval(checkForStartCodes, 5000);
+
+    return () => clearInterval(interval);
+  }, [user, startCodeData]);
 
   // Join/leave booking room when navigation modal opens/closes
   useEffect(() => {

@@ -1274,28 +1274,35 @@ router.post('/:id/reject-broadcast', protect, authorize('provider'), async (req,
 // @access  Private (Provider)
 router.post('/:id/generate-start-code', protect, authorize('provider'), async (req, res) => {
   try {
+    console.log('🚀 Generating start code for booking:', req.params.id);
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
+      console.log('❌ Booking not found');
       return res.status(404).json({ message: 'Booking not found' });
     }
 
+    console.log('📋 Booking found, status:', booking.status);
+
     // Check if booking belongs to provider
     if (booking.provider.toString() !== req.user._id.toString()) {
+      console.log('❌ Not authorized');
       return res.status(403).json({ message: 'Not authorized to generate start code for this booking' });
     }
 
     // Check if booking can be started
     if (booking.status !== 'confirmed') {
+      console.log('❌ Booking not confirmed');
       return res.status(400).json({ message: 'Booking must be confirmed to generate start code' });
     }
 
     // Generate start code
     const startCode = generateStartCode();
-    
+    console.log('✅ Generated start code:', startCode);
+
     // Update booking with start code
     booking.startCode = startCode;
     booking.startCodeGeneratedAt = new Date();
-    
+
     // Add timeline entry
     booking.timeline.push({
       status: 'confirmed',
@@ -1305,6 +1312,7 @@ router.post('/:id/generate-start-code', protect, authorize('provider'), async (r
     });
 
     await booking.save();
+    console.log('💾 Booking saved with start code');
 
     // Emit Socket.IO notification to customer about start code
     const io = req.app.get('io');
@@ -1317,9 +1325,9 @@ router.post('/:id/generate-start-code', protect, authorize('provider'), async (r
         startCode: startCode,
         timestamp: new Date()
       };
-      
+
       io.to(`user_${booking.customer}`).emit('start_code_generated', startCodeData);
-      console.log(`Start code ${startCode} sent to customer ${booking.customer} for booking ${booking._id}`);
+      console.log(`📤 Start code ${startCode} sent to customer ${booking.customer} for booking ${booking._id}`);
     }
 
     const updatedBooking = await Booking.findById(booking._id)
@@ -1327,13 +1335,14 @@ router.post('/:id/generate-start-code', protect, authorize('provider'), async (r
       .populate('provider', 'name email phone')
       .populate('service', 'title category price images');
 
+    console.log('✅ Start code generation successful');
     res.json({
       message: 'Start code generated successfully',
       startCode: startCode,
       booking: updatedBooking
     });
   } catch (error) {
-    console.error('Generate start code error:', error);
+    console.error('❌ Generate start code error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

@@ -723,6 +723,7 @@ const ProviderDashboard: React.FC = () => {
 
   const handleVerifyStartCode = async (bookingId: string, code: string) => {
     try {
+      console.log('🔍 Verifying start code for booking:', bookingId, 'code:', code);
       setStartCodeLoading(true);
       const response = await bookingsAPI.verifyStartCode(bookingId, { startCode: code });
       if (response.message) {
@@ -733,6 +734,7 @@ const ProviderDashboard: React.FC = () => {
         fetchBookings(); // Refresh bookings
       }
     } catch (err: any) {
+      console.error('❌ Verify start code error:', err);
       toast.error(err.response?.data?.message || 'Failed to verify start code');
     } finally {
       setStartCodeLoading(false);

@@ -414,7 +414,7 @@ const Dashboard: React.FC = () => {
       });
 
       // Listen for start code generation
-      SocketService.on('start_code_generated', (data: any) => {
+      SocketService.onStartCodeGenerated((data: any) => {
         console.log('🚀 Start code received:', data);
 
         // Show start code modal

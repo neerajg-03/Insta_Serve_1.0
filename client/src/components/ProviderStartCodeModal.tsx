@@ -8,8 +8,8 @@ interface ProviderStartCodeModalProps {
   bookingId: string;
   serviceTitle: string;
   customerName: string;
-  onGenerateCode: (bookingId: string) => void;
-  onVerify: (bookingId: string, code: string) => void;
+  onGenerateCode: (bookingId: string) => Promise<void>;
+  onVerify: (bookingId: string, code: string) => Promise<void>;
   loading?: boolean;
 }
 
@@ -44,9 +44,13 @@ const ProviderStartCodeModal: React.FC<ProviderStartCodeModalProps> = ({
     onVerify(bookingId, inputCode);
   };
 
-  const handleGenerateCode = () => {
-    onGenerateCode(bookingId);
-    setCodeGenerated(true);
+  const handleGenerateCode = async () => {
+    try {
+      await onGenerateCode(bookingId);
+      setCodeGenerated(true);
+    } catch (error) {
+      console.error('Failed to generate start code:', error);
+    }
   };
 
   if (!isOpen) return null;

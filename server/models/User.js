@@ -137,6 +137,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isCurrentlyServing: {
+    type: Boolean,
+    default: false
+  },
   // Razorpay Route integration fields
   razorpayAccountId: String,
   razorpayStakeholderId: String,

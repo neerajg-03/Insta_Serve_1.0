@@ -320,6 +320,15 @@ const ProviderDashboard: React.FC = () => {
     }
   }, [currentTime, incomingRequests.length]);
 
+  // Clear incoming requests when provider has a service in progress
+  useEffect(() => {
+    const hasInProgressBooking = bookings.some(booking => booking.status === 'in_progress');
+    if (hasInProgressBooking && incomingRequests.length > 0) {
+      console.log('Provider has a service in progress, clearing all broadcast requests');
+      setIncomingRequests([]);
+    }
+  }, [bookings, incomingRequests.length]);
+
 
   const checkAPIConnectivity = async () => {
     try {
@@ -718,6 +727,7 @@ const ProviderDashboard: React.FC = () => {
       await bookingsAPI.updateBooking(bookingId, { status: 'in_progress' });
       toast.success('Service started successfully');
       fetchBookings(); // Refresh bookings
+      setIncomingRequests([]); // Clear all broadcast requests immediately
       fetchIncomingRequests(); // Refresh incoming requests to hide broadcast requests
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to start service');

@@ -476,6 +476,15 @@ const ProviderDashboard: React.FC = () => {
     // Listen for new service requests
     SocketService.on('new_service_request', (data: any) => {
       console.log('🔔 New service request received:', data);
+      
+      // Check if provider has a service in progress
+      const hasInProgressBooking = bookings.some(booking => booking.status === 'in_progress');
+      
+      if (hasInProgressBooking) {
+        console.log('Provider has a service in progress, ignoring new broadcast request');
+        return;
+      }
+      
       toast.success(`New service request: ${data.serviceTitle}`, {
         duration: 5000,
         icon: '🔔'
@@ -698,6 +707,7 @@ const ProviderDashboard: React.FC = () => {
       await bookingsAPI.cancelBooking(bookingId, 'Provider cancelled the booking');
       toast.success('Booking cancelled successfully');
       fetchBookings(); // Refresh bookings
+      fetchIncomingRequests(); // Refresh incoming requests to show broadcast requests again
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to cancel booking');
     }
@@ -747,6 +757,7 @@ const ProviderDashboard: React.FC = () => {
           setShowProviderCompletionModal(false);
           setSelectedCompletionBooking(null);
           fetchBookings(); // Refresh bookings
+          fetchIncomingRequests(); // Refresh incoming requests to show broadcast requests again
         }
       }
     } catch (err: any) {

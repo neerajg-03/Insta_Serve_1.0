@@ -547,6 +547,26 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
       totalPrice = serviceData.price * duration.value;
     }
 
+    // Additional check: Filter out providers who have in-progress bookings
+    const providersWithInProgress = await Booking.find({
+      provider: { $in: nearbyProviders },
+      status: 'in_progress'
+    }).distinct('provider');
+
+    const availableProviders = nearbyProviders.filter(
+      providerId => !providersWithInProgress.includes(providerId.toString())
+    );
+
+    if (availableProviders.length === 0) {
+      console.log('No available providers (all have in-progress bookings)');
+      return res.status(404).json({
+        message: 'No available providers. All nearby providers are currently serving other customers.'
+      });
+    }
+
+    console.log(`Filtered out ${providersWithInProgress.length} providers with in-progress bookings`);
+    console.log(`Creating booking for ${availableProviders.length} available providers`);
+
     // Create broadcast booking (no provider assigned initially)
     const booking = new Booking({
       customer: req.user._id,
@@ -566,7 +586,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
       },
       serviceArea: serviceData.serviceArea,
       paymentMethod: req.body.paymentMethod || 'cash', // Store payment method
-      broadcastTo: nearbyProviders, // Only providers within 7km range
+      broadcastTo: availableProviders, // Only available providers (no in-progress bookings)
       broadcastSentAt: new Date()
     });
 
@@ -581,26 +601,6 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
     // Emit Socket.IO broadcast to approved providers only
     const io = req.app.get('io');
     if (io) {
-      // Additional check: Filter out providers who have in-progress bookings
-      const providersWithInProgress = await Booking.find({
-        provider: { $in: nearbyProviders },
-        status: 'in_progress'
-      }).distinct('provider');
-
-      const availableProviders = nearbyProviders.filter(
-        providerId => !providersWithInProgress.includes(providerId.toString())
-      );
-
-      if (availableProviders.length === 0) {
-        console.log('No available providers (all have in-progress bookings)');
-        return res.status(404).json({
-          message: 'No available providers. All nearby providers are currently serving other customers.'
-        });
-      }
-
-      console.log(`Filtered out ${providersWithInProgress.length} providers with in-progress bookings`);
-      console.log(`Sending broadcast to ${availableProviders.length} available providers`);
-
       const broadcastData = {
         bookingId: booking._id,
         customerId: req.user._id,

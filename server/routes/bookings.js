@@ -67,27 +67,17 @@ router.get('/', protect, async (req, res) => {
       // Add status filter for customers
       if (status) query.status = status;
     } else if (req.user.role === 'provider') {
-      // For providers, get both assigned bookings AND broadcast bookings sent to them
-      query.$or = [
-        { provider: req.user._id }, // Their assigned bookings
-        { 
-          status: 'broadcast',
-          'broadcastTo': req.user._id // Broadcast bookings sent to them
+      // For providers, get only their assigned bookings (excluding broadcast until accepted)
+      // Exception: when explicitly requesting broadcast status, return broadcast bookings sent to them
+      if (status === 'broadcast') {
+        query.status = 'broadcast';
+        query.broadcastTo = req.user._id;
+      } else {
+        query.provider = req.user._id;
+        // Apply status filter for providers (excluding broadcast)
+        if (status) {
+          query.status = status;
         }
-      ];
-      
-      // Apply status filter within the $or conditions for providers
-      if (status) {
-        query.$or = [
-          { 
-            provider: req.user._id,
-            status: status 
-          },
-          { 
-            status: status,
-            'broadcastTo': req.user._id 
-          }
-        ];
       }
     }
     if (dateFrom || dateTo) {

@@ -274,7 +274,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
         isApproved: true,
         isActive: true,
         provider: { $exists: true, $ne: null }
-      }).populate('provider', 'name email isActive kycStatus address isAvailable locationSharingEnabled currentLocation').lean();
+      }).populate('provider', 'name email isActive kycStatus address isAvailable locationSharingEnabled currentLocation isCurrentlyServing').lean();
 
       // Group providers by ID for distance filtering first (wallet check comes later)
       const providerMap = new Map();
@@ -296,6 +296,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
         console.log(`  - isActive: ${service.isActive}`);
         console.log(`  - Provider isActive: ${service.provider?.isActive}`);
         console.log(`  - Provider kycStatus: ${service.provider?.kycStatus}`);
+        console.log(`  - Provider isCurrentlyServing: ${service.provider?.isCurrentlyServing}`);
 
         // Only include active providers with approved KYC
         if (!service.provider.isActive) {
@@ -305,6 +306,12 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
 
         if (service.provider.kycStatus !== 'approved') {
           console.log(`  ❌ Provider KYC not approved (status: ${service.provider.kycStatus}), skipping`);
+          return;
+        }
+
+        // Exclude providers who are currently serving another service
+        if (service.provider.isCurrentlyServing) {
+          console.log(`  ❌ Provider is currently serving another service, skipping`);
           return;
         }
 
@@ -702,14 +709,23 @@ router.put('/:id', protect, async (req, res) => {
     // Handle specific status changes
     if (status === 'in_progress') {
       booking.actualStartTime = new Date();
+      // Set provider as currently serving
+      const User = require('../models/User');
+      await User.findByIdAndUpdate(booking.provider, { isCurrentlyServing: true });
     } else if (status === 'completed') {
       booking.actualEndTime = new Date();
+      // Set provider as not currently serving
+      const User = require('../models/User');
+      await User.findByIdAndUpdate(booking.provider, { isCurrentlyServing: false });
     } else if (status === 'cancelled') {
       booking.cancelledBy = req.user._id;
       booking.cancelledAt = new Date();
       if (notes) {
         booking.cancellationReason = notes;
       }
+      // Set provider as not currently serving if cancelled
+      const User = require('../models/User');
+      await User.findByIdAndUpdate(booking.provider, { isCurrentlyServing: false });
     }
 
     await booking.save();
@@ -1123,6 +1139,10 @@ router.post('/:id/verify-completion-code', protect, authorize('provider'), async
     booking.status = 'completed';
     booking.actualEndTime = new Date();
     booking.completedAt = new Date();
+
+    // Set provider as not currently serving
+    const User = require('../models/User');
+    await User.findByIdAndUpdate(booking.provider, { isCurrentlyServing: false });
 
     // Add timeline entry
     booking.timeline.push({

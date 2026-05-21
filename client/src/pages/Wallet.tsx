@@ -1,212 +1,221 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema({
-  name: {
+const walletTransactionSchema = new mongoose.Schema({
+  type: {
     type: String,
-    required: [true, 'Name is required'],
-    trim: true,
-    maxlength: [50, 'Name cannot exceed 50 characters']
+    enum: ['credit', 'debit', 'refund', 'bonus', 'penalty'],
+    required: true
   },
-  email: {
+  amount: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  description: {
     type: String,
-    required: [true, 'Email is required'],
-    unique: true,
-    lowercase: true,
-    trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    required: true
   },
-  password: {
+  referenceId: {
     type: String,
-    required: function() {
-      return this.authMethod !== 'google';
-    },
-    minlength: [6, 'Password must be at least 6 characters long']
+    required: false // Can reference booking ID, payment ID, etc.
   },
-  phone: {
+  referenceType: {
     type: String,
-    required: [true, 'Phone number is required'],
-    match: [/^[6-9]\d{9}$/, 'Please enter a valid 10-digit phone number']
+    enum: ['booking', 'recharge', 'refund', 'bonus', 'penalty'],
+    required: false
   },
-  role: {
+  paymentMethod: {
     type: String,
-    enum: ['customer', 'provider', 'admin'],
-    default: 'customer'
+    enum: ['wallet', 'card', 'upi', 'netbanking', 'cash'],
+    required: false
   },
-    address: {
-    street: String,
-    city: String,
-    state: String,
-    pincode: String,
-    coordinates: {
-      lat: Number,
-      lng: Number
-    }
-  },
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  kycStatus: {
+  status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending'
+    enum: ['pending', 'completed', 'failed', 'cancelled'],
+    default: 'completed'
   },
-  kycDocuments: [{
-    documentType: {
-      type: String,
-      enum: ['aadhar', 'pan', 'driving_license', 'passport', 'other']
-    },
-    documentNumber: String,
-    documentUrl: String,
-    uploadDate: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  services: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Service'
-  }],
-  ratings: {
-    average: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 5
-    },
-    count: {
-      type: Number,
-      default: 0
-    }
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  lastLogin: Date,
-  emailVerified: {
-    type: Boolean,
-    default: false
-  },
-  emailVerificationToken: String,
-  passwordResetToken: String,
-  passwordResetExpires: Date,
-  settings: {
-    emailNotifications: { type: Boolean, default: true },
-    smsNotifications: { type: Boolean, default: true },
-    pushNotifications: { type: Boolean, default: true },
-    marketingEmails: { type: Boolean, default: false },
-    language: { type: String, default: 'en', enum: ['en', 'hi', 'bn', 'ta', 'te'] },
-    currency: { type: String, default: 'INR', enum: ['INR', 'USD', 'EUR', 'GBP'] }
-  },
-  paymentMethods: [{
-    id: {
-      type: String,
-      required: true
-    },
-    type: {
-      type: String,
-      enum: ['card', 'bank_account'],
-      default: 'card'
-    },
-    isDefault: {
-      type: Boolean,
-      default: false
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  stripeCustomerId: String,
-  // Provider availability and location tracking
-  isAvailable: {
-    type: Boolean,
-    default: false
-  },
-  currentLocation: {
-    lat: Number,
-    lng: Number,
-    lastUpdated: {
-      type: Date,
-      default: Date.now
-    }
-  },
-  locationSharingEnabled: {
-    type: Boolean,
-    default: false
-  },
-  isCurrentlyServing: {
-    type: Boolean,
-    default: false
-  },
-  // Razorpay Route integration fields
-  razorpayAccountId: String,
-  razorpayStakeholderId: String,
-  razorpayConfigId: String,
-  razorpayAccountStatus: {
-    type: String,
-    enum: ['created', 'activated', 'suspended', 'deleted'],
-    default: 'created'
-  },
-  // Additional KYC and business details for Route
-  pan: String,
-  businessName: String,
-  bankAccount: {
-    accountHolderName: String,
-    accountNumber: String,
-    ifscCode: String,
-    bankName: String,
-    branchName: String
-  },
-  // Google OAuth fields
-  googleId: {
-    type: String,
-    sparse: true
-  },
-  authMethod: {
-    type: String,
-    enum: ['local', 'google'],
-    default: 'local'
-  },
-  profilePicture: {
-    type: String,
-    default: ''
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true
 });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  // Skip password hashing for Google OAuth users
-  if (this.authMethod === 'google') return next();
-  
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
+const walletSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true
+  },
+  balance: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: 0
+  },
+  totalCredits: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  totalDebits: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  lastRecharge: {
+    type: Date,
+    default: null
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  transactions: [walletTransactionSchema],
+  settings: {
+    autoRecharge: {
+      enabled: { type: Boolean, default: false },
+      amount: { type: Number, default: 0 },
+      threshold: { type: Number, default: 0 }
+    },
+    notifications: {
+      lowBalance: { type: Boolean, default: true },
+      creditAlert: { type: Boolean, default: true },
+      debitAlert: { type: Boolean, default: true }
+    }
   }
+}, {
+  timestamps: true
 });
 
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+// Index for faster queries
+walletSchema.index({ user: 1 });
+walletSchema.index({ 'transactions.createdAt': -1 });
+
+// Instance methods
+walletSchema.methods.credit = function(amount, description, referenceId = null, referenceType = null, metadata = {}) {
+  this.balance += amount;
+  this.totalCredits += amount;
+  
+  const transaction = {
+    type: 'credit',
+    amount,
+    description,
+    referenceId,
+    referenceType,
+    metadata,
+    status: 'completed',
+    createdAt: new Date()
+  };
+  
+  this.transactions.push(transaction);
+  return this.save();
 };
 
-// Get user profile without sensitive data
-userSchema.methods.getProfile = function() {
-  const user = this.toObject();
-  delete user.password;
-  delete user.emailVerificationToken;
-  delete user.passwordResetToken;
-  delete user.passwordResetExpires;
-  return user;
+walletSchema.methods.debit = function(amount, description, referenceId = null, referenceType = null, metadata = {}) {
+  if (this.balance < amount) {
+    throw new Error('Insufficient wallet balance');
+  }
+  
+  this.balance -= amount;
+  this.totalDebits += amount;
+  
+  const transaction = {
+    type: 'debit',
+    amount,
+    description,
+    referenceId,
+    referenceType,
+    metadata,
+    status: 'completed',
+    createdAt: new Date()
+  };
+  
+  this.transactions.push(transaction);
+  return this.save();
 };
 
-module.exports = mongoose.model('User', userSchema);
+walletSchema.methods.getTransactions = function(limit = 50, offset = 0) {
+  return this.transactions
+    .sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return dateB - dateA;
+    })
+    .slice(offset, offset + limit);
+};
+
+walletSchema.methods.getTransactionHistory = function(filters = {}) {
+  let query = { user: this.user };
+  
+  if (filters.type) {
+    query['transactions.type'] = filters.type;
+  }
+  
+  if (filters.startDate && filters.endDate) {
+    query['transactions.createdAt'] = {
+      $gte: filters.startDate,
+      $lte: filters.endDate
+    };
+  }
+  
+  return this.model('Wallet').findOne(query)
+    .select('transactions')
+    .then(wallet => {
+      if (!wallet) return [];
+      return wallet.transactions
+        .filter(transaction => {
+          if (filters.type && transaction.type !== filters.type) return false;
+          if (filters.startDate && transaction.createdAt && new Date(transaction.createdAt) < filters.startDate) return false;
+          if (filters.endDate && transaction.createdAt && new Date(transaction.createdAt) > filters.endDate) return false;
+          return true;
+        })
+        .sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+          const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+          return dateB - dateA;
+        });
+    });
+};
+
+// Static methods
+walletSchema.statics.findOrCreateByUser = function(userId) {
+  return this.findOne({ user: userId })
+    .then(wallet => {
+      if (wallet) return wallet;
+      
+      // Create new wallet if not found
+      return this.create({
+        user: userId,
+        balance: 0,
+        totalCredits: 0,
+        totalDebits: 0
+      });
+    });
+};
+
+walletSchema.statics.getUserBalance = function(userId) {
+  return this.findOne({ user: userId, isActive: true })
+    .select('balance')
+    .then(wallet => wallet ? wallet.balance : 0);
+};
+
+// Pre-save middleware
+walletSchema.pre('save', function(next) {
+  // Ensure balance never goes negative
+  if (this.balance < 0) {
+    this.balance = 0;
+  }
+  
+  // Update last recharge if this is a credit transaction with recharge type
+  const lastTransaction = this.transactions[this.transactions.length - 1];
+  if (lastTransaction && lastTransaction.type === 'credit' && lastTransaction.referenceType === 'recharge') {
+    this.lastRecharge = new Date();
+  }
+  
+  next();
+});
+
+module.exports = mongoose.model('Wallet', walletSchema);

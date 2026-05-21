@@ -1416,6 +1416,10 @@ router.post('/:id/verify-start-code', protect, authorize('provider'), async (req
     booking.status = 'in_progress';
     booking.actualStartTime = new Date();
 
+    // Set provider as currently serving
+    const User = require('../models/User');
+    await User.findByIdAndUpdate(booking.provider, { isCurrentlyServing: true });
+
     // Clear the start code after verification
     booking.startCode = null;
     booking.startCodeGeneratedAt = null;

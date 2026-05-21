@@ -346,7 +346,16 @@ const ProviderDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await bookingsAPI.getBookings({ status: 'broadcast' });
-      setIncomingRequests(response.bookings || []);
+      
+      // Filter out broadcast requests if provider has a service in progress
+      const hasInProgressBooking = bookings.some(booking => booking.status === 'in_progress');
+      const filteredRequests = hasInProgressBooking ? [] : (response.bookings || []);
+      
+      setIncomingRequests(filteredRequests);
+      
+      if (hasInProgressBooking && filteredRequests.length === 0 && response.bookings?.length > 0) {
+        console.log('Provider has a service in progress, hiding broadcast requests');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch incoming requests');
       toast.error('Failed to fetch incoming requests');
@@ -699,6 +708,7 @@ const ProviderDashboard: React.FC = () => {
       await bookingsAPI.updateBooking(bookingId, { status: 'in_progress' });
       toast.success('Service started successfully');
       fetchBookings(); // Refresh bookings
+      fetchIncomingRequests(); // Refresh incoming requests to hide broadcast requests
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to start service');
     }

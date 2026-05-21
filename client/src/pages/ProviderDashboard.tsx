@@ -694,6 +694,16 @@ const ProviderDashboard: React.FC = () => {
     }
   };
 
+  const handleStartBooking = async (bookingId: string) => {
+    try {
+      await bookingsAPI.updateBooking(bookingId, { status: 'in_progress' });
+      toast.success('Service started successfully');
+      fetchBookings(); // Refresh bookings
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to start service');
+    }
+  };
+
 
 
   const handleCompleteBooking = (booking: Booking) => {
@@ -2451,6 +2461,14 @@ const fetchProviderStatus = async () => {
                               >
                                 <XMarkIcon className="w-4 h-4 mr-2" />
                                 Cancel
+                              </button>
+                              <button
+                                onClick={() => handleStartBooking(booking._id)}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center"
+                                disabled={loading}
+                              >
+                                <PlayIcon className="w-4 h-4 mr-2" />
+                                Start Service
                               </button>
                             </>
                           )}

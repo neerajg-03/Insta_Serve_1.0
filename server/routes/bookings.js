@@ -581,6 +581,26 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
     // Emit Socket.IO broadcast to approved providers only
     const io = req.app.get('io');
     if (io) {
+      // Additional check: Filter out providers who have in-progress bookings
+      const providersWithInProgress = await Booking.find({
+        provider: { $in: nearbyProviders },
+        status: 'in_progress'
+      }).distinct('provider');
+
+      const availableProviders = nearbyProviders.filter(
+        providerId => !providersWithInProgress.includes(providerId.toString())
+      );
+
+      if (availableProviders.length === 0) {
+        console.log('No available providers (all have in-progress bookings)');
+        return res.status(404).json({
+          message: 'No available providers. All nearby providers are currently serving other customers.'
+        });
+      }
+
+      console.log(`Filtered out ${providersWithInProgress.length} providers with in-progress bookings`);
+      console.log(`Sending broadcast to ${availableProviders.length} available providers`);
+
       const broadcastData = {
         bookingId: booking._id,
         customerId: req.user._id,
@@ -592,16 +612,16 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
         price: totalPrice,
         voiceNote: booking.voiceNote, // Include voice note in broadcast
         notes: booking.notes, // Include notes in broadcast
-        broadcastTo: nearbyProviders,
+        broadcastTo: availableProviders,
         timestamp: new Date()
       };
-      
+
       // Send only to specific providers in broadcastTo array
-      nearbyProviders.forEach(providerId => {
+      availableProviders.forEach(providerId => {
         io.to(`user_${providerId}`).emit('new_service_request', broadcastData);
       });
-      
-      console.log(`Broadcast sent to ${nearbyProviders.length} providers:`, nearbyProviders);
+
+      console.log(`Broadcast sent to ${availableProviders.length} providers:`, availableProviders);
       console.log(`Voice note included: ${booking.voiceNote ? 'YES' : 'NO'}`);
     }
 

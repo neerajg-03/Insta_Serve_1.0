@@ -692,49 +692,21 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
           const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
           const data = await response.json();
           
-          if (data.status === 'OK' && data.results && data.results.length > 0) {
-            const addressComponents = data.results[0].address_components;
-            const getAddressComponent = (types: string[]) => {
-              const component = addressComponents.find((comp: any) => 
-                types.some(type => comp.types.includes(type))
-              );
-              return component ? component.long_name : '';
-            };
-            
-            setBookingData(prev => ({
-              ...prev,
-              address: {
-                street: getAddressComponent(['street_number', 'route']) || 'Current Location',
-                city: getAddressComponent(['locality', 'administrative_area_level_2']) || 'Unknown City',
-                state: getAddressComponent(['administrative_area_level_1']) || 'Unknown State',
-                pincode: getAddressComponent(['postal_code']) || '000000',
-                coordinates: { lat: latitude, lng: longitude }
-              },
-              useCurrentLocation: true
-            }));
-          } else {
-            // If reverse geocoding fails, at least save coordinates with default address
-            setBookingData(prev => ({
-              ...prev,
-              address: {
-                street: 'Current Location',
-                city: 'Unknown City',
-                state: 'Unknown State',
-                pincode: '000000',
-                coordinates: { lat: latitude, lng: longitude }
-              },
-              useCurrentLocation: true
-            }));
-          }
-        } catch (error) {
-          // If API fails, at least save coordinates with default address
+          // Only set coordinates, don't fill manual address fields
           setBookingData(prev => ({
             ...prev,
             address: {
-              street: 'Current Location',
-              city: 'Unknown City',
-              state: 'Unknown State',
-              pincode: '000000',
+              ...prev.address,
+              coordinates: { lat: latitude, lng: longitude }
+            },
+            useCurrentLocation: true
+          }));
+        } catch (error) {
+          // If API fails, at least save coordinates without filling address fields
+          setBookingData(prev => ({
+            ...prev,
+            address: {
+              ...prev.address,
               coordinates: { lat: latitude, lng: longitude }
             },
             useCurrentLocation: true

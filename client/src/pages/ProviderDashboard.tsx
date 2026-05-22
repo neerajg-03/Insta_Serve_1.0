@@ -2375,7 +2375,7 @@ const fetchProviderStatus = async () => {
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
                           <div>
                             <p className="text-gray-600">Scheduled Date & Time</p>
                             <p className="font-medium text-gray-900">
@@ -2394,6 +2394,27 @@ const fetchProviderStatus = async () => {
                               )}
                             </p>
                           </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <p className="text-gray-600 text-sm font-medium mb-1">Service Address</p>
+                          <p className="text-gray-900 text-sm">
+                            {typeof booking.address === 'string' 
+                              ? booking.address
+                              : (() => {
+                                  const street = booking.address?.street || '';
+                                  const city = booking.address?.city || '';
+                                  const state = booking.address?.state || '';
+                                  const pincode = booking.address?.pincode || '';
+                                  
+                                  const parts = [street, city, state, pincode].filter(Boolean);
+                                  return parts.length > 0 ? parts.join(', ') : 'Address not provided';
+                                })()
+                            }
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
                           <div>
                             <p className="text-gray-600">Distance from Your Location</p>
                             <div className="flex items-center">

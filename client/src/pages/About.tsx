@@ -55,7 +55,7 @@ const About: React.FC = () => {
     const mockTestimonials: Testimonial[] = [
       {
         id: 1,
-        name: "Sarah Johnson",
+        name: "Sonali Jhankar",
         service: "Home Cleaning",
         rating: 5,
         comment: "Amazing service! The provider was professional and did an excellent job. Highly recommend InstaServe!",
@@ -65,7 +65,7 @@ const About: React.FC = () => {
       },
       {
         id: 2,
-        name: "Michael Chen",
+        name: "Mahesh Gupta",
         service: "AC Repair",
         rating: 5,
         comment: "Quick response time and expert service. My AC was fixed within hours. Great platform!",
@@ -75,7 +75,7 @@ const About: React.FC = () => {
       },
       {
         id: 3,
-        name: "Emily Rodriguez",
+        name: "Rakesh Singh",
         service: "Plumbing",
         rating: 4,
         comment: "Reliable and affordable. The plumber arrived on time and solved the issue efficiently.",
@@ -85,7 +85,7 @@ const About: React.FC = () => {
       },
       {
         id: 4,
-        name: "David Kim",
+        name: "Simran Ahuja",
         service: "Electrical Work",
         rating: 5,
         comment: "Professional electrician with great knowledge. Safety was prioritized throughout the service.",

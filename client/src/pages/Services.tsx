@@ -657,15 +657,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate - address is mandatory (either current location or manual entry)
-    if (!bookingData.address.street || !bookingData.address.city || !bookingData.address.state || !bookingData.address.pincode) {
-      toast.error('Please provide complete address (street, city, state, pincode)');
+    // Validate - current location is mandatory for GPS coordinates
+    if (!bookingData.address.coordinates.lat) {
+      toast.error('Please enable location detection to proceed');
       return;
     }
     
-    // If using current location, coordinates are required
-    if (bookingData.useCurrentLocation && !bookingData.address.coordinates.lat) {
-      toast.error('Please enable location detection to proceed');
+    // Validate - manual address is mandatory
+    if (!bookingData.address.street || !bookingData.address.city || !bookingData.address.state || !bookingData.address.pincode) {
+      toast.error('Please provide complete address (street, city, state, pincode)');
       return;
     }
 
@@ -973,7 +973,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
           <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
             <div>
               <label style={{display: 'block', fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '12px', letterSpacing: '0.5px'}}>
-                📍 Service Location *
+                📍 GPS Location (Required for Coordinates) *
               </label>
               
               <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
@@ -1025,11 +1025,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
                   </div>
                 )}
 
-                <div style={{display: 'flex', alignItems: 'center', margin: '8px 0'}}>
-                  <div style={{flex: 1, height: '1px', background: 'var(--bord)'}}></div>
-                  <span style={{padding: '0 16px', color: 'var(--muted)', fontSize: '12px'}}>OR ENTER MANUALLY</span>
-                  <div style={{flex: 1, height: '1px', background: 'var(--bord)'}}></div>
-                </div>
 
                 <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                   <div>
@@ -1039,13 +1034,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
                     <input
                       type="text"
                       value={bookingData.address.street}
-                      onChange={(e) => {
-                        handleManualAddressChange();
-                        setBookingData(prev => ({...prev, address: {...prev.address, street: e.target.value}}));
-                      }}
+                      onChange={(e) => setBookingData(prev => ({...prev, address: {...prev.address, street: e.target.value}}))}
                       placeholder="Enter street address"
                       required
-                      disabled={bookingData.useCurrentLocation}
                       style={{
                         width: '100%',
                         padding: '12px 16px',
@@ -1068,13 +1059,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
                       <input
                         type="text"
                         value={bookingData.address.city}
-                        onChange={(e) => {
-                          handleManualAddressChange();
-                          setBookingData(prev => ({...prev, address: {...prev.address, city: e.target.value}}));
-                        }}
+                        onChange={(e) => setBookingData(prev => ({...prev, address: {...prev.address, city: e.target.value}}))}
                         placeholder="Enter city"
                         required
-                        disabled={bookingData.useCurrentLocation}
                         style={{
                           width: '100%',
                           padding: '12px 16px',
@@ -1096,13 +1083,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
                       <input
                         type="text"
                         value={bookingData.address.state}
-                        onChange={(e) => {
-                          handleManualAddressChange();
-                          setBookingData(prev => ({...prev, address: {...prev.address, state: e.target.value}}));
-                        }}
+                        onChange={(e) => setBookingData(prev => ({...prev, address: {...prev.address, state: e.target.value}}))}
                         placeholder="Enter state"
                         required
-                        disabled={bookingData.useCurrentLocation}
                         style={{
                           width: '100%',
                           padding: '12px 16px',
@@ -1125,13 +1108,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm
                     <input
                       type="text"
                       value={bookingData.address.pincode}
-                      onChange={(e) => {
-                        handleManualAddressChange();
-                        setBookingData(prev => ({...prev, address: {...prev.address, pincode: e.target.value}}));
-                      }}
+                      onChange={(e) => setBookingData(prev => ({...prev, address: {...prev.address, pincode: e.target.value}}))}
                       placeholder="Enter pincode"
                       required
-                      disabled={bookingData.useCurrentLocation}
                       pattern="[0-9]{6}"
                       maxLength={6}
                       style={{

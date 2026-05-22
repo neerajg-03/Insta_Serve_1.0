@@ -1279,13 +1279,69 @@ const fetchProviderStatus = async () => {
                   </span>
                 )}
               </button>
+
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
+                  <div className="bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-3">
+                    <h3 className="text-white font-semibold text-sm">Notifications</h3>
+                    <p className="text-emerald-100 text-xs">{notifications.length} new notifications</p>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-gray-500">
+                        <BellIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No notifications yet</p>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className={`p-2 rounded-lg ${
+                              notification.type === 'new_request' ? 'bg-blue-100' :
+                              notification.type === 'booking_lost' ? 'bg-red-100' :
+                              notification.type === 'booking_accepted' ? 'bg-green-100' :
+                              'bg-gray-100'
+                            }`}>
+                              {notification.type === 'new_request' && <BellIcon className="w-4 h-4 text-blue-600" />}
+                              {notification.type === 'booking_lost' && <XCircleIcon className="w-4 h-4 text-red-600" />}
+                              {notification.type === 'booking_accepted' && <CheckCircleIcon className="w-4 h-4 text-green-600" />}
+                              {notification.type === 'new_message' && <ChatBubbleLeftIcon className="w-4 h-4 text-purple-600" />}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{notification.title}</p>
+                              <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
+                              <p className="text-xs text-gray-400 mt-2">
+                                {new Date(notification.timestamp).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  {notifications.length > 0 && (
+                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                      <button
+                        onClick={() => setNotifications([])}
+                        className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                      >
+                        Clear all notifications
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
         <div
           className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105 cursor-pointer"
           onClick={() => navigate('/provider/wallet')}
@@ -1398,34 +1454,6 @@ const fetchProviderStatus = async () => {
           </div>
         </div>
 
-        <div className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
-                <StarIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-yellow-500" />
-                Average Rating
-              </p>
-              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mt-1 sm:mt-2">
-                {overviewLoading ? (
-                  <span className="animate-pulse">0.0</span>
-                ) : (
-                  <>{earningsData.averageRating.toFixed(1)}</>
-                )}
-              </p>
-              <p className="text-xs text-yellow-600 mt-1 sm:mt-2 flex items-center font-medium">
-                <StarSolidIcon className="w-3 h-3 mr-1 text-yellow-500" />
-                {overviewLoading ? (
-                  <span className="animate-pulse">Loading...</span>
-                ) : (
-                  <>Excellent service</>
-                )}
-              </p>
-            </div>
-            <div className="p-3 sm:p-4 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-xl ml-2 sm:ml-0 group-hover:scale-110 transition-transform">
-              <StarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Balance Warning Banner */}

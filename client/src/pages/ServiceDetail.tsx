@@ -83,7 +83,13 @@ const ServiceDetail: React.FC = () => {
   const [bookingData, setBookingData] = useState({
     scheduledDate: '',
     scheduledTime: '',
-    address: '',
+    address: {
+      street: '',
+      city: '',
+      state: '',
+      pincode: '',
+      coordinates: null
+    },
     notes: ''
   });
 
@@ -183,7 +189,13 @@ const ServiceDetail: React.FC = () => {
     // Set default address from user profile
     setBookingData({
       ...bookingData,
-      address: typeof user?.address === 'string' ? user.address : user?.address?.city || ''
+      address: {
+        street: '',
+        city: typeof user?.address === 'string' ? '' : user?.address?.city || '',
+        state: typeof user?.address === 'string' ? '' : user?.address?.state || '',
+        pincode: typeof user?.address === 'string' ? '' : user?.address?.pincode || '',
+        coordinates: null
+      }
     });
   };
 
@@ -193,13 +205,36 @@ const ServiceDetail: React.FC = () => {
     try {
       setBookingLoading(true);
       
+      // Get current location coordinates
+      let coordinates = null;
+      try {
+        if (navigator.geolocation) {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0
+            });
+          });
+          coordinates = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+        }
+      } catch (geoError) {
+        console.warn('Could not get location coordinates:', geoError);
+      }
+      
       const bookingPayload = {
         service: service._id,
         provider: selectedProvider._id,
         customer: user._id,
         scheduledDate: bookingData.scheduledDate,
         scheduledTime: bookingData.scheduledTime,
-        address: bookingData.address,
+        address: {
+          ...bookingData.address,
+          coordinates: coordinates
+        },
         notes: bookingData.notes,
         totalAmount: service.price
       };
@@ -211,7 +246,13 @@ const ServiceDetail: React.FC = () => {
       setBookingData({
         scheduledDate: '',
         scheduledTime: '',
-        address: '',
+        address: {
+          street: '',
+          city: '',
+          state: '',
+          pincode: '',
+          coordinates: null
+        },
         notes: ''
       });
       
@@ -487,15 +528,61 @@ const ServiceDetail: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address
+                  Street Address *
                 </label>
-                <textarea
+                <input
+                  type="text"
                   className="input"
-                  rows={3}
-                  placeholder="Enter your address"
-                  value={bookingData.address}
-                  onChange={(e) => setBookingData({...bookingData, address: e.target.value})}
+                  placeholder="Enter street address"
+                  value={bookingData.address.street}
+                  onChange={(e) => setBookingData({...bookingData, address: {...bookingData.address, street: e.target.value}})}
                   required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    City *
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="Enter city"
+                    value={bookingData.address.city}
+                    onChange={(e) => setBookingData({...bookingData, address: {...bookingData.address, city: e.target.value}})}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    State *
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="Enter state"
+                    value={bookingData.address.state}
+                    onChange={(e) => setBookingData({...bookingData, address: {...bookingData.address, state: e.target.value}})}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Pincode *
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Enter pincode"
+                  value={bookingData.address.pincode}
+                  onChange={(e) => setBookingData({...bookingData, address: {...bookingData.address, pincode: e.target.value}})}
+                  required
+                  pattern="[0-9]{6}"
+                  maxLength={6}
                 />
               </div>
 
@@ -524,7 +611,7 @@ const ServiceDetail: React.FC = () => {
               <button
                 onClick={handleConfirmBooking}
                 className="btn btn-primary"
-                disabled={bookingLoading || !bookingData.scheduledDate || !bookingData.scheduledTime || !bookingData.address}
+                disabled={bookingLoading || !bookingData.scheduledDate || !bookingData.scheduledTime || !bookingData.address.street || !bookingData.address.city || !bookingData.address.state || !bookingData.address.pincode}
               >
                 {bookingLoading ? 'Creating Booking...' : 'Confirm Booking'}
               </button>

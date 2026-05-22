@@ -88,7 +88,7 @@ const ServiceDetail: React.FC = () => {
       city: '',
       state: '',
       pincode: '',
-      coordinates: null
+      coordinates: null as { lat: number; lng: number } | null
     },
     notes: ''
   });
@@ -194,7 +194,7 @@ const ServiceDetail: React.FC = () => {
         city: typeof user?.address === 'string' ? '' : user?.address?.city || '',
         state: typeof user?.address === 'string' ? '' : user?.address?.state || '',
         pincode: typeof user?.address === 'string' ? '' : user?.address?.pincode || '',
-        coordinates: null
+        coordinates: null as { lat: number; lng: number } | null
       }
     });
   };
@@ -202,28 +202,20 @@ const ServiceDetail: React.FC = () => {
   const handleConfirmBooking = async () => {
     if (!selectedProvider || !service || !user) return;
 
+    // Validate GPS coordinates are mandatory
+    if (!bookingData.address.coordinates) {
+      toast.error('Please detect GPS location before booking');
+      return;
+    }
+
+    // Validate manual address is mandatory
+    if (!bookingData.address.street || !bookingData.address.city || !bookingData.address.state || !bookingData.address.pincode) {
+      toast.error('Please provide complete address (street, city, state, pincode)');
+      return;
+    }
+
     try {
       setBookingLoading(true);
-      
-      // Get current location coordinates
-      let coordinates = null;
-      try {
-        if (navigator.geolocation) {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              timeout: 10000,
-              maximumAge: 0
-            });
-          });
-          coordinates = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-        }
-      } catch (geoError) {
-        console.warn('Could not get location coordinates:', geoError);
-      }
       
       const bookingPayload = {
         service: service._id,
@@ -231,10 +223,7 @@ const ServiceDetail: React.FC = () => {
         customer: user._id,
         scheduledDate: bookingData.scheduledDate,
         scheduledTime: bookingData.scheduledTime,
-        address: {
-          ...bookingData.address,
-          coordinates: coordinates
-        },
+        address: bookingData.address,
         notes: bookingData.notes,
         totalAmount: service.price
       };
@@ -251,7 +240,7 @@ const ServiceDetail: React.FC = () => {
           city: '',
           state: '',
           pincode: '',
-          coordinates: null
+          coordinates: null as { lat: number; lng: number } | null
         },
         notes: ''
       });
@@ -524,6 +513,47 @@ const ServiceDetail: React.FC = () => {
                   onChange={(e) => setBookingData({...bookingData, scheduledTime: e.target.value})}
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  GPS Location (Required for Coordinates) *
+                </label>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      if (navigator.geolocation) {
+                        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                          navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 0
+                          });
+                        });
+                        setBookingData({
+                          ...bookingData,
+                          address: {
+                            ...bookingData.address,
+                            coordinates: {
+                              lat: position.coords.latitude,
+                              lng: position.coords.longitude
+                            }
+                          }
+                        });
+                        toast.success('GPS location detected successfully!');
+                      }
+                    } catch (error) {
+                      toast.error('Could not detect GPS location. Please enable location permissions.');
+                    }
+                  }}
+                  className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 font-medium hover:bg-blue-100 transition-colors"
+                >
+                  📍 Detect GPS Location
+                </button>
+                {bookingData.address.coordinates && (
+                  <p className="text-sm text-green-600 mt-2">✓ GPS coordinates captured</p>
+                )}
               </div>
 
               <div>

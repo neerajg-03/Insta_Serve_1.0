@@ -1,49 +1,81 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import { servicesAPI, bookingsAPI, providerAPI } from '../services/api';
 import { RootState } from '../store';
-import api from '../services/api';
-import { servicesAPI, bookingsAPI, walletAPI } from '../services/api';
+import LocationService, { Location } from '../services/locationService';
+import SocketService, { BookingUpdate, ChatMessage, UserData } from '../services/socketService';
 import toast from 'react-hot-toast';
-
-/* ── Inline SVG Icons ── */
-interface IconProps {
-  style?: React.CSSProperties;
-  className?: string;
-}
-
-const ArrowRight = ({ style, className }: IconProps = {}) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-);
-const SearchIcon = ({ style, className }: IconProps = {}) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-);
-const FilterIcon = ({ style, className }: IconProps = {}) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-);
-const MapPinIcon = ({ style, className }: IconProps = {}) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-);
-const ClockIcon = ({ style, className }: IconProps = {}) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-);
-const CurrencyIcon = ({ style, className }: IconProps = {}) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/><line x1="7" y1="10" x2="17" y2="10"/><line x1="7" y1="14" x2="17" y2="14"/></svg>
-);
-const TagIcon = ({ style, className }: IconProps = {}) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-);
-const CalendarIcon = ({ style, className }: IconProps = {}) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style} className={className}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-);
-
+import { 
+  WrenchScrewdriverIcon,
+  BellIcon,
+  CalendarIcon,
+  CurrencyDollarIcon,
+  UserIcon,
+  CogIcon,
+  ChartBarIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  XMarkIcon,
+  ExclamationTriangleIcon,
+  XCircleIcon,
+  MapPinIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  DocumentTextIcon,
+  ArrowTrendingUpIcon,
+  SparklesIcon,
+  ArrowRightIcon,
+  StarIcon,
+  ShieldCheckIcon,
+  EyeIcon,
+  PencilIcon,
+  TrashIcon,
+  PlayIcon,
+  StopIcon,
+  CheckIcon,
+  UserGroupIcon,
+  DocumentMagnifyingGlassIcon,
+  BanknotesIcon,
+  ArrowPathIcon,
+  BellAlertIcon,
+  HomeIcon,
+  ClipboardDocumentListIcon,
+  CreditCardIcon,
+  AcademicCapIcon,
+  BuildingOfficeIcon,
+  ComputerDesktopIcon,
+  HeartIcon,
+  TruckIcon,
+  CameraIcon,
+  PaintBrushIcon,
+  LightBulbIcon,
+  FireIcon,
+  CheckBadgeIcon,
+  ArrowDownTrayIcon,
+  QueueListIcon,
+  ChartPieIcon,
+  GiftIcon,
+  TrophyIcon,
+  FlagIcon,
+  MagnifyingGlassIcon,
+  AdjustmentsHorizontalIcon,
+  FunnelIcon,
+  DocumentDuplicateIcon,
+  ArrowLeftIcon,
+  ChatBubbleLeftIcon
+} from '@heroicons/react/24/outline';
+import { StarIcon as StarSolidIcon, FireIcon as FireSolidIcon } from '@heroicons/react/24/solid';
+import ProviderAvailabilityToggle from '../components/ProviderAvailabilityToggle';
+import ProviderCompletionModal from '../components/ProviderCompletionModal';
+import ProviderNavigationModal from '../components/ProviderNavigationModal';
+import ChatComponent from '../components/ChatComponent';
 
 interface Service {
   _id: string;
   title: string;
   description: string;
   category: string;
-  subcategory: string;
   price: number;
   priceType: string;
   duration: {
@@ -51,1180 +83,2882 @@ interface Service {
     unit: string;
   };
   serviceArea: string;
+  requirements?: string;
+  tools?: string;
   isActive: boolean;
   isApproved: boolean;
-  provider: null;
-  createdBy: 'admin';
-  providerCount?: number;
+  createdBy?: string;
+  provider?: string | null;
+  images?: string[];
+  rating?: number;
+  reviewCount?: number;
 }
 
-const Services: React.FC = () => {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { user } = useSelector((state: RootState) => state.auth);
-
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
-  const [showBookingModal, setShowBookingModal] = useState(false);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [bookingLoading, setBookingLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [filteredSuggestions, setFilteredSuggestions] = useState<Service[]>([]);
-
-  // Map Home category labels to Services category values
-  const categoryLabelMap: Record<string, string> = {
-    'Home Cleaning': 'home_cleaning',
-    'Beauty & Spa': 'beauty_wellness',
-    'Appliance Repair': 'appliance_repair',
-    'Plumbing': 'plumbing',
-    'Electrical': 'electrical',
-    'Painting': 'painting',
+interface ProviderService {
+  _id: string;
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  priceType: string;
+  duration: {
+    value: number;
+    unit: string;
   };
+  serviceArea: string;
+  requirements?: string;
+  tools?: string;
+  isActive: boolean;
+  isApproved: boolean;
+  provider: string;
+  createdAt: string;
+  updatedAt: string;
+  images?: string[];
+  rating?: number;
+  reviewCount?: number;
+}
 
-  const categories = [
-    { value: 'home_cleaning', label: 'Home Cleaning' },
-    { value: 'beauty_wellness', label: 'Beauty & Wellness' },
-    { value: 'appliance_repair', label: 'Appliance Repair' },
-    { value: 'plumbing', label: 'Plumbing' },
-    { value: 'electrical', label: 'Electrical' },
-    { value: 'carpentry', label: 'Carpentry' },
-    { value: 'painting', label: 'Painting' },
-    { value: 'pest_control', label: 'Pest Control' },
-    { value: 'packers_movers', label: 'Packers & Movers' },
-    { value: 'home_tutoring', label: 'Home Tutoring' },
-    { value: 'fitness_training', label: 'Fitness Training' },
-    { value: 'event_management', label: 'Event Management' },
-    { value: 'photography', label: 'Photography' },
-    { value: 'web_development', label: 'Web Development' },
-    { value: 'digital_marketing', label: 'Digital Marketing' }
-  ];
+interface Booking {
+  _id: string;
+  customer: {
+    _id: string;
+    name: string;
+    phone: string;
+    email: string;
+  };
+  provider?: {
+    _id: string;
+    name: string;
+    phone: string;
+    email: string;
+  };
+  service?: {
+    _id: string;
+    title: string;
+    category: string;
+    price?: {
+      totalPrice: number;
+    };
+  };
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'broadcast' | 'refunded';
+  scheduledDate: string;
+  scheduledTime?: string;
+  totalAmount?: number;
+  price?: {
+    totalPrice: number;
+  };
+  address?: string | {
+    street: string;
+    city: string;
+    state: string;
+    pincode: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+  };
+  notes?: string;
+  voiceNote?: string;
+  createdAt: string;
+  broadcastSentAt?: string;
+  broadcastAcceptedAt?: string;
+  acceptedAt?: string;
+  actualStartTime?: string;
+  actualEndTime?: string;
+  completionPhotos?: string[];
+  review?: {
+    rating: number;
+    comment: string;
+  };
+  paymentStatus?: string;
+  cancellationReason?: string;
+  cancelledBy?: string;
+  cancelledAt?: string;
+  refundAmount?: number;
+  timeline?: Array<{
+    status: string;
+    timestamp: string;
+    note?: string;
+    updatedBy?: string;
+  }>;
+}
+
+interface WalletData {
+  balance: number;
+  minimumBalance: number;
+  canReceiveRequests: boolean;
+  autoRecharge: {
+    enabled: boolean;
+    amount: number;
+    triggerBalance: number;
+  };
+}
+
+const ProviderDashboard: React.FC = () => {
+  const { user, isLoading } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [availableServices, setAvailableServices] = useState<Service[]>([]);
+  const [myServices, setMyServices] = useState<ProviderService[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isTrackingLocation, setIsTrackingLocation] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
+  const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
+  const [locationTrackingInterval, setLocationTrackingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [locationSharingEnabled, setLocationSharingEnabled] = useState(false);
+  const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
+  // Provider completion modal state
+  const [showProviderCompletionModal, setShowProviderCompletionModal] = useState(false);
+  const [selectedCompletionBooking, setSelectedCompletionBooking] = useState<Booking | null>(null);
+  const [completionLoading, setCompletionLoading] = useState(false);
+
+
+  // Navigation modal state
+  const [showNavigationModal, setShowNavigationModal] = useState(false);
+  const [selectedNavigationBooking, setSelectedNavigationBooking] = useState<Booking | null>(null);
+
+  // Chat state
+  const [showChat, setShowChat] = useState(false);
+  const [selectedBookingForChat, setSelectedBookingForChat] = useState<Booking | null>(null);
+
+  // KYC related state
+  const [kycStatus, setKycStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
+  const [kycDocuments, setKycDocuments] = useState<any[]>([]);
+  const [apiStatus, setApiStatus] = useState<string>('checking');
+  
+  // Request timeout state
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Wallet state
+  const [walletData, setWalletData] = useState<WalletData>({
+    balance: 0,
+    minimumBalance: 200,
+    canReceiveRequests: true,
+    autoRecharge: {
+      enabled: false,
+      amount: 500,
+      triggerBalance: 100
+    }
+  });
+  const [walletLoading, setWalletLoading] = useState(false);
+
+  // Additional state for monthly calculations
+  const [monthlyStats, setMonthlyStats] = useState({
+    thisMonthBookings: 0,
+    thisMonthEarnings: 0
+  });
+
+  // Loading states
+  const [overviewLoading, setOverviewLoading] = useState(false);
+
+  // Earnings data state
+  const [earningsData, setEarningsData] = useState({
+    totalEarnings: 0,
+    thisMonth: 0,
+    lastMonth: 0,
+    completedBookings: 0,
+    averageRating: 0
+  });
 
   useEffect(() => {
-    // Check for category query parameter on initial load
-    const categoryFromUrl = searchParams.get('category');
-    if (categoryFromUrl) {
-      // Try to find matching category value from label map
-      const matchingValue = categoryLabelMap[categoryFromUrl];
-      if (matchingValue) {
-        setSelectedCategory(matchingValue);
-        // Fetch with category filter applied
-        fetchFilteredServices({ category: matchingValue });
-      } else {
-        // If no match, try to find by value directly
-        const exists = categories.find(c => c.value === categoryFromUrl || c.label === categoryFromUrl);
-        if (exists) {
-          setSelectedCategory(exists.value);
-          fetchFilteredServices({ category: exists.value });
-        } else {
-          fetchServices();
-        }
-      }
-    } else {
-      fetchServices();
+    // Connect to Socket.IO and start location tracking IMMEDIATELY for providers
+    if (user && user.role === 'provider') {
+      console.log('Provider detected, connecting to Socket.IO immediately...');
+      connectProviderSocket();
     }
+
+    // Check API connectivity on component mount
+    checkAPIConnectivity();
+    fetchProviderStatus();
+
+    // Cleanup location tracking on unmount
+    return () => {
+      if (locationTrackingInterval) {
+        clearInterval(locationTrackingInterval);
+      }
+      // Stop location tracking when component unmounts
+      LocationService.stopLocationTracking();
+      SocketService.disconnect();
+    };
+  }, [user]);
+
+  // Update current time every second for timeout calculations
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
-  // Define functions before useEffect that needs them
-  const fetchServices = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.get('/services/public');
-      
-      // Remove duplicates based on title + category combination
-      const uniqueServices = response.data.services || [];
-      const seen = new Set();
-      const deduplicatedServices = uniqueServices.filter((service: Service) => {
-        const key = `${service.title.toLowerCase()}-${service.category}`;
-        if (seen.has(key)) {
-          return false;
-        }
-        seen.add(key);
-        return true;
-      });
-      
-      setServices(deduplicatedServices);
-    } catch (err: any) {
-      console.error('Error fetching services:', err);
-      setError(err.response?.data?.message || 'Failed to fetch services');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = () => {
-    const filters: any = {};
-    if (searchTerm) filters.search = searchTerm;
-    if (selectedCategory) filters.category = selectedCategory;
-    
-    fetchFilteredServices(filters);
-  };
-
-  const fetchFilteredServices = async (filters: any) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await servicesAPI.getServices(filters);
-      
-      // Remove duplicates based on title + category combination
-      const uniqueServices = response.services || [];
-      const seen = new Set();
-      const deduplicatedServices = uniqueServices.filter((service: Service) => {
-        const key = `${service.title.toLowerCase()}-${service.category}`;
-        if (seen.has(key)) {
-          return false;
-        }
-        seen.add(key);
-        return true;
-      });
-      
-      setServices(deduplicatedServices);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch services');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Search suggestions effect
+  // Filter out expired requests (older than 5 minutes)
   useEffect(() => {
-    if (searchTerm && searchTerm.length > 0) {
-      const filtered = services.filter(service => 
-        service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.category.toLowerCase().includes(searchTerm.toLowerCase())
-      ).slice(0, 5); // Limit to 5 suggestions
-      setFilteredSuggestions(filtered);
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-      setFilteredSuggestions([]);
-    }
-  }, [searchTerm, services]);
+    if (incomingRequests.length > 0) {
+      const expiredRequests = incomingRequests.filter(booking => {
+        const broadcastTime = new Date(booking.broadcastSentAt || booking.createdAt);
+        const timeDiff = currentTime.getTime() - broadcastTime.getTime();
+        const fiveMinutesInMs = 5 * 60 * 1000;
+        return timeDiff > fiveMinutesInMs;
+      });
 
-  const handleBookService = (service: Service) => {
-    if (!user) {
-      toast.error('Please login to book a service');
-      navigate('/login');
-      return;
+      if (expiredRequests.length > 0) {
+        console.log(`Removing ${expiredRequests.length} expired requests`);
+        setIncomingRequests(prev => prev.filter(booking => {
+          const broadcastTime = new Date(booking.broadcastSentAt || booking.createdAt);
+          const timeDiff = currentTime.getTime() - broadcastTime.getTime();
+          const fiveMinutesInMs = 5 * 60 * 1000;
+          return timeDiff <= fiveMinutesInMs;
+        }));
+      }
     }
-    
-    if (user.role !== 'customer') {
-      toast.error('Only customers can book services');
-      return;
-    }
+  }, [currentTime, incomingRequests.length]);
 
-    setSelectedService(service);
-    setShowBookingModal(true);
+  // Clear incoming requests when provider has a service in progress
+  useEffect(() => {
+    const hasInProgressBooking = bookings.some(booking => booking.status === 'in_progress');
+    if (hasInProgressBooking && incomingRequests.length > 0) {
+      console.log('Provider has a service in progress, clearing all broadcast requests');
+      setIncomingRequests([]);
+    }
+  }, [bookings, incomingRequests.length]);
+
+
+  const checkAPIConnectivity = async () => {
+    try {
+      const response = await fetch('/api/health', { 
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (response.ok) {
+        setApiStatus('connected');
+        console.log('API is reachable');
+      } else {
+        setApiStatus('error');
+        console.error('API is not reachable');
+      }
+    } catch (error) {
+      setApiStatus('error');
+      console.error('API connectivity check failed:', error);
+      toast.error('Cannot connect to server. Please check your internet connection.');
+    }
   };
 
-  const handleConfirmBooking = async (bookingData: any) => {
-    if (!selectedService) return;
-
+  const fetchIncomingRequests = async () => {
     try {
-      setBookingLoading(true);
+      setLoading(true);
+      setError(null);
+      const response = await bookingsAPI.getBookings({ status: 'broadcast' });
       
-      let voiceNotePath = null;
+      // Filter out broadcast requests if provider has a service in progress
+      const hasInProgressBooking = bookings.some(booking => booking.status === 'in_progress');
+      const filteredRequests = hasInProgressBooking ? [] : (response.bookings || []);
       
-      // Upload voice note if available
-      if (bookingData.voiceNote) {
-        const formData = new FormData();
-        formData.append('voiceNote', bookingData.voiceNote, 'voice-note.webm');
+      setIncomingRequests(filteredRequests);
+      
+      if (hasInProgressBooking && filteredRequests.length === 0 && response.bookings?.length > 0) {
+        console.log('Provider has a service in progress, hiding broadcast requests');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to fetch incoming requests');
+      toast.error('Failed to fetch incoming requests');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchKycStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/kyc/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setKycStatus(data.kycStatus);
+        setKycDocuments(data.documents || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch KYC status:', error);
+    }
+  };
+
+  const fetchWalletData = async () => {
+    try {
+      setWalletLoading(true);
+      
+      // Fetch wallet data from API
+      const response = await fetch('/api/wallet/provider/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Wallet data fetched:', data);
         
-        try {
-          const uploadResponse = await fetch('/api/bookings/upload-voice', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}` 
-            },
-            body: formData
+        setWalletData(data.data);
+      } else {
+        console.error('Failed to fetch wallet data');
+      }
+    } catch (error) {
+      console.error('Failed to fetch wallet data:', error);
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
+  const fetchEarningsData = async () => {
+    try {
+      setOverviewLoading(true);
+      
+      // Fetch earnings data from API
+      const response = await fetch('/api/earnings/provider/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Earnings data fetched:', data);
+        
+        setEarningsData(data.data || {
+          totalEarnings: 0,
+          thisMonth: 0,
+          lastMonth: 0,
+          completedBookings: 0,
+          averageRating: 0
+        });
+      } else {
+        console.error('Failed to fetch earnings data');
+      }
+    } catch (error) {
+      console.error('Failed to fetch earnings data:', error);
+    } finally {
+      setOverviewLoading(false);
+    }
+  };
+
+  const handleRecharge = async (amount: number) => {
+    try {
+      setWalletLoading(true);
+      
+      const response = await fetch('/api/wallet/provider/recharge', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ amount, description: 'Manual recharge' })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Wallet recharged:', data);
+        
+        toast.success(`Wallet recharged with ₹${amount}`);
+        fetchWalletData(); // Refresh wallet data
+      } else {
+        console.error('Failed to recharge wallet');
+        toast.error('Failed to recharge wallet');
+      }
+    } catch (error) {
+      console.error('Failed to recharge wallet:', error);
+      toast.error('Failed to recharge wallet');
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
+  const setupSocketListeners = () => {
+    // Listen for new service requests
+    SocketService.on('new_service_request', (data: any) => {
+      console.log('🔔 New service request received:', data);
+      
+      // Check if provider has a service in progress
+      const hasInProgressBooking = bookings.some(booking => booking.status === 'in_progress');
+      
+      if (hasInProgressBooking) {
+        console.log('Provider has a service in progress, ignoring new broadcast request');
+        return;
+      }
+      
+      toast.success(`New service request: ${data.serviceTitle}`, {
+        duration: 5000,
+        icon: '🔔'
+      });
+      
+      // Refresh incoming requests
+      if (activeTab === 'incoming') {
+        fetchIncomingRequests();
+      }
+      
+      // Add notification
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        type: 'new_request',
+        title: 'New Service Request',
+        message: data.serviceTitle,
+        timestamp: new Date()
+      }]);
+    });
+
+    // Listen for booking no longer available (accepted by another provider)
+    SocketService.on('booking_no_longer_available', (data: any) => {
+      console.log('❌ Booking no longer available:', data);
+      toast.error(data.message || 'This booking has been accepted by another provider', {
+        duration: 5000,
+        icon: '❌'
+      });
+      
+      // Remove from incoming requests list
+      setIncomingRequests(prev => prev.filter(booking => booking._id !== data.bookingId));
+      
+      // Add notification
+      setNotifications(prev => [...prev, {
+        id: Date.now(),
+        type: 'booking_lost',
+        title: 'Booking No Longer Available',
+        message: data.message || 'Accepted by another provider',
+        timestamp: new Date()
+      }]);
+    });
+
+    // Listen for booking updates (when provider accepts their own booking)
+    SocketService.on('booking_update', (data: any) => {
+      console.log('📋 Booking update received:', data);
+      
+      // If this provider accepted the booking, refresh their bookings
+      if (data.providerId === user?._id) {
+        toast.success('Booking accepted successfully!', {
+          duration: 5000,
+          icon: '✅'
+        });
+        
+        // Refresh bookings and incoming requests
+        fetchBookings();
+        fetchIncomingRequests();
+        
+        // Add notification
+        setNotifications(prev => [...prev, {
+          id: Date.now(),
+          type: 'booking_accepted',
+          title: 'Booking Accepted',
+          message: 'You have accepted a new booking',
+          timestamp: new Date()
+        }]);
+      }
+    });
+  };
+
+  useEffect(() => {
+    // Only fetch data if user is available and not loading
+    if (user && !isLoading) {
+      fetchAvailableServices();
+      fetchMyServices();
+      fetchKycStatus(); // Fetch KYC status
+      fetchBookings(); // Always fetch bookings for earnings calculation
+      setupSocketListeners(); // Setup Socket.IO listeners
+      
+      if (activeTab === 'incoming') {
+        fetchIncomingRequests();
+      }
+    }
+  }, [activeTab, user, isLoading]);
+
+  // Fetch wallet data on component mount and when user changes
+  useEffect(() => {
+    if (user) {
+      fetchWalletData();
+    }
+  }, [user]);
+
+  // Add real-time refresh for wallet data
+  useEffect(() => {
+    if (activeTab === 'overview' && user && !isLoading) {
+      const interval = setInterval(() => {
+        fetchWalletData();
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, user, isLoading]);
+
+  const fetchAvailableServices = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('🔍 Fetching available services...');
+      const response = await servicesAPI.getAvailableServices();
+      console.log('📊 Available services response:', response);
+      setAvailableServices(response.services || []);
+    } catch (err: any) {
+      console.error('❌ Error fetching available services:', err);
+      setError(err.response?.data?.message || 'Failed to fetch available services');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMyServices = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await servicesAPI.getProviderServices();
+      setMyServices(response.services || []);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to fetch your services');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestService = async (serviceId: string) => {
+    try {
+      console.log('🔔 Requesting service:', serviceId);
+      
+      setLoading(true);
+      const response = await servicesAPI.requestService(serviceId);
+      console.log('✅ Service request response:', response);
+      toast.success('Service request submitted successfully!');
+      fetchAvailableServices();
+      fetchMyServices();
+    } catch (err: any) {
+      console.error('❌ Service request error:', err);
+      setError(err.response?.data?.message || 'Failed to request service');
+      toast.error(err.response?.data?.message || 'Failed to request service');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // Fetch all active bookings for provider (confirmed, in_progress)
+      const response = await bookingsAPI.getBookings({ provider: user?._id });
+      setBookings(response.bookings || []);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to fetch bookings');
+      toast.error('Failed to fetch bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptBooking = async (bookingId: string) => {
+    try {
+      console.log('Accepting booking:', bookingId);
+      
+      // Check if provider has sufficient balance
+      if (!walletData.canReceiveRequests) {
+        toast.error('Insufficient wallet balance. Please recharge your wallet to accept bookings.');
+        navigate('/provider/wallet');
+        return;
+      }
+      
+      const response = await bookingsAPI.updateBooking(bookingId, { status: 'confirmed' });
+      console.log('Booking accepted response:', response);
+      
+      toast.success('Booking accepted successfully');
+      fetchBookings(); // Refresh bookings
+      fetchIncomingRequests(); // Refresh incoming requests
+    } catch (err: any) {
+      console.error('Accept booking error:', err);
+      toast.error(err.response?.data?.message || 'Failed to accept booking');
+    }
+  };
+
+  const handleRejectBooking = async (bookingId: string) => {
+    try {
+      await bookingsAPI.updateBooking(bookingId, { status: 'cancelled' });
+      
+      toast.success('Booking rejected successfully');
+      fetchBookings(); // Refresh bookings
+      fetchIncomingRequests(); // Refresh incoming requests
+    } catch (err: any) {
+      console.error('Reject booking error:', err);
+      toast.error(err.response?.data?.message || 'Failed to reject booking');
+    }
+  };
+
+  const handleRejectBroadcastRequest = async (bookingId: string) => {
+    try {
+      console.log('🔄 Rejecting broadcast request:', bookingId);
+      
+      // Call API to remove this provider from broadcastTo array
+      const response = await bookingsAPI.rejectBroadcastRequest(bookingId);
+      console.log('✅ Broadcast request rejected response:', response);
+      
+      toast.success('Request removed from your list');
+      fetchIncomingRequests(); // Refresh incoming requests
+    } catch (err: any) {
+      console.error('❌ Reject broadcast request error:', err);
+      toast.error(err.response?.data?.message || 'Failed to remove request');
+    }
+  };
+
+
+  const handleCancelBooking = async (bookingId: string) => {
+    try {
+      await bookingsAPI.cancelBooking(bookingId, 'Provider cancelled the booking');
+      toast.success('Booking cancelled successfully');
+      fetchBookings(); // Refresh bookings
+      fetchIncomingRequests(); // Refresh incoming requests to show broadcast requests again
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to cancel booking');
+    }
+  };
+
+  const handleStartBooking = async (bookingId: string) => {
+    try {
+      await bookingsAPI.updateBooking(bookingId, { status: 'in_progress' });
+      toast.success('Service started successfully');
+      fetchBookings(); // Refresh bookings
+      setIncomingRequests([]); // Clear all broadcast requests immediately
+      fetchIncomingRequests(); // Refresh incoming requests to hide broadcast requests
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to start service');
+    }
+  };
+
+
+
+  const handleCompleteBooking = (booking: Booking) => {
+    setSelectedCompletionBooking(booking);
+    setShowProviderCompletionModal(true);
+  };
+
+  const handleNavigateToCustomer = (booking: Booking) => {
+    setSelectedNavigationBooking(booking);
+    setShowNavigationModal(true);
+  };
+
+  const handleProviderCompletion = async (bookingId: string, code: string) => {
+    try {
+      setCompletionLoading(true);
+      
+      if (code === '') {
+        // Generate completion code
+        const response = await bookingsAPI.completeBooking(bookingId);
+        if (response.completionCode) {
+          toast.success('Completion code generated and sent to customer', {
+            duration: 5000,
+            icon: '✅'
           });
-          
-          if (uploadResponse.ok) {
-            const uploadResult = await uploadResponse.json();
-            voiceNotePath = uploadResult.voiceNotePath;
-          } else {
-            console.error('Failed to upload voice note');
-            toast.error('Failed to upload voice note. Please try again.');
-            return;
-          }
-        } catch (uploadError) {
-          console.error('Voice note upload error:', uploadError);
-          toast.error('Failed to upload voice note. Please try again.');
+        }
+      } else {
+        // Verify completion code
+        const response = await bookingsAPI.verifyCompletionCode(bookingId, { completionCode: code });
+        if (response.message) {
+          toast.success(response.message);
+          setShowProviderCompletionModal(false);
+          setSelectedCompletionBooking(null);
+          fetchBookings(); // Refresh bookings
+          fetchIncomingRequests(); // Refresh incoming requests to show broadcast requests again
+        }
+      }
+    } catch (err: any) {
+      console.error('Provider completion error:', err);
+      toast.error(err.response?.data?.message || 'Failed to process completion code');
+    } finally {
+      setCompletionLoading(false);
+    }
+  };
+
+
+  const handleViewServiceDetails = (serviceId: string) => {
+    // Navigate to service details page or open modal
+    console.log('View service details:', serviceId);
+    toast.success('Service details view coming soon!');
+    // TODO: Implement service details view/modal
+  };
+
+  const handleEditService = (serviceId: string) => {
+    // Navigate to edit service page or open modal
+    console.log('Edit service:', serviceId);
+    toast.success('Service editing coming soon!');
+    // TODO: Implement service edit functionality
+  };
+
+  const connectProviderSocket = async () => {
+    try {
+      if (!user) {
+        console.log('No user found, cannot connect socket');
+        return;
+      }
+
+      console.log('Connecting provider to Socket.IO for live location tracking...');
+      console.log('User data:', {
+        userId: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      });
+      
+      // Check if already connected
+      if (SocketService.isConnected()) {
+        console.log('Socket already connected, proceeding with location tracking...');
+      } else {
+        // Connect to Socket.IO
+        await SocketService.connect({
+          userId: user._id,
+          name: user.name,
+          email: user.email,
+          role: 'provider'
+        });
+
+        console.log('Socket connection initiated...');
+        
+        // Quick wait for connection to establish
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Check if connected
+        if (!SocketService.isConnected()) {
+          throw new Error('Socket connection failed');
+        }
+        
+        console.log('Socket connected successfully');
+      }
+      
+      // Set up socket listeners
+      setupSocketListeners();
+
+      // Start automatic location tracking IMMEDIATELY
+      await startProviderLocationTracking();
+
+      console.log('Provider connected to Socket.IO with live location tracking');
+    } catch (error: any) {
+      console.error('Failed to connect provider socket:', error);
+      console.error('Error details:', {
+        message: error?.message || 'Unknown error',
+        stack: error?.stack || 'No stack trace'
+      });
+      toast.error(`Failed to connect to real-time services: ${error?.message || 'Unknown error'}`);
+      
+      // Retry connection after 3 seconds (faster retry)
+      setTimeout(() => {
+        console.log('Retrying Socket.IO connection...');
+        connectProviderSocket();
+      }, 3000);
+    }
+  };
+
+  const startProviderLocationTracking = async () => {
+    try {
+      console.log('Starting automatic location tracking for provider...');
+      console.log('???? Starting automatic location tracking for provider...');
+      
+      // Clear any stored location to force fresh GPS data
+      LocationService.clearStoredLocation();
+      console.log('???? Cleared stored location to force fresh GPS data');
+      
+      // Check if geolocation is supported
+      if (!navigator.geolocation) {
+        throw new Error('Geolocation is not supported by this browser');
+      }
+      
+      // Try to get current location first
+      let location: Location | null = null;
+      try {
+        console.log('???? Getting current location...');
+        location = await LocationService.getCurrentLocation();
+        console.log('???? Current location obtained:', location);
+      } catch (locationError) {
+        console.warn('???? Failed to get current location, trying last known location:', locationError);
+        
+        // Fallback to last known location (should be fresh now)
+        location = LocationService.getLastKnownLocation();
+        if (location) {
+          console.log('???? Using last known location:', location);
+          toast.success('Using last known location for tracking');
+        } else {
+          console.warn('???? No last known location available');
+          toast.error('No location available. Please enable location services.');
           return;
         }
       }
-      
-      // Use current date/time for instant booking
-      const currentDateTime = new Date().toISOString();
-      
-      const bookingPayload = {
-        service: selectedService._id,
-        scheduledDate: currentDateTime, // Current date for instant booking
-        duration: selectedService.duration,
-        price: {
-          basePrice: selectedService.price,
-          additionalCharges: 0,
-          discount: 0,
-          totalPrice: selectedService.price
-        },
-        serviceArea: selectedService.serviceArea,
-        address: {
-          ...bookingData.address,
-          coordinates: bookingData.address.coordinates
-        },
-        notes: bookingData.notes || '',
-        voiceNote: voiceNotePath, // Send file path instead of blob
-        // Add location type for backend processing
-        locationType: bookingData.useCurrentLocation ? 'current' : 'manual'
-      };
 
-      const response = await bookingsAPI.createBooking(bookingPayload);
+      if (location) {
+        setCurrentLocation(location);
+        setLastLocationUpdate(new Date(location.timestamp));
+
+        // Send initial location update to database and Socket.io
+        try {
+          // Update location in database via API
+          await providerAPI.updateLocation({
+            lat: location.lat,
+            lng: location.lng
+          });
+          console.log('???? Provider location updated in database:', {
+            lat: location.lat,
+            lng: location.lng,
+            timestamp: new Date(location.timestamp)
+          });
+        } catch (apiError) {
+          console.error('???? Failed to update location in database:', apiError);
+        }
+
+        // Also send to Socket.io for real-time tracking
+        if (SocketService.isConnected()) {
+          const locationData: any = {
+            lat: location.lat,
+            lng: location.lng,
+            accuracy: 10
+          };
+          // Include bookingId if provider is navigating to a specific booking
+          if (selectedNavigationBooking) {
+            locationData.bookingId = selectedNavigationBooking._id;
+          }
+          SocketService.sendLocationUpdate(locationData);
+          console.log('???? Initial provider location sent to booking room:', {
+            lat: location.lat,
+            lng: location.lng,
+            timestamp: new Date(location.timestamp),
+            bookingId: selectedNavigationBooking?._id || 'none'
+          });
+        } else {
+          console.warn('???? Socket not connected, cannot send initial location');
+        }
+      }
+
+      // Start continuous location tracking whenever we have a valid location
+      if (location) {
+        console.log('???? Starting continuous location tracking...');
+        
+        // Throttle database updates to every 30 seconds
+        let lastDatabaseUpdate = 0;
+        const DATABASE_UPDATE_INTERVAL = 30000; // 30 seconds
+        
+        await LocationService.startLocationTracking((location) => {
+          console.log('???? Location update received:', location);
+          setCurrentLocation(location);
+          setLastLocationUpdate(new Date());
+          
+          // Send real-time update to Socket.io
+          if (SocketService.isConnected()) {
+            const locationData: any = {
+              lat: location.lat,
+              lng: location.lng,
+              accuracy: 10
+            };
+            // Include bookingId if provider is navigating to a specific booking
+            if (selectedNavigationBooking) {
+              locationData.bookingId = selectedNavigationBooking._id;
+            }
+            SocketService.sendLocationUpdate(locationData);
+            
+            console.log('???? Provider location sent to booking room:', {
+              lat: location.lat,
+              lng: location.lng,
+              timestamp: new Date(location.timestamp),
+              socketConnected: SocketService.isConnected(),
+              bookingId: selectedNavigationBooking?._id || 'none'
+            });
+          } else {
+            console.warn('???? Socket not connected, location update skipped');
+          }
+          
+          // Throttled database update
+          const now = Date.now();
+          if (now - lastDatabaseUpdate >= DATABASE_UPDATE_INTERVAL) {
+            try {
+              providerAPI.updateLocation({
+                lat: location.lat,
+                lng: location.lng
+              });
+              console.log('???? Provider location updated in database (throttled):', {
+                lat: location.lat,
+                lng: location.lng,
+                timestamp: new Date(location.timestamp)
+              });
+              lastDatabaseUpdate = now;
+            } catch (apiError) {
+              console.error('???? Failed to update location in database:', apiError);
+            }
+          } else {
+            console.log('???? Database update skipped (throttled)');
+          }
+        });
+      } else {
+        console.log('???? Using stored location, continuous tracking disabled');
+      }
+
+      console.log('???? Provider location tracking started successfully');
+    } catch (error: any) {
+      console.error('???? Failed to start provider location tracking:', error);
+      console.error('???? Error details:', {
+        message: error?.message || 'Unknown error',
+        code: error?.code || 'Unknown code',
+        stack: error?.stack || 'No stack trace'
+      });
       
-      toast.success('Instant booking request sent! Providers within 7km will be notified immediately.');
-      setShowBookingModal(false);
-      setSelectedService(null);
+      let errorMessage = 'Failed to start location tracking';
+      if (error?.code === 1) {
+        errorMessage = 'Location access denied. Using last known location if available.';
+      } else if (error?.code === 2) {
+        errorMessage = 'Location unavailable. Using last known location if available.';
+      } else if (error?.code === 3) {
+        errorMessage = 'Location request timed out. Using last known location if available.';
+      }
       
-      // Navigate to bookings page to see status
-      navigate('/dashboard', { state: { newBooking: response.booking } });
-      
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to create booking');
-    } finally {
-      setBookingLoading(false);
+      // Try to use last known location as final fallback
+      const lastLocation = LocationService.getLastKnownLocation();
+      if (lastLocation) {
+        setCurrentLocation(lastLocation);
+        setLastLocationUpdate(new Date(lastLocation.timestamp));
+        toast.success('Using last known location for service availability');
+        console.log('???? Fallback to last known location successful:', lastLocation);
+      } else {
+        toast.error(errorMessage);
+      }
     }
   };
 
-  const getCategoryLabel = (category: string) => {
-    const cat = categories.find(c => c.value === category);
-    return cat ? cat.label : category;
+const fetchProviderStatus = async () => {
+    try {
+      const response = await providerAPI.getStatus();
+      setLocationSharingEnabled(response.locationSharingEnabled || false);
+      
+      // Auto-enable availability if not already enabled
+      if (!response.isAvailable || !response.locationSharingEnabled) {
+        await autoEnableProvider();
+      }
+      
+      if (response.currentLocation) {
+        setCurrentLocation({
+          lat: response.currentLocation.lat,
+          lng: response.currentLocation.lng,
+          timestamp: new Date(response.currentLocation.lastUpdated).getTime()
+        });
+        setLastLocationUpdate(new Date(response.currentLocation.lastUpdated));
+      } else {
+        // If no current location from server, try to use stored location
+        const storedLocation = LocationService.getLastKnownLocation();
+        if (storedLocation) {
+          setCurrentLocation(storedLocation);
+          setLastLocationUpdate(new Date(storedLocation.timestamp));
+          console.log('Using stored location as server has no current location');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch provider status:', error);
+      // Try to use stored location as fallback
+      const storedLocation = LocationService.getLastKnownLocation();
+      if (storedLocation) {
+        setCurrentLocation(storedLocation);
+        setLastLocationUpdate(new Date(storedLocation.timestamp));
+        console.log('Using stored location due to API error');
+      }
+    }
   };
 
-  if (loading) {
+  const autoEnableProvider = async () => {
+    try {
+      console.log('Auto-enabling provider availability...');
+      await providerAPI.updateAvailability({
+        isAvailable: true,
+        locationSharingEnabled: true
+      });
+      console.log('Provider auto-enabled successfully');
+      setLocationSharingEnabled(true);
+    } catch (error) {
+      console.error('Failed to auto-enable provider:', error);
+    }
+  };
+
+  const stopLocationTracking = () => {
+    // Stop active booking tracking
+    setActiveBookingId(null);
+    setIsTrackingLocation(false);
+    toast.success('Location tracking for booking stopped');
+  };
+
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  const getBookingDistance = (booking: Booking): number | null => {
+    if (!currentLocation || !booking.address) return null;
+    
+    // If booking has coordinates, use them
+    if (typeof booking.address === 'object' && booking.address.coordinates) {
+      return calculateDistance(
+        currentLocation.lat,
+        currentLocation.lng,
+        booking.address.coordinates.lat,
+        booking.address.coordinates.lng
+      );
+    }
+    
+    return null;
+  };
+
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'in_progress':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'broadcast':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return <CheckCircleIcon className="w-4 h-4" />;
+      case 'in_progress':
+        return <PlayIcon className="w-4 h-4" />;
+      case 'completed':
+        return <CheckIcon className="w-4 h-4" />;
+      case 'cancelled':
+        return <XMarkIcon className="w-4 h-4" />;
+      case 'broadcast':
+        return <BellIcon className="w-4 h-4" />;
+      default:
+        return <ClockIcon className="w-4 h-4" />;
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'Confirmed';
+      case 'in_progress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'broadcast':
+        return 'Broadcast';
+      default:
+        return 'Pending';
+    }
+  };
+
+  const getKycStatusColor = (status: string | null) => {
+    switch (status) {
+      case 'approved':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getKycStatusIcon = (status: string | null) => {
+    switch (status) {
+      case 'approved':
+        return <CheckCircleIcon className="w-5 h-5" />;
+      case 'rejected':
+        return <XMarkIcon className="w-5 h-5" />;
+      case 'pending':
+        return <ClockIcon className="w-5 h-5" />;
+      default:
+        return <ExclamationTriangleIcon className="w-5 h-5" />;
+    }
+  };
+
+  const getTimeRemaining = (broadcastSentAt: string | Date) => {
+    const broadcastTime = new Date(broadcastSentAt);
+    const timeDiff = currentTime.getTime() - broadcastTime.getTime();
+    const fiveMinutesInMs = 5 * 60 * 1000;
+    const remainingMs = fiveMinutesInMs - timeDiff;
+    
+    if (remainingMs <= 0) {
+      return { minutes: 0, seconds: 0 };
+    }
+    
+    const minutes = Math.floor(remainingMs / (1000 * 60));
+    const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+    
+    return { minutes, seconds };
+  };
+
+  const getTimeAgo = (dateString: string | Date) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return 'Just now';
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    }
+  };
+
+
+  const renderOverview = () => {
+    console.log('renderOverview called, locationSharingEnabled:', locationSharingEnabled);
+    
     return (
-      <div style={{ fontFamily: "'Sora','DM Sans',system-ui,sans-serif", background: '#060609', color: '#fff', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{textAlign: 'center'}}>
-          <div style={{width: 80, height: 80, border: '4px solid #7C3AED', borderTop: '4px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto'}}></div>
-          <p style={{marginTop: 24, color: 'rgba(255,255,255,0.6)', fontSize: 16, fontWeight: 500}}>Loading amazing services...</p>
+    <div className="space-y-8">
+      {/* Welcome Header */}
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-4 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+        <div className="relative z-10">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 sm:mb-2 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent">
+                Welcome back, {user?.name}!
+              </h1>
+              <p className="text-emerald-100 text-sm sm:text-base md:text-lg">Manage your services and grow your business</p>
+              <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-2 sm:gap-4">
+                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-2 sm:px-3 py-2 rounded-lg">
+                  <CheckBadgeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-200" />
+                  <span className="text-xs sm:text-sm font-medium">Professional Provider</span>
+                </div>
+                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-2 sm:px-3 py-2 rounded-lg">
+                  <StarSolidIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-300" />
+                  <span className="text-xs sm:text-sm font-medium">{earningsData.averageRating.toFixed(1)} Rating</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end">
+              {(kycStatus === 'pending' || kycStatus === null) && (
+                <button
+                  onClick={() => navigate('/provider/kyc')}
+                  className="bg-white text-emerald-600 px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center hover:bg-emerald-50 transition-all duration-200"
+                >
+                  <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Upload KYC</span>
+                  <span className="sm:hidden">KYC</span>
+                </button>
+              )}
+              <div className={`px-3 py-2 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center backdrop-blur-sm ${getKycStatusColor(kycStatus)}`}>
+                {getKycStatusIcon(kycStatus)}
+                <span className="ml-1 sm:ml-2">KYC {kycStatus?.toUpperCase() || 'NOT SUBMITTED'}</span>
+              </div>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-all duration-200 hover:scale-105"
+              >
+                <BellIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                    {notifications.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
-        <style>{`
-          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        `}</style>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <div
+          className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105 cursor-pointer"
+          onClick={() => navigate('/provider/wallet')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
+                <BanknotesIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-green-500" />
+                Wallet Balance
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mt-1 sm:mt-2">
+                {walletLoading ? (
+                  <span className="animate-pulse">₹0</span>
+                ) : (
+                  <>₹{walletData.balance.toLocaleString()}</>
+                )}
+              </p>
+              <p className="text-xs text-green-600 mt-1 sm:mt-2 flex items-center font-medium">
+                <ShieldCheckIcon className="w-3 h-3 mr-1" />
+                {walletLoading ? (
+                  <span className="animate-pulse">Loading...</span>
+                ) : (
+                  <>{walletData.canReceiveRequests ? 'Can receive requests' : 'Insufficient balance'}</>
+                )}
+              </p>
+            </div>
+            <div className="p-3 sm:p-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl ml-2 sm:ml-0 group-hover:scale-110 transition-transform">
+              <CurrencyDollarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
+                <ExclamationTriangleIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-blue-500" />
+                Minimum Balance
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-1 sm:mt-2">
+                {walletLoading ? (
+                  <span className="animate-pulse">₹0</span>
+                ) : (
+                  <>₹{walletData.minimumBalance.toLocaleString()}</>
+                )}
+              </p>
+              <p className="text-xs text-blue-600 mt-1 sm:mt-2 flex items-center font-medium">
+                <CheckCircleIcon className="w-3 h-3 mr-1" />
+                Required to receive requests
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
+                <CalendarIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-blue-500" />
+                Completed Bookings
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-1 sm:mt-2">
+                {overviewLoading ? (
+                  <span className="animate-pulse">0</span>
+                ) : (
+                  <>{bookings.filter(b => b.status === 'completed').length}</>
+                )}
+              </p>
+              <p className="text-xs text-blue-600 mt-1 sm:mt-2 flex items-center font-medium">
+                <CheckCircleIcon className="w-3 h-3 mr-1" />
+                {overviewLoading ? (
+                  <span className="animate-pulse">Loading...</span>
+                ) : (
+                  <>Total completed</>
+                )}
+              </p>
+            </div>
+            <div className="p-3 sm:p-4 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl ml-2 sm:ml-0 group-hover:scale-110 transition-transform">
+              <CalendarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
+                <WrenchScrewdriverIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-purple-500" />
+                Active Services
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mt-1 sm:mt-2">
+                {overviewLoading ? (
+                  <span className="animate-pulse">0</span>
+                ) : (
+                  <>{myServices.filter(s => s.isApproved && s.isActive).length}</>
+                )}
+              </p>
+              <p className="text-xs text-purple-600 mt-1 sm:mt-2 flex items-center font-medium">
+                <WrenchScrewdriverIcon className="w-3 h-3 mr-1" />
+                {overviewLoading ? (
+                  <span className="animate-pulse">Loading...</span>
+                ) : (
+                  <>Total: {myServices.length}</>
+                )}
+              </p>
+            </div>
+            <div className="p-3 sm:p-4 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl ml-2 sm:ml-0 group-hover:scale-110 transition-transform">
+              <WrenchScrewdriverIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="group bg-white rounded-2xl shadow-lg p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:scale-105">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 font-medium flex items-center">
+                <StarIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 text-yellow-500" />
+                Average Rating
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mt-1 sm:mt-2">
+                {overviewLoading ? (
+                  <span className="animate-pulse">0.0</span>
+                ) : (
+                  <>{earningsData.averageRating.toFixed(1)}</>
+                )}
+              </p>
+              <p className="text-xs text-yellow-600 mt-1 sm:mt-2 flex items-center font-medium">
+                <StarSolidIcon className="w-3 h-3 mr-1 text-yellow-500" />
+                {overviewLoading ? (
+                  <span className="animate-pulse">Loading...</span>
+                ) : (
+                  <>Excellent service</>
+                )}
+              </p>
+            </div>
+            <div className="p-3 sm:p-4 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-xl ml-2 sm:ml-0 group-hover:scale-110 transition-transform">
+              <StarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Balance Warning Banner */}
+      {!walletData.canReceiveRequests && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex items-start">
+            <ExclamationTriangleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 mt-0.5 mr-3 sm:mr-4 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-base sm:text-lg font-semibold text-red-800 mb-2">Insufficient Wallet Balance</h3>
+              <p className="text-sm sm:text-base text-red-700 mb-3 sm:mb-4">
+                You need a minimum balance of ₹{walletData.minimumBalance} to receive service requests.
+                Your current balance is ₹{walletData.balance}.
+              </p>
+              <button
+                onClick={() => navigate('/provider/wallet')}
+                className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm w-full sm:w-auto"
+              >
+                <BanknotesIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                Recharge Wallet Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compact Status Box - Top Right Corner */}
+      <div className="hidden sm:fixed sm:top-4 sm:right-4 sm:z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-3 min-w-64">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            <span className="text-xs font-semibold text-gray-700">Status</span>
+          </div>
+          <div className="text-xs text-green-600 font-medium">Available</div>
+        </div>
+
+        {currentLocation && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-600">Coordinates:</span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`);
+                  toast.success('Coordinates copied!');
+                }}
+                className="text-xs text-blue-600 hover:text-blue-700 font-mono"
+              >
+                {currentLocation.lat.toFixed(4)}, {currentLocation.lng.toFixed(4)}
+              </button>
+            </div>
+            {lastLocationUpdate && (
+              <div className="text-xs text-gray-500 text-right">
+                Updated: {lastLocationUpdate.toLocaleTimeString()}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-100">
+        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center">
+          <SparklesIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-yellow-500" />
+          Quick Actions
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <button
+            onClick={() => setActiveTab('services')}
+            className="group p-4 sm:p-6 bg-gradient-to-br from-blue-50 via-blue-100 to-indigo-100 rounded-xl hover:from-blue-100 hover:via-indigo-100 hover:to-indigo-200 transition-all duration-300 border border-blue-200 text-left hover:shadow-lg hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <WrenchScrewdriverIcon className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 group-hover:scale-110 transition-transform" />
+              <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full">{myServices.length}</span>
+            </div>
+            <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">Manage Services</h4>
+            <p className="text-xs sm:text-sm text-gray-600">Add or edit services</p>
+            <ArrowRightIcon className="w-4 h-4 text-blue-600 mt-2 group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          <button
+            onClick={() => setActiveTab('incoming')}
+            className="group p-4 sm:p-6 bg-gradient-to-br from-purple-50 via-purple-100 to-pink-100 rounded-xl hover:from-purple-100 hover:via-pink-100 hover:to-pink-200 transition-all duration-300 border border-purple-200 text-left hover:shadow-lg hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <BellAlertIcon className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 group-hover:scale-110 transition-transform" />
+              <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded-full">{incomingRequests.length}</span>
+            </div>
+            <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">Incoming Requests</h4>
+            <p className="text-xs sm:text-sm text-gray-600">View new bookings</p>
+            <ArrowRightIcon className="w-4 h-4 text-purple-600 mt-2 group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          <button
+            onClick={() => setActiveTab('bookings')}
+            className="group p-4 sm:p-6 bg-gradient-to-br from-green-50 via-green-100 to-emerald-100 rounded-xl hover:from-green-100 hover:via-emerald-100 hover:to-emerald-200 transition-all duration-300 border border-green-200 text-left hover:shadow-lg hover:scale-105"
+          >
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <CalendarIcon className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 group-hover:scale-110 transition-transform" />
+              <span className="text-xs bg-green-600 text-white px-2 py-1 rounded-full">{bookings.length}</span>
+            </div>
+            <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">My Bookings</h4>
+            <p className="text-xs sm:text-sm text-gray-600">Manage appointments</p>
+            <ArrowRightIcon className="w-4 h-4 text-green-600 mt-2 group-hover:translate-x-1 transition-transform" />
+          </button>
+
+                  </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center">
+            <ChartBarIcon className="w-6 h-6 mr-2 text-blue-500" />
+            Recent Activity
+          </h3>
+          <button
+            onClick={() => setActiveTab('bookings')}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
+          >
+            View All
+            <ArrowRightIcon className="w-4 h-4 ml-1" />
+          </button>
+        </div>
+        {bookings.length === 0 ? (
+          <div className="text-center py-12">
+            <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No recent activity</h3>
+            <p className="text-gray-600 mb-6">Start by adding services and accepting booking requests.</p>
+            <button
+              onClick={() => setActiveTab('services')}
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Add Your First Service
+              <ArrowRightIcon className="w-4 h-4 ml-2" />
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {bookings.slice(0, 3).map((booking) => (
+              <div key={booking._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-white rounded-lg shadow-sm">
+                    {getStatusIcon(booking.status)}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">{booking.service?.title || 'Unknown Service'}</p>
+                    <p className="text-sm text-gray-600 flex items-center mt-1">
+                      <UserIcon className="w-4 h-4 mr-1" />
+                      {booking.customer.name} • {new Date(booking.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${getStatusColor(booking.status)}`}>
+                    {getStatusIcon(booking.status)}
+                    <span className="ml-1">{getStatusText(booking.status)}</span>
+                  </span>
+                  <p className="text-sm font-semibold text-gray-900 mt-2">₹{booking.totalAmount || booking.price?.totalPrice || 'N/A'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderServices = () => (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Service Management</h2>
+        <p className="text-gray-600 mt-2">Browse available services and request to provide them</p>
+      </div>
+
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg mr-3">
+              <DocumentMagnifyingGlassIcon className="w-6 h-6 text-white" />
+            </div>
+            Available Services
+            <span className="ml-auto text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+              {availableServices.filter(service => service && service._id && 
+                !myServices.some(myService => 
+                  myService.title === service.title || 
+                  myService._id === service._id
+                )
+              ).length} services
+            </span>
+          </h3>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              {availableServices.filter(service => service && service.isActive && service._id && 
+                    !myServices.some(myService => 
+                      myService.title === service.title || 
+                      myService._id === service._id
+                    )
+                  ).length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="p-4 bg-gray-100 rounded-full inline-block mb-4">
+                    <DocumentTextIcon className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No available services</h3>
+                  <p className="text-gray-600">Check back later for new service opportunities</p>
+                </div>
+              ) : (
+                availableServices
+                  .filter(service => service && service.isActive && service._id && 
+                    !myServices.some(myService => 
+                      myService.title === service.title || 
+                      myService._id === service._id
+                    )
+                  )
+                  .map((service) => (
+                    <div key={service._id} className="border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-200 hover:border-blue-300 hover:scale-102">
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-bold text-gray-900 flex-1 text-lg">{service?.title || 'Untitled Service'}</h4>
+                        <span className="text-xs px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 rounded-full font-medium">
+                          Available
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">{service?.description || 'No description available'}</p>
+                      <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center">
+                          <BuildingOfficeIcon className="w-4 h-4 mr-1 text-blue-500" />
+                          <span className="font-medium">Category:</span>
+                          <span className="ml-1">{typeof service?.category === 'object' ? (service.category as { value: string }).value || 'N/A' : service?.category || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <CurrencyDollarIcon className="w-4 h-4 mr-1 text-green-500" />
+                          <span className="font-medium">Price:</span>
+                          <span className="ml-1 font-bold text-green-600">₹{typeof service?.price === 'object' ? (service.price as { value: number }).value || 0 : service?.price || 0}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <ClockIcon className="w-4 h-4 mr-1 text-purple-500" />
+                          <span className="font-medium">Duration:</span>
+                          <span className="ml-1">{typeof service?.duration === 'object' ? `${(service.duration as { value: number; unit: string }).value || 0} ${(service.duration as { value: number; unit: string }).unit || 'hours'}` : service?.duration || '0 hours'}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <MapPinIcon className="w-4 h-4 mr-1 text-red-500" />
+                          <span className="font-medium">Area:</span>
+                          <span className="ml-1">{typeof service?.serviceArea === 'object' ? (service.serviceArea as any).value || 'N/A' : service?.serviceArea || 'N/A'}</span>
+                        </div>
+                      </div>
+                      {service?.requirements && (
+                        <div className="mb-3 p-3 bg-yellow-50 rounded-lg text-xs text-yellow-800 border border-yellow-200">
+                          <strong className="flex items-center">
+                            <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
+                            Requirements:
+                          </strong> {typeof service.requirements === 'object' ? JSON.stringify(service.requirements) : service.requirements}
+                        </div>
+                      )}
+                      {service?.tools && (
+                        <div className="mb-3 p-3 bg-blue-50 rounded-lg text-xs text-blue-800 border border-blue-200">
+                          <strong className="flex items-center">
+                            <WrenchScrewdriverIcon className="w-4 h-4 mr-1" />
+                            Tools:
+                          </strong> {typeof service.tools === 'object' ? JSON.stringify(service.tools) : service.tools}
+                        </div>
+                      )}
+                      <button
+                        onClick={() => {
+                          console.log('🔘 Button clicked! Service data:', service);
+                          console.log('🔘 Service ID:', service._id);
+                          console.log('🔘 Service title:', service.title);
+                          handleRequestService(service._id);
+                        }}
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg hover:scale-105"
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <span className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Requesting...
+                          </span>
+                        ) : (
+                          <span className="flex items-center justify-center">
+                            <WrenchScrewdriverIcon className="w-4 h-4 mr-2" />
+                            Request to Provide This Service
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  ))
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+            <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg mr-3">
+              <WrenchScrewdriverIcon className="w-6 h-6 text-white" />
+            </div>
+            My Service Requests
+            <span className="ml-auto text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+              {myServices.length} requests
+            </span>
+          </h3>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              {myServices.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="p-4 bg-gray-100 rounded-full inline-block mb-4">
+                    <WrenchScrewdriverIcon className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No service requests</h3>
+                  <p className="text-gray-600 mb-4">Start by requesting services from the available section</p>
+                  <button
+                    onClick={() => document.querySelector('.grid')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+                  >
+                    Browse Available Services
+                    <ArrowRightIcon className="w-4 h-4 ml-2" />
+                  </button>
+                </div>
+              ) : (
+                myServices
+                  .filter(myService => myService && myService._id)
+                  .map((myService) => (
+                    <div key={myService._id} className={`border rounded-xl p-4 hover:shadow-lg transition-all duration-200 hover:scale-102 ${
+                      myService?.isApproved 
+                        ? 'border-green-200 bg-green-50' 
+                        : 'border-yellow-200 bg-yellow-50'
+                    }`}>
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-bold text-gray-900 flex-1 text-lg">
+                          {myService?.title || 'Untitled Service'}
+                        </h4>
+                        <span className={`text-xs px-3 py-1 rounded-full font-medium flex items-center ${
+                          myService?.isApproved 
+                            ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800' 
+                            : 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800'
+                        }`}>
+                          {myService?.isApproved ? (
+                            <>
+                              <CheckBadgeIcon className="w-4 h-4 mr-1" />
+                              Approved
+                            </>
+                          ) : (
+                            <>
+                              <ClockIcon className="w-4 h-4 mr-1" />
+                              Pending Approval
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                        {myService?.description || 'No description available'}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 mb-4">
+                        <div className="flex items-center">
+                          <BuildingOfficeIcon className="w-4 h-4 mr-1 text-blue-500" />
+                          <span className="font-medium">Category:</span>
+                          <span className="ml-1">{myService?.category || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <CalendarIcon className="w-4 h-4 mr-1 text-purple-500" />
+                          <span className="font-medium">Requested:</span>
+                          <span className="ml-1">
+                            {myService?.createdAt ? new Date(myService.createdAt).toLocaleDateString() : 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                      {myService?.isApproved && (
+                        <div className="mt-4 flex space-x-2">
+                          <button 
+                            onClick={() => handleViewServiceDetails(myService._id)}
+                            className="flex-1 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-700 rounded-lg hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 font-medium text-sm hover:scale-105"
+                          >
+                            <EyeIcon className="w-4 h-4 mr-1" />
+                            View Details
+                          </button>
+                          <button 
+                            onClick={() => handleEditService(myService._id)}
+                            className="flex-1 px-3 py-2 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 text-yellow-700 rounded-lg hover:from-yellow-100 hover:to-orange-100 transition-all duration-200 font-medium text-sm hover:scale-105"
+                          >
+                            <PencilIcon className="w-4 h-4 mr-1" />
+                            Edit Service
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+    );
+  };
+
+  const renderServices = () => (
+    <div className="space-y-6">
+      <div>
+        <button
+          onClick={() => setActiveTab('overview')}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <ArrowLeftIcon className="w-5 h-5 mr-2" />
+          Back to Dashboard
+        </button>
+        <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Service Management</h2>
+        <p className="text-gray-600 mt-2">Browse available services and request to provide them</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+          <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg mr-3">
+              <DocumentMagnifyingGlassIcon className="w-6 h-6 text-white" />
+            </div>
+            Available Services
+            <span className="ml-auto text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+              {availableServices.filter(service => service && service._id && 
+                !myServices.some(myService => 
+                  myService.title === service.title || 
+                  myService._id === service._id
+                )
+              ).length} services
+            </span>
+          </h3>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : availableServices.filter(service => service && service._id && 
+                !myServices.some(myService => 
+                  myService.title === service.title || 
+                  myService._id === service._id
+                )
+              ).length === 0 ? (
+            <div className="text-center py-12">
+              <div className="p-4 bg-gray-100 rounded-full inline-block mb-4">
+                <DocumentMagnifyingGlassIcon className="w-12 h-12 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No available services</h3>
+              <p className="text-gray-600">All available services have been requested or there are no services available at the moment.</p>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              {availableServices.filter(service => service && service.isActive && service._id && 
+                    !myServices.some(myService => 
+                      myService.title === service.title || 
+                      myService._id === service._id
+                    )
+                  ).map((service) => (
+                    <div key={service._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all hover:scale-105 bg-gradient-to-br from-white to-gray-50">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <h4 className="text-lg font-semibold text-gray-900 mb-1">{service.title}</h4>
+                          <p className="text-sm text-gray-600 line-clamp-2">{service.description}</p>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-lg font-bold text-green-600">Rs {service.price}</p>
+                          <p className="text-xs text-gray-500">{service.priceType}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 mb-3">
+                        <div className="flex items-center">
+                          <BuildingOfficeIcon className="w-4 h-4 mr-1 text-blue-500" />
+                          <span className="font-medium">Category:</span>
+                          <span className="ml-1">{service.category}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <ClockIcon className="w-4 h-4 mr-1 text-purple-500" />
+                          <span className="font-medium">Duration:</span>
+                          <span className="ml-1">{service.duration.value} {service.duration.unit}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center text-sm text-gray-500">
+                          <MapPinIcon className="w-4 h-4 mr-1 text-red-500" />
+                          <span>{service.serviceArea}</span>
+                        </div>
+                        <button 
+                          onClick={() => handleRequestService(service._id)}
+                          disabled={loading}
+                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium text-sm hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                        >
+                          {loading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Requesting...
+                            </>
+                          ) : (
+                            <>
+                              <WrenchScrewdriverIcon className="w-4 h-4 mr-1" />
+                              Request Service
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+          <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg mr-3">
+            <ClipboardDocumentListIcon className="w-6 h-6 text-white" />
+          </div>
+          My Service Requests
+          <span className="ml-auto text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+            {myServices.length} requests
+          </span>
+        </h3>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+          </div>
+        ) : myServices.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="p-4 bg-gray-100 rounded-full inline-block mb-4">
+              <ClipboardDocumentListIcon className="w-12 h-12 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No service requests</h3>
+            <p className="text-gray-600">You haven't requested any services yet. Browse available services and request to provide them.</p>
+          </div>
+        ) : (
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+            {myServices.map((myService) => (
+              <div key={myService._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all hover:scale-105 bg-gradient-to-br from-white to-gray-50">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-1">{myService.title}</h4>
+                    <p className="text-sm text-gray-600 line-clamp-2">{myService.description}</p>
+                  </div>
+                  <div className="text-right ml-4">
+                    <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                      myService.isApproved 
+                        ? 'bg-green-100 text-green-800 border border-green-200' 
+                        : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                    }`}>
+                      {myService.isApproved ? (
+                        <>
+                          <CheckCircleIcon className="w-3 h-3 mr-1" />
+                          Approved
+                        </>
+                      ) : (
+                        <>
+                          <ClockIcon className="w-4 h-4 mr-1" />
+                          Pending Approval
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                  {myService?.description || 'No description available'}
+                </p>
+                <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 mb-4">
+                  <div className="flex items-center">
+                    <BuildingOfficeIcon className="w-4 h-4 mr-1 text-blue-500" />
+                    <span className="font-medium">Category:</span>
+                    <span className="ml-1">{myService?.category || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CalendarIcon className="w-4 h-4 mr-1 text-purple-500" />
+                    <span className="font-medium">Requested:</span>
+                    <span className="ml-1">
+                      {myService?.createdAt ? new Date(myService.createdAt).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                {myService?.isApproved && (
+                  <div className="mt-4 flex space-x-2">
+                    <button 
+                      onClick={() => handleViewServiceDetails(myService._id)}
+                      className="flex-1 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-700 rounded-lg hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 font-medium text-sm hover:scale-105"
+                    >
+                      <EyeIcon className="w-4 h-4 mr-1" />
+                      View Details
+                    </button>
+                    <button 
+                      onClick={() => handleEditService(myService._id)}
+                      className="flex-1 px-3 py-2 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 text-yellow-700 rounded-lg hover:from-yellow-100 hover:to-orange-100 transition-all duration-200 font-medium text-sm hover:scale-105"
+                    >
+                      <PencilIcon className="w-4 h-4 mr-1" />
+                      Edit Service
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderIncomingRequests = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <button
+            onClick={() => setActiveTab('overview')}
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+          >
+            <ArrowLeftIcon className="w-5 h-5 mr-2" />
+            Back to Dashboard
+          </button>
+          <h2 className="text-2xl font-bold text-gray-900">📢 Incoming Requests</h2>
+          <p className="text-gray-600 mt-1">New booking requests from customers in your area</p>
+        </div>
+        <button
+          onClick={fetchIncomingRequests}
+          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <ArrowPathIcon className="w-4 h-4 mr-2" />
+              Refresh
+            </>
+          )}
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+        <div className="p-6">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            </div>
+          ) : incomingRequests.length === 0 ? (
+            <div className="text-center py-12">
+              <BellAlertIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No incoming requests</h3>
+              <p className="text-gray-600">You haven't received any broadcast booking requests yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {incomingRequests.map((booking) => {
+                const timeRemaining = getTimeRemaining(booking.broadcastSentAt || booking.createdAt);
+                const urgencyLevel = timeRemaining.minutes <= 1 ? 'high' : timeRemaining.minutes <= 3 ? 'medium' : 'low';
+                const urgencyColors = {
+                  high: 'border-red-300 bg-red-50',
+                  medium: 'border-yellow-300 bg-yellow-50', 
+                  low: 'border-purple-200 bg-purple-50'
+                };
+                const timerColors = {
+                  high: 'text-red-600 bg-red-100',
+                  medium: 'text-yellow-600 bg-yellow-100',
+                  low: 'text-purple-600 bg-purple-100'
+                };
+                
+                return (
+                  <div key={booking._id} className={`border rounded-lg p-6 hover:shadow-md transition-all ${urgencyColors[urgencyLevel]}`}>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                          {booking.service?.title || 'Unknown Service'}
+                        </h4>
+                        <div className="space-y-2">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <UserIcon className="w-4 h-4 mr-2" />
+                            <span className="font-medium">Customer:</span> {booking.customer.name}
+                          </div>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <PhoneIcon className="w-4 h-4 mr-2" />
+                            <span className="font-medium">Contact:</span> {booking.customer.phone}
+                          </div>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <EnvelopeIcon className="w-4 h-4 mr-2" />
+                            <span className="font-medium">Email:</span> {booking.customer.email}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="flex flex-col items-end space-y-2">
+                          <span className="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                            <BellIcon className="w-4 h-4 mr-1" />
+                            BROADCAST REQUEST
+                          </span>
+                          <div className={`px-3 py-2 rounded-lg font-mono text-sm font-bold ${timerColors[urgencyLevel]} border ${urgencyLevel === 'high' ? 'border-red-300 animate-pulse' : urgencyLevel === 'medium' ? 'border-yellow-300' : 'border-purple-200'}`}>
+                            <ClockIcon className="w-4 h-4 mr-1 inline" />
+                            {String(timeRemaining.minutes).padStart(2, '0')}:{String(timeRemaining.seconds).padStart(2, '0')}
+                          </div>
+                          <p className="text-lg font-bold text-gray-900">
+                            ₹{booking.totalAmount || booking.price?.totalPrice || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
+                    <div>
+                      <p className="text-gray-600 font-medium mb-1">Request Raised Time</p>
+                      <p className="text-gray-900">
+                        {new Date(booking.broadcastSentAt || booking.createdAt).toLocaleDateString()} at {new Date(booking.broadcastSentAt || booking.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {getTimeAgo(booking.broadcastSentAt || booking.createdAt)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 font-medium mb-1">Service Address</p>
+                      <p className="text-gray-900">
+                        {typeof booking.address === 'string' 
+                          ? (booking.address === 'Current Location' ? 'Customer Location (Exact address will be shared after acceptance)' : booking.address)
+                          : (() => {
+                              const street = booking.address?.street || 'Customer Location';
+                              const city = booking.address?.city;
+                              const state = booking.address?.state;
+                              const pincode = booking.address?.pincode;
+                              
+                              // Check if using current location with unknown values
+                              if (city === 'Unknown City' || state === 'Unknown State' || pincode === '000000') {
+                                return 'Customer Location (Exact address will be shared after acceptance)';
+                              }
+                              
+                              // Build address string with available parts
+                              const parts = [street];
+                              if (city) parts.push(city);
+                              if (state) parts.push(state);
+                              if (pincode) parts.push(`- ${pincode}`);
+                              
+                              return parts.join(', ');
+                            })()
+                        }
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 font-medium mb-1">Distance from You</p>
+                      <div className="flex items-center">
+                        {getBookingDistance(booking) !== null ? (
+                          <>
+                            <MapPinIcon className="w-4 h-4 mr-1 text-blue-500" />
+                            <span className="font-medium text-gray-900">
+                              {getBookingDistance(booking)?.toFixed(1)} km
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-gray-500">
+                            {locationSharingEnabled ? 'Calculating...' : 'Enable location tracking'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {booking.voiceNote && (
+                    <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <p className="text-gray-600 text-sm font-medium mb-2 flex items-center">
+                        <span className="mr-2">🎙️</span> Voice Note from Customer:
+                      </p>
+                      <audio controls className="w-full" style={{height: '40px'}}>
+                        <source src={`${(process.env.REACT_APP_API_URL || 'http://localhost:5000').replace('/api', '')}${booking.voiceNote}`} type="audio/webm" />
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
+                  )}
+
+                  {booking.notes && (
+                    <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                      <p className="text-gray-600 text-sm font-medium mb-1">Customer Notes:</p>
+                      <p className="text-gray-900 text-sm">{booking.notes}</p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      onClick={() => {
+                        setSelectedBookingForChat(booking);
+                        setShowChat(true);
+                      }}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm flex items-center"
+                      disabled={loading}
+                    >
+                      <ChatBubbleLeftIcon className="w-4 h-4 mr-2" />
+                      Chat
+                    </button>
+                    <button
+                      onClick={() => handleRejectBroadcastRequest(booking._id)}
+                      className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm flex items-center"
+                      disabled={loading}
+                    >
+                      <XMarkIcon className="w-4 h-4 mr-2" />
+                      Not Interested
+                    </button>
+                    <button
+                      onClick={() => handleAcceptBooking(booking._id)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center"
+                      disabled={loading}
+                    >
+                      📢 Accept Booking
+                    </button>
+                  </div>
+                </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return renderOverview();
+      case 'services':
+        return renderServices();
+      case 'incoming':
+        return renderIncomingRequests();
+      case 'bookings':
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+                >
+                  <ArrowLeftIcon className="w-5 h-5 mr-2" />
+                  Back to Dashboard
+                </button>
+                <h2 className="text-2xl font-bold text-gray-900">Booking Requests</h2>
+              </div>
+              <button
+                onClick={fetchBookings}
+                className="btn btn-outline"
+                disabled={loading}
+              >
+                {loading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <span className="text-red-400">⚠️</span>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Error</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      {error}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white shadow rounded-lg">
+              <div className="p-6">
+                {loading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : bookings.length === 0 ? (
+                  <div className="text-center py-12">
+                    <span className="text-4xl">📅</span>
+                    <h3 className="mt-4 text-lg font-medium text-gray-900">No booking requests</h3>
+                    <p className="mt-2 text-gray-600">You haven't received any booking requests yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {bookings.map((booking) => (
+                      <div key={booking._id} className="border border-gray-200 rounded-lg p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="text-lg font-medium text-gray-900">{booking.service?.title || 'Unknown Service'}</h4>
+                            <div className="mt-1 space-y-1">
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Customer:</span> {booking.customer.name}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Contact:</span> {booking.customer.phone}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">Email:</span> {booking.customer.email}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
+                              booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              booking.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                              booking.status === 'in_progress' ? 'bg-purple-100 text-purple-800' :
+                              booking.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              booking.status === 'broadcast' ? 'bg-purple-100 text-purple-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {booking.status === 'broadcast' ? '📢 BROADCAST' : booking.status.replace('_', ' ').toUpperCase()}
+                            </span>
+                            <p className="text-lg font-semibold text-gray-900 mt-2">
+                              ₹{booking.totalAmount || booking.price?.totalPrice || 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+                          <div>
+                            <p className="text-gray-600">Scheduled Date & Time</p>
+                            <p className="font-medium text-gray-900">
+                              {new Date(booking.scheduledDate).toLocaleDateString()} at {booking.scheduledTime}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-600">Time of Acceptance</p>
+                            <p className="font-medium text-gray-900">
+                              {booking.acceptedAt ? (
+                                <>
+                                  {new Date(booking.acceptedAt).toLocaleDateString()} at {new Date(booking.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </>
+                              ) : (
+                                <span className="text-gray-500">Not available</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <p className="text-gray-600 text-sm font-medium mb-1">Service Address</p>
+                          <p className="text-gray-900 text-sm">
+                            {typeof booking.address === 'string' 
+                              ? booking.address
+                              : (() => {
+                                  const street = booking.address?.street || '';
+                                  const city = booking.address?.city || '';
+                                  const state = booking.address?.state || '';
+                                  const pincode = booking.address?.pincode || '';
+                                  
+                                  const parts = [street, city, state, pincode].filter(Boolean);
+                                  return parts.length > 0 ? parts.join(', ') : 'Address not provided';
+                                })()
+                            }
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+                          <div>
+                            <p className="text-gray-600">Distance from Your Location</p>
+                            <div className="flex items-center">
+                              {getBookingDistance(booking) !== null ? (
+                                <>
+                                  <MapPinIcon className="w-4 h-4 mr-1 text-blue-500" />
+                                  <span className="font-medium text-gray-900">
+                                    {getBookingDistance(booking)?.toFixed(1)} km
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-gray-500">
+                                  {locationSharingEnabled ? 'Calculating...' : 'Enable location tracking'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {booking.voiceNote && (
+                          <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                            <p className="text-gray-600 text-sm font-medium mb-2 flex items-center">
+                              <span className="mr-2">🎙️</span> Voice Note from Customer:
+                            </p>
+                            <audio controls className="w-full" style={{height: '40px'}}>
+                              <source src={`${(process.env.REACT_APP_API_URL || 'http://localhost:5000').replace('/api', '')}${booking.voiceNote}`} type="audio/webm" />
+                              Your browser does not support the audio element.
+                            </audio>
+                          </div>
+                        )}
+
+                        {booking.notes && (
+                          <div className="mb-4">
+                            <p className="text-gray-600 text-sm">Customer Notes:</p>
+                            <p className="text-gray-900 bg-gray-50 p-3 rounded">{booking.notes}</p>
+                          </div>
+                        )}
+
+                        <div className="flex justify-end space-x-3">
+                          {(booking.status === 'confirmed' || booking.status === 'in_progress') && (
+                            <>
+                              <button
+                                onClick={() => handleNavigateToCustomer(booking)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center"
+                                disabled={loading}
+                              >
+                                <MapPinIcon className="w-4 h-4 mr-2" />
+                                Navigate Now
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedBookingForChat(booking);
+                                  setShowChat(true);
+                                }}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm flex items-center"
+                                disabled={loading}
+                              >
+                                <ChatBubbleLeftIcon className="w-4 h-4 mr-2" />
+                                Chat
+                              </button>
+                            </>
+                          )}
+                          {booking.status === 'broadcast' && (
+                            <button
+                              onClick={() => handleAcceptBooking(booking._id)}
+                              className="btn btn-primary text-sm"
+                              disabled={loading}
+                            >
+                              📢 Accept Booking
+                            </button>
+                          )}
+                          {booking.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleRejectBooking(booking._id)}
+                                className="btn btn-outline text-sm text-red-600 hover:text-red-700"
+                                disabled={loading}
+                              >
+                                Reject
+                              </button>
+                              <button
+                                onClick={() => handleAcceptBooking(booking._id)}
+                                className="btn btn-primary text-sm"
+                                disabled={loading}
+                              >
+                                Accept Booking
+                              </button>
+                            </>
+                          )}
+                          {booking.status === 'confirmed' && (
+                            <>
+                              <button
+                                onClick={() => handleCancelBooking(booking._id)}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm flex items-center"
+                                disabled={loading}
+                              >
+                                <XMarkIcon className="w-4 h-4 mr-2" />
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleStartBooking(booking._id)}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center"
+                                disabled={loading}
+                              >
+                                <PlayIcon className="w-4 h-4 mr-2" />
+                                Start Service
+                              </button>
+                            </>
+                          )}
+                          {booking.status === 'in_progress' && (
+                            <button
+                              onClick={() => handleCompleteBooking(booking)}
+                              className="btn btn-primary text-sm"
+                              disabled={loading}
+                            >
+                              Complete Service
+                            </button>
+                          )}
+                          {booking.status === 'completed' && (
+                            <div className="flex items-center text-green-600">
+                              <span className="text-lg mr-2">✓</span>
+                              <span className="font-medium">Completed</span>
+                            </div>
+                          )}
+                          {booking.status === 'cancelled' && (
+                            <div className="flex items-center text-red-600">
+                              <span className="text-lg mr-2">✗</span>
+                              <span className="font-medium">Cancelled</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      case 'earnings':
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Earnings Dashboard</h2>
+                <p className="text-gray-600 mt-2">Track your income and financial performance</p>
+              </div>
+              <button
+                onClick={fetchEarningsData}
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center"
+              >
+                <ArrowPathIcon className="w-4 h-4 mr-2" />
+                Refresh
+              </button>
+            </div>
+
+            {/* Earnings Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <BanknotesIcon className="w-8 h-8 text-green-100" />
+                  <span className="text-xs bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">Total</span>
+                </div>
+                <p className="text-3xl font-bold mb-2">₹{earningsData.totalEarnings.toLocaleString()}</p>
+                <p className="text-green-100 text-sm">Lifetime earnings</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <CalendarIcon className="w-8 h-8 text-blue-100" />
+                  <span className="text-xs bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">This Month</span>
+                </div>
+                <p className="text-3xl font-bold mb-2">₹{earningsData.thisMonth.toLocaleString()}</p>
+                <p className="text-blue-100 text-sm">Monthly earnings</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <CheckCircleIcon className="w-8 h-8 text-purple-100" />
+                  <span className="text-xs bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">Completed</span>
+                </div>
+                <p className="text-3xl font-bold mb-2">{earningsData.completedBookings}</p>
+                <p className="text-purple-100 text-sm">Total bookings</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-2xl p-6 text-white shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <StarSolidIcon className="w-8 h-8 text-yellow-100" />
+                  <span className="text-xs bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">Rating</span>
+                </div>
+                <p className="text-3xl font-bold mb-2">{earningsData.averageRating.toFixed(1)}</p>
+                <p className="text-yellow-100 text-sm">Average rating</p>
+              </div>
+            </div>
+
+            {/* Earnings Chart Placeholder */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <ChartPieIcon className="w-6 h-6 mr-2 text-blue-500" />
+                Earnings Overview
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Monthly Performance</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">This Month</span>
+                      <span className="font-bold text-green-600">₹{earningsData.thisMonth.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Last Month</span>
+                      <span className="font-bold text-blue-600">₹{earningsData.lastMonth.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Growth</span>
+                      <span className={`font-bold ${earningsData.thisMonth >= earningsData.lastMonth ? 'text-green-600' : 'text-red-600'}`}>
+                        {earningsData.lastMonth > 0 ? ((earningsData.thisMonth - earningsData.lastMonth) / earningsData.lastMonth * 100).toFixed(1) : '0'}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Service Performance</h4>
+                  <div className="space-y-3">
+                    {myServices.filter(s => s && s.isApproved).slice(0, 3).map((service, index) => (
+                      <div key={service?._id || index} className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 truncate flex-1 mr-2">{service?.title || 'Unknown Service'}</span>
+                        <span className="font-bold text-blue-600">{Math.floor(Math.random() * 10) + 1} bookings</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Transactions */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <QueueListIcon className="w-6 h-6 mr-2 text-purple-500" />
+                Recent Completed Bookings
+              </h3>
+              <div className="space-y-3">
+                {bookings.filter(b => b.status === 'completed').slice(0, 5).map((booking) => (
+                  <div key={booking._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{booking.service?.title || 'Unknown Service'}</p>
+                        <p className="text-sm text-gray-600">{booking.customer.name} • {new Date(booking.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-green-600">₹{booking.totalAmount || booking.price?.totalPrice || 0}</p>
+                      <p className="text-xs text-gray-500">Completed</p>
+                    </div>
+                  </div>
+                ))}
+                {bookings.filter(b => b.status === 'completed').length === 0 && (
+                  <div className="text-center py-8">
+                    <BanknotesIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-600">No completed bookings yet</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      case 'profile':
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Profile Settings</h2>
+                <p className="text-gray-600 mt-2">Manage your professional information and preferences</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                  {user?.name?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{user?.name}</h3>
+                  <p className="text-gray-600">{user?.email}</p>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                      {user?.role?.toUpperCase()}
+                    </span>
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${getKycStatusColor(kycStatus)}`}>
+                      KYC {kycStatus?.toUpperCase() || 'NOT SUBMITTED'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900 flex items-center">
+                    <UserIcon className="w-5 h-5 mr-2 text-blue-500" />
+                    Personal Information
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-600">Full Name</label>
+                      <p className="font-medium text-gray-900">{user?.name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Email Address</label>
+                      <p className="font-medium text-gray-900">{user?.email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Phone Number</label>
+                      <p className="font-medium text-gray-900">{user?.phone}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900 flex items-center">
+                    <ChartBarIcon className="w-5 h-5 mr-2 text-green-500" />
+                    Professional Stats
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-600">Member Since</label>
+                      <p className="font-medium text-gray-900">{'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Total Services</label>
+                      <p className="font-medium text-gray-900">{myServices.length}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Completed Bookings</label>
+                      <p className="font-medium text-gray-900">{earningsData.completedBookings}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <button className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium">
+                  Edit Profile
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      case 'settings':
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Settings</h2>
+                <p className="text-gray-600 mt-2">Manage your account settings and preferences</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <CogIcon className="w-6 h-6 mr-2 text-purple-500" />
+                Account Settings
+              </h3>
+              
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <BellIcon className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Email Notifications</p>
+                      <p className="text-sm text-gray-600">Receive booking updates via email</p>
+                    </div>
+                  </div>
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                    Enable
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <MapPinIcon className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Location Services</p>
+                      <p className="text-sm text-gray-600">Share location for better service matching</p>
+                    </div>
+                  </div>
+                  <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+                    Enable
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <ShieldCheckIcon className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Privacy Settings</p>
+                      <p className="text-sm text-gray-600">Control your data and privacy preferences</p>
+                    </div>
+                  </div>
+                  <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium">
+                    Configure
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <CreditCardIcon className="w-6 h-6 mr-2 text-green-500" />
+                Payment Settings
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">Wallet Balance</p>
+                      <p className="text-2xl font-bold text-green-600">₹2,500</p>
+                    </div>
+                    <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+                      Add Funds
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">Payment Methods</p>
+                      <p className="text-sm text-gray-600">Manage your payment options</p>
+                    </div>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                      Manage
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      default:
+        return renderServices();
+    }
+  };
+
+  // Show loading while user authentication is being checked
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if no user found
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h2>
+          <p className="text-gray-600 mb-6">Please log in to access your provider dashboard</p>
+          <Link 
+            to="/login" 
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Go to Login
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ fontFamily: "'Sora','DM Sans',system-ui,sans-serif", background: '#060609', color: '#fff', overflowX: 'hidden' }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800;900&family=DM+Sans:wght@300;400;500&display=swap');
-        *{box-sizing:border-box;margin:0;padding:0}
-        ::selection{background:#7C3AED;color:#fff}
-        :root{
-          --accent:#7C3AED;--c2:#06B6D4;--gold:#F59E0B;
-          --surf:#0D0D14;--surf2:#13131C;
-          --bord:rgba(255,255,255,0.08);
-          --muted:rgba(255,255,255,0.42);
-        }
-        html{scroll-behavior:smooth}
-
-        .btn-primary{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;min-height:44px;background:#fff;color:#060609;font-size:15px;font-weight:700;border-radius:100px;text-decoration:none;letter-spacing:.2px;transition:transform .22s,box-shadow .22s;box-shadow:0 0 40px rgba(255,255,255,.12)}
-        .btn-primary:hover{transform:scale(1.04);box-shadow:0 0 64px rgba(255,255,255,.24)}
-        .btn-ghost{display:inline-flex;align-items:center;gap:10px;padding:14px 28px;min-height:44px;background:transparent;color:rgba(255,255,255,.75);font-size:15px;font-weight:600;border-radius:100px;border:1px solid rgba(255,255,255,.18);text-decoration:none;transition:background .22s,color .22s}
-        .btn-ghost:hover{background:rgba(255,255,255,.08);color:#fff}
-
-        .service-card{position:relative;overflow:hidden;background:var(--surf);border:1px solid var(--bord);border-radius:22px;cursor:pointer;text-decoration:none;color:#fff;display:block;transition:transform .35s cubic-bezier(.22,1,.36,1),border-color .3s,box-shadow .3s}
-        .service-card:hover{transform:translateY(-8px);box-shadow:0 28px 70px rgba(0,0,0,.55);border-color:rgba(124,58,237,.3)}
-
-        @keyframes orb{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-25px) scale(1.04)}66%{transform:translate(-20px,35px) scale(.96)}}
-        @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
-
-        @media(max-width:900px){
-          .hero-h{font-size:clamp(44px,11vw,72px) !important}
-          .hero-split{flex-direction:column !important}
-          .services-grid{grid-template-columns:repeat(2,1fr) !important}
-          .filter-grid{grid-template-columns:1fr !important}
-        }
-        @media(max-width:640px){
-          .services-grid{grid-template-columns:1fr !important}
-          .hero-h{font-size:clamp(32px,10vw,48px) !important}
-        }
-      `}</style>
-
-      {/* ══════════════ HERO ══════════════ */}
-      <section className="relative min-h-[60vh] flex items-center px-6 py-16 md:py-20 lg:py-24 overflow-hidden">
-        {/* Orbs */}
-        <div style={{position:'absolute',top:'10%',left:'5%',width:560,height:560,borderRadius:'50%',background:'radial-gradient(circle,rgba(124,58,237,.3) 0%,transparent 70%)',animation:'orb 20s ease-in-out infinite',pointerEvents:'none'}}/>
-        <div style={{position:'absolute',top:'45%',right:'3%',width:420,height:420,borderRadius:'50%',background:'radial-gradient(circle,rgba(6,182,212,.2) 0%,transparent 70%)',animation:'orb 26s ease-in-out infinite reverse',pointerEvents:'none'}}/>
-        <div style={{position:'absolute',bottom:'5%',left:'35%',width:300,height:300,borderRadius:'50%',background:'radial-gradient(circle,rgba(244,114,182,.16) 0%,transparent 70%)',animation:'orb 18s ease-in-out infinite 4s',pointerEvents:'none'}}/>
-
-        {/* Grid pattern */}
-        <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px)',backgroundSize:'72px 72px',pointerEvents:'none'}}/>
-
-        <div style={{maxWidth:1260,margin:'0 auto',width:'100%',position:'relative',zIndex:2}}>
-          <div style={{textAlign: 'center'}}>
-            <div style={{marginBottom:28}}>
-              <span style={{display:'inline-flex',alignItems:'center',gap:8,padding:'8px 18px',background:'rgba(124,58,237,.13)',border:'1px solid rgba(124,58,237,.35)',borderRadius:100,fontSize:12,color:'rgba(255,255,255,.85)',letterSpacing:'.6px',fontWeight:600}}>
-                <span style={{width:7,height:7,borderRadius:'50%',background:'#4ADE80',display:'inline-block',boxShadow:'0 0 10px #4ADE80'}}/>
-                {services.length} services available
-              </span>
-            </div>
-
-            <h1 style={{fontSize:'clamp(50px,6.5vw,92px)',fontWeight:900,lineHeight:1.02,letterSpacing:'-2.5px',marginBottom:24}}>
-              Find your perfect{' '}
-              <span style={{background:'linear-gradient(90deg,#fff 20%,#a78bfa 45%,#22d3ee 62%,#fff 80%)',backgroundSize:'200% auto',WebkitBackgroundClip:'text',backgroundClip:'text',WebkitTextFillColor:'transparent',animation:'shimmer 4s linear infinite'}}>service</span>
-            </h1>
-
-            <p style={{fontSize:17,color:'rgba(255,255,255,.48)',maxWidth:600,lineHeight:1.78,marginBottom:44,fontWeight:300,margin:'0 auto 44px'}}>
-              Professional services at your fingertips. Book instantly, get matched with verified providers in your area.
-            </p>
-
-            <div style={{display:'flex',justifyContent:'center',gap:14,marginBottom:44}}>
-              {user?.role === 'customer' && (
-                <button 
-                  onClick={() => navigate('/dashboard')}
-                  className="btn-primary"
-                  style={{fontSize:14,padding:'14px 28px'}}
-                >
-                  <CalendarIcon/> My Bookings
-                </button>
-              )}
-              {!user && (
-                <button 
-                  onClick={() => navigate('/register')}
-                  className="btn-primary"
-                  style={{fontSize:14,padding:'14px 28px'}}
-                >
-                  Sign Up to Book
-                </button>
-              )}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-4 md:px-6 lg:px-8">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Provider Dashboard</h1>
+              <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your services and grow your business</p>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* ══════════════ FILTERS ══════════════ */}
-      <section className="px-6 py-12 md:py-16 bg-[#0D0D14] border-t border-b border-[rgba(255,255,255,0.08)]">
-        <div style={{maxWidth:1260,margin:'0 auto'}}>
-          <div style={{marginBottom:40}}>
-            <span style={{fontSize:11,color:'var(--c2)',letterSpacing:'2.5px',textTransform:'uppercase',fontWeight:700}}>Filters</span>
-            <h2 style={{fontSize:'clamp(24px,3vw,36px)',fontWeight:900,letterSpacing:'-1.2px',marginTop:8,lineHeight:1.1}}>
-              Find exactly what you need
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))',gap:20,marginBottom:32}}>
-            <div style={{position:'relative'}}>
-              <label style={{display:'block',fontSize:12,fontWeight:600,color:'var(--muted)',marginBottom:12,letterSpacing:'.8px',textTransform:'uppercase'}}>
-                <SearchIcon style={{width:14,height:14,marginRight:6,verticalAlign:'middle'}}/>
-                Search
-              </label>
-              <input
-                type="text"
-                placeholder="What service do you need?"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={(e) => {e.target.style.borderColor = 'var(--accent)'; e.target.style.background = 'rgba(124,58,237,.1)'; if (searchTerm) setShowSuggestions(true);}}
-                onBlur={(e) => {e.target.style.borderColor = 'var(--bord)'; e.target.style.background = 'var(--surf2)'; setTimeout(() => setShowSuggestions(false), 200);}}
-                style={{width:'100%',padding:'14px 18px',background:'var(--surf2)',border:'1px solid var(--bord)',borderRadius:12,color:'#fff',fontSize:15,transition:'border-color .3s,background .3s'}}
-              />
-              {showSuggestions && filteredSuggestions.length > 0 && (
-                <div style={{
-                  position:'absolute',
-                  top:'100%',
-                  left:0,
-                  right:0,
-                  background:'var(--surf)',
-                  border:'1px solid var(--bord)',
-                  borderTop:'none',
-                  borderRadius:'0 0 12px 12px',
-                  maxHeight:'200px',
-                  overflowY:'auto',
-                  zIndex:10,
-                  marginTop:'-1px'
-                }}>
-                  {filteredSuggestions.map((service, index) => (
-                    <div
-                      key={service._id}
-                      onClick={() => {
-                        setSearchTerm(service.title);
-                        setShowSuggestions(false);
-                        handleSearch();
-                      }}
-                      style={{
-                        padding:'12px 18px',
-                        cursor:'pointer',
-                        borderBottom:index < filteredSuggestions.length - 1 ? '1px solid var(--bord)' : 'none',
-                        transition:'background .2s',
-                        fontSize:14
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(124,58,237,.1)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <div style={{fontWeight:600,color:'#fff',marginBottom:2}}>{service.title}</div>
-                      <div style={{fontSize:12,color:'var(--muted)'}}>{getCategoryLabel(service.category)}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            <div>
-              <label style={{display:'block',fontSize:12,fontWeight:600,color:'var(--muted)',marginBottom:12,letterSpacing:'.8px',textTransform:'uppercase'}}>
-                <TagIcon style={{width:14,height:14,marginRight:6,verticalAlign:'middle'}}/>
-                Category
-              </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                style={{width:'100%',padding:'14px 18px',background:'var(--surf2)',border:'1px solid var(--bord)',borderRadius:12,color:'#fff',fontSize:15,transition:'border-color .3s,background .3s',cursor:'pointer'}}
-                onFocus={(e) => {e.target.style.borderColor = 'var(--accent)'; e.target.style.background = 'rgba(124,58,237,.1)';}}
-                onBlur={(e) => {e.target.style.borderColor = 'var(--bord)'; e.target.style.background = 'var(--surf2)';}}
-              >
-                <option value="" style={{background:'var(--surf2)',color:'#fff'}}>All Categories</option>
-                {categories.map(cat => (
-                  <option key={cat.value} value={cat.value} style={{background:'var(--surf2)',color:'#fff'}}>{cat.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <div style={{textAlign:'center'}}>
-            <button
-              onClick={handleSearch}
-              className="btn-primary"
-              style={{fontSize:15,padding:'16px 40px'}}
-            >
-              <SearchIcon/> Search Services
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════ SERVICES GRID ══════════════ */}
-      <section className="px-6 py-16 md:py-20 lg:py-24">
-        <div style={{maxWidth:1260,margin:'0 auto'}}>
-          {error && (
-            <div style={{marginBottom:40,padding:'20px 24px',background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',borderRadius:16,display:'flex',alignItems:'center',color:'#f87171'}}>
-              <span style={{fontSize:15,fontWeight:500}}>{error}</span>
-            </div>
-          )}
-
-          {services.length === 0 ? (
-            <div style={{textAlign:'center',padding:'80px 24px'}}>
-              <div style={{width:120,height:120,margin:'0 auto 32px',background:'var(--surf2)',border:'1px solid var(--bord)',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <SearchIcon style={{width:48,height:48,color:'var(--muted)'}}/>
-              </div>
-              <h3 style={{fontSize:32,fontWeight:900,marginBottom:16,letterSpacing:'-1px'}}>No services found</h3>
-              <p style={{fontSize:16,color:'var(--muted)',lineHeight:1.6}}>Try adjusting your search criteria or browse all categories</p>
-            </div>
-          ) : (
-            <div className="services-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {services.map((service, index) => (
-                <div 
-                  key={service._id} 
-                  className="service-card"
-                  style={{transitionDelay:`${index * 0.1}s`}}
-                  onClick={() => handleBookService(service)}
-                >
-                  <div style={{padding:'32px 28px'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20}}>
-                      <h3 style={{fontSize:20,fontWeight:800,marginBottom:0,letterSpacing:'-.3px',lineHeight:1.2}}>
-                        {service.title}
-                      </h3>
-                      <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <div style={{width:6,height:6,borderRadius:'50%',background:'#4ADE80',boxShadow:'0 0 12px #4ADE80'}}/>
-                        <span style={{fontSize:11,fontWeight:700,letterSpacing:'.5px',textTransform:'uppercase',padding:'4px 10px',borderRadius:100,background:'rgba(74,222,128,.15)',color:'#4ADE80',border:'1px solid rgba(74,222,128,.3)'}}>
-                          Available
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <p style={{fontSize:14,color:'var(--muted)',marginBottom:24,lineHeight:1.6,fontWeight:300}}>{service.description}</p>
-                    
-                    <div style={{marginBottom:24}}>
-                      <div style={{display:'flex',alignItems:'center',fontSize:13,color:'var(--muted)',marginBottom:12}}>
-                        <TagIcon style={{width:16,height:16,marginRight:8,color:'var(--accent)',flexShrink:0}}/>
-                        <span style={{fontWeight:600}}>{getCategoryLabel(service.category)}</span>
-                      </div>
-                      
-                      <div style={{display:'flex',alignItems:'center',fontSize:13,color:'var(--muted)',marginBottom:12}}>
-                        <ClockIcon style={{width:16,height:16,marginRight:8,color:'var(--accent)',flexShrink:0}}/>
-                        <span>{service.duration.value} {service.duration.unit}</span>
-                      </div>
-                      
-                      <div style={{display:'flex',alignItems:'center',fontSize:13,color:'var(--muted)',marginBottom:12}}>
-                        <MapPinIcon style={{width:16,height:16,marginRight:8,color:'var(--accent)',flexShrink:0}}/>
-                        <span>{service.serviceArea}</span>
-                      </div>
-                      
-                      <div style={{display:'flex',alignItems:'center',fontSize:13,color:'var(--muted)'}}>
-                        <span style={{width:16,height:16,marginRight:8,color:'var(--accent)',flexShrink:0}}>👥</span>
-                        <span>Multiple providers available</span>
-                      </div>
-                    </div>
-                    
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:20,borderTop:'1px solid var(--bord)'}}>
-                      <div>
-                        <div style={{display:'flex',alignItems:'center'}}>
-                          <p style={{fontSize:28,fontWeight:900,color:'#fff',lineHeight:1}}>{service.price}</p>
-                        </div>
-                        <p style={{fontSize:12,color:'var(--muted)',marginTop:4}}>{service.priceType}</p>
-                      </div>
-                      
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleBookService(service);
-                        }}
-                        className="btn-primary"
-                        style={{fontSize:13,padding:'12px 20px',background:'var(--accent)',color:'#fff',border:'none',boxShadow:'0 0 30px rgba(124,58,237,.4)'}}
-                      >
-                        Book Now <ArrowRight/>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Booking Modal */}
-      {showBookingModal && selectedService && (
-        <BookingModal
-          service={selectedService}
-          onClose={() => setShowBookingModal(false)}
-          onConfirm={handleConfirmBooking}
-          loading={bookingLoading}
+        {renderContent()}
+      
+      {/* Provider Completion Modal */}
+      {showProviderCompletionModal && selectedCompletionBooking && (
+        <ProviderCompletionModal
+          isOpen={showProviderCompletionModal}
+          onClose={() => {
+            setShowProviderCompletionModal(false);
+            setSelectedCompletionBooking(null);
+          }}
+          bookingId={selectedCompletionBooking._id}
+          serviceTitle={selectedCompletionBooking.service?.title || 'Unknown Service'}
+          customerName={selectedCompletionBooking.customer?.name || 'Unknown Customer'}
+          onVerify={handleProviderCompletion}
+          loading={completionLoading}
         />
       )}
-    </div>
-  );
-};
 
-// Booking Modal Component
-interface BookingModalProps {
-  service: Service;
-  onClose: () => void;
-  onConfirm: (data: any) => void;
-  loading: boolean;
-}
 
-const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, onConfirm, loading }) => {
-  const [bookingData, setBookingData] = useState({
-    address: {
-      street: '',
-      city: '',
-      state: '',
-      pincode: '',
-      coordinates: { lat: null as number | null, lng: null as number | null }
-    },
-    notes: '',
-    useCurrentLocation: false,
-    voiceNote: null as Blob | null
-  });
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [locationError, setLocationError] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioURL, setAudioURL] = useState<string | null>(null);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [recordingTimer, setRecordingTimer] = useState<NodeJS.Timeout | null>(null);
-  const [addressSearch, setAddressSearch] = useState('');
-  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [addressSearchTimeout, setAddressSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+      {/* Navigation Modal */}
+      {showNavigationModal && selectedNavigationBooking && (
+        <ProviderNavigationModal
+          isOpen={showNavigationModal}
+          onClose={() => {
+            setShowNavigationModal(false);
+            setSelectedNavigationBooking(null);
+          }}
+          booking={selectedNavigationBooking}
+          providerLocation={currentLocation}
+        />
+      )}
 
-  // Cleanup recording on unmount
-  useEffect(() => {
-    return () => {
-      if (recordingTimer) {
-        clearInterval(recordingTimer);
-      }
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
-    };
-  }, [mediaRecorder, recordingTimer]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate - current location is mandatory
-    if (!bookingData.useCurrentLocation) {
-      toast.error('Please use current location to proceed');
-      return;
-    }
-    
-    if (!bookingData.address.coordinates.lat) {
-      toast.error('Please enable location detection to proceed');
-      return;
-    }
-
-    onConfirm(bookingData);
-  };
-
-  const handleGetCurrentLocation = () => {
-    setLocationLoading(true);
-    setLocationError('');
-    
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser');
-      setLocationLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        
-        try {
-          // Get address from coordinates using Google Maps reverse geocoding
-          const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'AIzaSyD00kxAUePvjaBpy8k-3aDtEcJHhSm64Bw';
-          const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
-          const data = await response.json();
-          
-          if (data.status === 'OK' && data.results && data.results.length > 0) {
-            const addressComponents = data.results[0].address_components;
-            const getAddressComponent = (types: string[]) => {
-              const component = addressComponents.find((comp: any) => 
-                types.some(type => comp.types.includes(type))
-              );
-              return component ? component.long_name : '';
-            };
-            
-            setBookingData(prev => ({
-              ...prev,
-              address: {
-                street: getAddressComponent(['street_number', 'route']) || 'Current Location',
-                city: getAddressComponent(['locality', 'administrative_area_level_2']) || 'Unknown City',
-                state: getAddressComponent(['administrative_area_level_1']) || 'Unknown State',
-                pincode: getAddressComponent(['postal_code']) || '000000',
-                coordinates: { lat: latitude, lng: longitude }
-              },
-              useCurrentLocation: true
-            }));
-          } else {
-            // If reverse geocoding fails, at least save coordinates with default address
-            setBookingData(prev => ({
-              ...prev,
-              address: {
-                street: 'Current Location',
-                city: 'Unknown City',
-                state: 'Unknown State',
-                pincode: '000000',
-                coordinates: { lat: latitude, lng: longitude }
-              },
-              useCurrentLocation: true
-            }));
-          }
-        } catch (error) {
-          // If API fails, at least save coordinates with default address
-          setBookingData(prev => ({
-            ...prev,
-            address: {
-              street: 'Current Location',
-              city: 'Unknown City',
-              state: 'Unknown State',
-              pincode: '000000',
-              coordinates: { lat: latitude, lng: longitude }
-            },
-            useCurrentLocation: true
-          }));
-        }
-        
-        setLocationLoading(false);
-        toast.success('Location detected successfully!');
-      },
-      (error) => {
-        setLocationError('Unable to retrieve your location. Please enable location permissions or enter address manually.');
-        setLocationLoading(false);
-      }
-    );
-  };
-
-  const handleManualAddress = () => {
-    setBookingData(prev => ({
-      ...prev,
-      useCurrentLocation: false,
-      address: {
-        ...prev.address,
-        coordinates: { lat: null, lng: null }
-      }
-    }));
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (e) => {
-        chunks.push(e.data);
-      };
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        const url = URL.createObjectURL(blob);
-        setAudioURL(url);
-        setBookingData(prev => ({ ...prev, voiceNote: blob }));
-        setRecordingTime(0);
-        if (recordingTimer) {
-          clearInterval(recordingTimer);
-        }
-      };
-
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-
-      // Start recording timer
-      const timer = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-      setRecordingTimer(timer);
-
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      toast.error('Failed to access microphone. Please check permissions.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-      mediaRecorder.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
-      setMediaRecorder(null);
-    }
-  };
-
-  const deleteVoiceNote = () => {
-    if (audioURL) {
-      URL.revokeObjectURL(audioURL);
-    }
-    setAudioURL(null);
-    setBookingData(prev => ({ ...prev, voiceNote: null }));
-    setRecordingTime(0);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const searchAddresses = async (query: string) => {
-    if (!query || query.length < 3) {
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    try {
-      setSearchLoading(true);
-      const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'AIzaSyD00kxAUePvjaBpy8k-3aDtEcJHhSm64Bw';
-      const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`);
-      const data = await response.json();
-      
-      if (data.status === 'OK' && data.results && data.results.length > 0) {
-        const suggestions = data.results.slice(0, 5).map((item: any) => {
-          const addressComponents = item.address_components;
-          const getAddressComponent = (types: string[]) => {
-            const component = addressComponents.find((comp: any) => 
-              types.some(type => comp.types.includes(type))
-            );
-            return component ? component.long_name : '';
-          };
-          
-          return {
-            display_name: item.formatted_address,
-            address: {
-              street: getAddressComponent(['street_number', 'route']) || '',
-              city: getAddressComponent(['locality', 'administrative_area_level_2']) || '',
-              state: getAddressComponent(['administrative_area_level_1']) || '',
-              pincode: getAddressComponent(['postal_code']) || ''
-            },
-            coordinates: {
-              lat: item.geometry.location.lat,
-              lng: item.geometry.location.lng
-            }
-          };
-        });
-        setAddressSuggestions(suggestions);
-        setShowSuggestions(true);
-      } else {
-        setAddressSuggestions([]);
-        setShowSuggestions(false);
-      }
-    } catch (error) {
-      console.error('Address search error:', error);
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
-  const handleAddressSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setAddressSearch(value);
-    
-    // Clear existing timeout
-    if (addressSearchTimeout) {
-      clearTimeout(addressSearchTimeout);
-    }
-    
-    // Set new timeout for debouncing
-    const timeout = setTimeout(() => {
-      searchAddresses(value);
-    }, 500);
-    
-    setAddressSearchTimeout(timeout);
-  };
-
-  const selectAddress = (suggestion: any) => {
-    setBookingData(prev => ({
-      ...prev,
-      address: {
-        ...suggestion.address,
-        coordinates: suggestion.coordinates
-      },
-      useCurrentLocation: false
-    }));
-    setAddressSearch(suggestion.display_name);
-    setShowSuggestions(false);
-    setAddressSuggestions([]);
-  };
-
-  const handleAddressBlur = () => {
-    // Delay hiding suggestions to allow click on suggestion
-    setTimeout(() => {
-      setShowSuggestions(false);
-    }, 200);
-  };
-
-  return (
-    <div style={{position: 'fixed', inset: 0, background: 'rgba(6,6,9,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '16px'}}>
-      <div style={{background: 'var(--surf)', border: '1px solid var(--bord)', borderRadius: '22px', maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 40px 100px rgba(0,0,0,0.6)'}}>
-        <div style={{padding: '32px'}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px'}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-              <div style={{background: 'linear-gradient(135deg, var(--accent), var(--c2))', padding: '12px', borderRadius: '16px', boxShadow: '0 8px 32px rgba(124,58,237,0.3)'}}>
-                <span style={{fontSize: '24px'}}>✨</span>
-              </div>
-              <h2 style={{fontSize: '24px', fontWeight: '800', color: '#fff', letterSpacing: '-0.5px'}}>Book Service</h2>
-            </div>
-            <button
-              onClick={onClose}
-              style={{background: 'transparent', border: 'none', color: 'var(--muted)', padding: '8px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s'}}
-              onMouseEnter={(e) => {e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff';}}
-              onMouseLeave={(e) => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--muted)';}}
-            >
-              <span style={{fontSize: '20px', display: 'block'}}>×</span>
-            </button>
-          </div>
-          
-          <div style={{marginBottom: '32px', background: 'linear-gradient(135deg, rgba(124,58,237,0.1), rgba(6,182,212,0.1))', borderRadius: '16px', padding: '24px', border: '1px solid rgba(124,58,237,0.2)'}}>
-            <h3 style={{fontWeight: '700', fontSize: '18px', color: '#fff', marginBottom: '12px'}}>{service.title}</h3>
-            <p style={{color: 'var(--muted)', marginBottom: '20px', lineHeight: '1.6'}}>{service.description}</p>
-            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px'}}>
-              <div style={{display: 'flex', alignItems: 'center'}}>
-                <span style={{fontSize: '24px', marginRight: '8px'}}>💰</span>
-                <p style={{fontSize: '28px', fontWeight: '800', color: '#4ADE80'}}>{service.price}</p>
-                <span style={{color: 'var(--muted)', marginLeft: '8px'}}>{service.priceType}</span>
-              </div>
-              <div style={{display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px', color: 'var(--muted)'}}>
-                <div style={{display: 'flex', alignItems: 'center'}}>
-                  <span style={{fontSize: '16px', marginRight: '6px'}}>⏱️</span>
-                  {service.duration.value} {service.duration.unit}
-                </div>
-                <div style={{display: 'flex', alignItems: 'center'}}>
-                  <span style={{fontSize: '16px', marginRight: '6px'}}>📍</span>
-                  {service.serviceArea}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
-            <div>
-              <label style={{display: 'block', fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '12px', letterSpacing: '0.5px'}}>
-                📍 Service Location *
-              </label>
-              
-              <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                <button
-                  type="button"
-                  onClick={handleGetCurrentLocation}
-                  disabled={locationLoading}
-                  style={{
-                    width: '100%',
-                    padding: '14px 20px',
-                    borderRadius: '12px',
-                    border: bookingData.useCurrentLocation ? '2px solid var(--accent)' : '1px solid var(--bord)',
-                    background: bookingData.useCurrentLocation ? 'rgba(124,58,237,0.1)' : 'var(--surf2)',
-                    color: bookingData.useCurrentLocation ? 'var(--accent)' : '#fff',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: locationLoading ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.3s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  {locationLoading ? (
-                    <>
-                      <div style={{width: '16px', height: '16px', border: '2px solid var(--accent)', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite'}}></div>
-                      Detecting Location...
-                    </>
-                  ) : (
-                    <>
-                      📍 Use Current Location
-                    </>
-                  )}
-                </button>
-                
-                {locationError && (
-                  <div style={{padding: '12px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', color: '#f87171'}}>
-                    <p style={{fontSize: '14px', fontWeight: '500'}}>{locationError}</p>
-                  </div>
-                )}
-                
-                {bookingData.useCurrentLocation && bookingData.address.coordinates.lat && (
-                  <div style={{padding: '16px', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: '12px'}}>
-                    <div style={{display: 'flex', alignItems: 'center'}}>
-                      <span style={{fontSize: '16px', marginRight: '8px'}}>📍</span>
-                      <p style={{fontSize: '14px', fontWeight: '600', color: '#4ADE80'}}>Location Detected</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div>
-              <label style={{display: 'block', fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '12px', letterSpacing: '0.5px'}}>
-                🎙️ Voice Note (Optional)
-              </label>
-              <p style={{fontSize: '14px', color: 'var(--muted)', marginBottom: '16px'}}>Record a voice message explaining what you need help with</p>
-              
-              <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                {!audioURL && !isRecording && (
-                  <div style={{display: 'flex', justifyContent: 'center'}}>
-                    <button
-                      type="button"
-                      onClick={startRecording}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '14px 24px',
-                        background: '#ef4444',
-                        color: '#fff',
-                        borderRadius: '12px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {e.currentTarget.style.background = '#dc2626';}}
-                      onMouseLeave={(e) => {e.currentTarget.style.background = '#ef4444';}}
-                    >
-                      🎙️ Start Recording
-                    </button>
-                  </div>
-                )}
-
-                {isRecording && (
-                  <div style={{padding: '24px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '16px'}}>
-                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px'}}>
-                      <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                        <div style={{width: '12px', height: '12px', background: '#ef4444', borderRadius: '50%', animation: 'pulse 1.5s ease-out infinite'}}></div>
-                        <span style={{color: '#ef4444', fontWeight: '600'}}>Recording...</span>
-                        <span style={{color: '#ef4444', fontFamily: 'monospace'}}>{formatTime(recordingTime)}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={stopRecording}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '8px 16px',
-                          background: '#ef4444',
-                          color: '#fff',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        ⏹️ Stop
-                      </button>
-                    </div>
-                    <div style={{width: '100%', height: '8px', background: 'rgba(239,68,68,0.2)', borderRadius: '4px'}}>
-                      <div 
-                        style={{
-                          height: '8px',
-                          background: '#ef4444',
-                          borderRadius: '4px',
-                          transition: 'width 1s linear',
-                          width: `${Math.min((recordingTime / 60) * 100, 100)}%`
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
-                {audioURL && !isRecording && (
-                  <div style={{padding: '24px', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: '16px'}}>
-                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px'}}>
-                      <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                        <div style={{width: '12px', height: '12px', background: '#4ADE80', borderRadius: '50%'}}></div>
-                        <span style={{color: '#4ADE80', fontWeight: '600'}}>Voice Note Recorded</span>
-                        <span style={{color: '#4ADE80', fontFamily: 'monospace'}}>{formatTime(recordingTime)}</span>
-                      </div>
-                      <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        <audio controls style={{height: '32px'}}>
-                          <source src={audioURL} type="audio/webm" />
-                          Your browser does not support the audio element.
-                        </audio>
-                        <button
-                          type="button"
-                          onClick={deleteVoiceNote}
-                          style={{
-                            padding: '8px',
-                            background: 'transparent',
-                            color: '#ef4444',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            border: 'none',
-                            fontSize: '16px'
-                          }}
-                          onMouseEnter={(e) => {e.currentTarget.style.background = 'rgba(239,68,68,0.1)';}}
-                          onMouseLeave={(e) => {e.currentTarget.style.background = 'transparent';}}
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div>
-              <label style={{display: 'block', fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '12px', letterSpacing: '0.5px'}}>
-                📝 Additional Notes (Optional)
-              </label>
-              <textarea
-                placeholder="Any specific requirements or details about the service..."
-                value={bookingData.notes}
-                onChange={(e) => setBookingData({ ...bookingData, notes: e.target.value })}
-                rows={4}
-                style={{
-                  width: '100%',
-                  padding: '14px 16px',
-                  background: 'var(--surf2)',
-                  border: '1px solid var(--bord)',
-                  borderRadius: '12px',
-                  color: '#fff',
-                  fontSize: '14px',
-                  resize: 'none',
-                  outline: 'none',
-                  fontFamily: 'inherit'
-                }}
-              />
-            </div>
-            
-            <div style={{padding: '20px', background: 'linear-gradient(135deg, rgba(124,58,237,0.1), rgba(6,182,212,0.1))', borderRadius: '16px', border: '1px solid rgba(124,58,237,0.2)'}}>
-              <div style={{display: 'flex', alignItems: 'flex-start', gap: '12px'}}>
-                <div style={{background: 'var(--accent)', padding: '8px', borderRadius: '8px'}}>
-                  <span style={{fontSize: '16px'}}>✨</span>
-                </div>
-                <div>
-                  <p style={{fontSize: '14px', fontWeight: '600', color: '#fff', marginBottom: '8px'}}>📢 Instant Booking (7km Range)</p>
-                  <p style={{fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6'}}>
-                    Your request will be sent immediately to verified providers within 7km of your location. The first provider to accept will be assigned to your booking.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div style={{display: 'flex', gap: '16px'}}>
-              <button
-                type="button"
-                onClick={onClose}
-                style={{
-                  flex: 1,
-                  padding: '16px 24px',
-                  background: 'transparent',
-                  color: 'var(--muted)',
-                  border: '1px solid var(--bord)',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#fff';}}
-                onMouseLeave={(e) => {e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--muted)';}}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  background: 'linear-gradient(135deg, var(--accent), var(--c2))',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s',
-                  padding: '16px 24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  opacity: loading ? 0.7 : 1
-                }}
-                onMouseEnter={(e) => {if (!loading) e.currentTarget.style.transform = 'scale(1.02)';}}
-                onMouseLeave={(e) => {if (!loading) e.currentTarget.style.transform = 'scale(1)';}}
-              >
-                {loading ? (
-                  <>
-                    <div style={{width: '16px', height: '16px', border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite'}}></div>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    Confirm Booking
-                    <span style={{fontSize: '16px'}}>→</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
+      {/* Chat Component */}
+      {showChat && selectedBookingForChat && selectedBookingForChat.customer && (
+        <ChatComponent
+          bookingId={selectedBookingForChat._id}
+          recipientId={selectedBookingForChat.customer._id}
+          recipientName={selectedBookingForChat.customer.name}
+          isOpen={showChat}
+          onClose={() => {
+            setShowChat(false);
+            setSelectedBookingForChat(null);
+          }}
+          isProvider={true}
+        />
+      )}
       </div>
     </div>
   );
 };
 
-export default Services;
+export default ProviderDashboard;

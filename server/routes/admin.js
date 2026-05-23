@@ -3,8 +3,8 @@ const router = express.Router();
 const User = require('../models/User');
 const Service = require('../models/Service');
 const Booking = require('../models/Booking');
-const ProviderWallet = require('../models/ProviderWallet');
 const Coupon = require('../models/Coupon');
+const ProviderWallet = require('../models/ProviderWallet');
 const { protect, authorize } = require('../middleware/auth');
 
 // @route   GET /api/admin/users/:id
@@ -37,7 +37,7 @@ router.get('/users', protect, authorize('admin'), async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 1000,
       role,
       kycStatus,
       isActive,
@@ -131,7 +131,7 @@ router.put('/users/:id', protect, authorize('admin'), async (req, res) => {
 // @access  Private (Admin)
 router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 1000 } = req.query;
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -173,7 +173,7 @@ router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
 // @access  Private (Admin)
 router.get('/kyc/pending', protect, authorize('admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 1000 } = req.query;
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -325,7 +325,7 @@ router.get('/services', protect, authorize('admin'), async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 1000,
       isApproved,
       isActive,
       category,
@@ -618,7 +618,7 @@ router.get('/coupons', protect, authorize('admin'), async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 1000,
       status,
       discountType,
       search,
@@ -922,7 +922,7 @@ router.get('/bookings', protect, authorize('admin'), async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 1000,
       status,
       paymentStatus,
       dateFrom,

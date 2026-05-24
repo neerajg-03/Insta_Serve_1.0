@@ -595,6 +595,20 @@ const ProviderDashboard: React.FC = () => {
     }
   }, [activeTab, user, isLoading]);
 
+  // Auto-select in_progress booking for location sharing
+  useEffect(() => {
+    if (bookings.length > 0) {
+      const inProgressBooking = bookings.find(b => b.status === 'in_progress');
+      if (inProgressBooking && !selectedNavigationBooking) {
+        console.log('📍 Auto-selecting in_progress booking for location sharing:', inProgressBooking._id);
+        setSelectedNavigationBooking(inProgressBooking);
+      } else if (!inProgressBooking && selectedNavigationBooking) {
+        console.log('📍 No in_progress booking, clearing selected navigation booking');
+        setSelectedNavigationBooking(null);
+      }
+    }
+  }, [bookings, selectedNavigationBooking]);
+
   const fetchAvailableServices = async () => {
     try {
       setLoading(true);

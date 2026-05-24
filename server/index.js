@@ -6,61 +6,97 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
-require('dotenv').config();
-
-require('dotenv').config({ path: './server/.env' });
-const passport = require('./config/googleAuth');
-console.log(process.env.GOOGLE_CLIENT_ID);
-console.log(process.env.GOOGLE_CLIENT_SECRET);
 const session = require('express-session');
+
+require('dotenv').config();
+require('dotenv').config({ path: './server/.env' });
+
+const passport = require('./config/googleAuth');
+
 const app = express();
 const server = http.createServer(app);
 
-// Socket.IO setup
+/* =========================================================
+   TRUST PROXY FIX (IMPORTANT FOR RENDER)
+========================================================= */
+app.set('trust proxy', 1);
+
+/* =========================================================
+   ALLOWED ORIGINS
+========================================================= */
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost',
+  'https://localhost',
+  'capacitor://localhost',
+  'ionic://localhost',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+/* =========================================================
+   SOCKET.IO
+========================================================= */
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
 
-// Socket.IO authentication middleware (simplified for now)
+/* =========================================================
+   SOCKET AUTH
+========================================================= */
 io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
-    
+
     if (!token) {
-      // Allow connection without token for now, but mark as unauthenticated
-      console.log('⚠️ No token provided, allowing unauthenticated connection');
+      console.log('⚠️ No token provided');
       return next();
     }
 
-    // For now, skip JWT verification to get basic connection working
-    // TODO: Add proper JWT verification later
-    console.log('✅ Token provided, skipping verification for now');
+    console.log('✅ Socket connected with token');
     next();
+
   } catch (error) {
-    console.error('Socket.IO authentication error:', error);
-    next(new Error('Authentication error: Invalid token'));
+    console.error('Socket auth error:', error);
+    next(new Error('Authentication error'));
   }
 });
 
-// Store connected users and their locations
-const connectedUsers = new Map();
-const userLocations = new Map();
-
-// Simple CORS configuration - Allow localhost for development
+/* =========================================================
+   CORS
+========================================================= */
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3000/', process.env.FRONTEND_URL].filter(Boolean),
+  origin: function(origin, callback) {
+
+    // allow requests with no origin
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('❌ Blocked by CORS:', origin);
+      callback(null, true);
+    }
+  },
+
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With'
+  ]
 }));
 
-// Security middleware - Configure helmet to allow CORS and external APIs
+/* =========================================================
+   HELMET
+========================================================= */
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
+
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -90,7 +126,11 @@ app.use(helmet({
         "data:",
         "https:"
       ],
-      mediaSrc: ["'self'", "blob:"],
+
+      mediaSrc: [
+        "'self'",
+        "blob:"
+      ],
 
       connectSrc: [
         "'self'",
@@ -110,65 +150,97 @@ app.use(helmet({
     }
   }
 }));
-// Rate limiting
+
+/* =========================================================
+   RATE LIMIT
+========================================================= */
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5000, // increase requests
+  windowMs: 15 * 60 * 1000,
+  max: 5000,
+
   message: {
     success: false,
-    message: 'Too many requests, please try again later.'
+    message: 'Too many requests'
   },
+
   standardHeaders: true,
-  legacyHeaders: false,
+  legacyHeaders: false
 });
+
 app.use(limiter);
 
-// Debug CORS requests
+/* =========================================================
+   DEBUG LOGS
+========================================================= */
 app.use((req, res, next) => {
-  console.log('🌐 CORS Request:', {
+
+  console.log('🌐 Request:', {
     method: req.method,
     origin: req.headers.origin,
     path: req.path,
-    'User-Agent': req.headers['user-agent']
+    userAgent: req.headers['user-agent']
   });
+
   next();
 });
 
-// Body parsing middleware
+/* =========================================================
+   BODY PARSER
+========================================================= */
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.urlencoded({
+  extended: true,
+  limit: '10mb'
+}));
 
-// Session middleware for Passport
+/* =========================================================
+   SESSION
+========================================================= */
 app.use(session({
-  secret: process.env.JWT_SECRET || 'your_session_secret',
+  secret: process.env.JWT_SECRET || 'secret',
+
   resave: false,
   saveUninitialized: false,
+
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000
   }
 }));
 
-// Initialize Passport
+/* =========================================================
+   PASSPORT
+========================================================= */
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Static files for uploads
+/* =========================================================
+   STATIC FILES
+========================================================= */
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/insta_serve', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('✅ MongoDB connected'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
+/* =========================================================
+   DATABASE
+========================================================= */
+mongoose.connect(
+  process.env.MONGODB_URI || 'mongodb://localhost:27017/insta_serve'
+)
 
-// Import provider location middleware
+.then(() => {
+  console.log('✅ MongoDB connected');
+})
+
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+/* =========================================================
+   ROUTES
+========================================================= */
 const ensureProviderLocation = require('./middleware/providerLocation');
 
-// Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/services', require('./routes/services'));
 app.use('/api/bookings', require('./routes/bookings'));
@@ -182,426 +254,84 @@ app.use('/api/chat', require('./routes/chat'));
 app.use('/api/maps', require('./routes/maps'));
 app.use('/api/contact', require('./routes/contact'));
 
-// Serve uploaded files
-app.use('/uploads', express.static('uploads'));
-
-// Health check endpoint
+/* =========================================================
+   HEALTH
+========================================================= */
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    message: 'Server is running',
-    environment: process.env.NODE_ENV || 'development'
+
+  res.json({
+    status: 'OK',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
   });
+
 });
 
-// CORS test endpoint
-app.get('/api/cors-test', (req, res) => {
-  console.log('🌐 CORS Test Request:', {
-    origin: req.headers.origin,
-    method: req.method,
-    headers: req.headers
-  });
-  
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  res.json({ 
-    message: 'CORS test successful',
-    timestamp: new Date().toISOString(),
-    origin: req.headers.origin,
-    method: req.method
-  });
-});
-
-// Error handling middleware
+/* =========================================================
+   ERROR HANDLER
+========================================================= */
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    message: 'Something went wrong!', 
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error' 
+
+  console.error('❌ Error:', err);
+
+  res.status(500).json({
+    success: false,
+    message: err.message || 'Internal server error'
   });
+
 });
 
-// Serve static files from React build in production
+/* =========================================================
+   REACT BUILD
+========================================================= */
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
-  
-  // Serve React app for any non-API routes
+
+  app.use(express.static(
+    path.join(__dirname, '../client/build')
+  ));
+
   app.get('*', (req, res) => {
-    // Don't serve React app for API routes
+
     if (req.path.startsWith('/api/')) {
-      return res.status(404).json({ message: 'API route not found' });
+      return res.status(404).json({
+        message: 'API route not found'
+      });
     }
-    res.sendFile(path.join(__dirname, '../client/build/index.html'));
+
+    res.sendFile(
+      path.join(__dirname, '../client/build/index.html')
+    );
   });
-} else {
-  // 404 handler for development
-  app.use('*', (req, res) => {
-    res.status(404).json({ message: 'Route not found' });
-  });
+
 }
 
-// Socket.IO connection handler
+/* =========================================================
+   SOCKET CONNECTION
+========================================================= */
 io.on('connection', (socket) => {
-  console.log(`🔌 User connected: ${socket.id}`);
-  
-  // For now, rely on the authenticate event instead of middleware
-  console.log('🔌 Waiting for authentication event...');
 
-  // Handle user authentication and registration
-  socket.on('authenticate', (userData) => {
-    if (userData && userData.userId) {
-      connectedUsers.set(socket.id, userData);
-      console.log(`✅ User authenticated: ${userData.name} (${userData.role})`);
-      
-      // Join user to their personal room for targeted updates
-      socket.join(`user_${userData.userId}`);
-      
-      // Join providers to their role room for broadcast requests
-      if (userData.role === 'provider') {
-        socket.join('providers');
-        // Also join providers to a general location room for live tracking
-        socket.join('provider_location_room');
-        console.log(`📍 Provider ${userData.name} joined provider location room for live tracking`);
-      }
-    } else {
-      console.log('⚠️ Invalid user data received');
-    }
-  });
+  console.log('🔌 User connected:', socket.id);
 
-  // Handle joining booking rooms for targeted location sharing
-  socket.on('join_booking_room', (bookingId) => {
-    const user = connectedUsers.get(socket.id);
-    if (user && bookingId) {
-      socket.join(`booking_${bookingId}`);
-      console.log(`📋 User ${user.name} joined booking room: ${bookingId}`);
-    }
-  });
-
-  // Handle leaving booking rooms
-  socket.on('leave_booking_room', (bookingId) => {
-    const user = connectedUsers.get(socket.id);
-    if (user && bookingId) {
-      socket.leave(`booking_${bookingId}`);
-      console.log(`📋 User ${user.name} left booking room: ${bookingId}`);
-    }
-  });
-
-  // Handle location updates
-  socket.on('location_update', (locationData) => {
-    const user = connectedUsers.get(socket.id);
-    if (user) {
-      // Store user's location
-      userLocations.set(user.userId, {
-        ...locationData,
-        timestamp: new Date(),
-        userName: user.name,
-        userRole: user.role
-      });
-      
-      console.log(`📍 [DEBUG] Location update from ${user.name} (${user.role}):`, locationData);
-      
-      // Include bookingId if provided in location data for targeted sharing
-      const bookingId = locationData.bookingId;
-      
-      if (bookingId) {
-        console.log(`📍 [DEBUG] Processing targeted location update for booking ${bookingId}`);
-        // Share location only between provider and customer of the same booking
-        if (user.role === 'provider') {
-          // Send provider location to customer of this booking (exclude sender)
-          const providerLocationData = {
-            providerId: user.userId,
-            providerName: user.name,
-            location: locationData,
-            timestamp: new Date(),
-            bookingId: bookingId
-          };
-          
-          const room = `booking_${bookingId}`;
-          const roomMembers = io.sockets.adapter.rooms.get(room);
-          
-          if (roomMembers && roomMembers.size > 0) {
-            socket.to(room).emit('provider_location_update', providerLocationData);
-            console.log(`📍 [DEBUG] Provider location sent to room ${room}:`, providerLocationData);
-          } else {
-            // Fallback to broadcast if room is empty
-            socket.broadcast.emit('provider_location_update', providerLocationData);
-            console.log(`📍 [DEBUG] Room ${room} empty, using broadcast fallback:`, providerLocationData);
-          }
-        } else if (user.role === 'customer') {
-          // Send customer location to provider of this booking (exclude sender)
-          const customerLocationData = {
-            customerId: user.userId,
-            customerName: user.name,
-            location: locationData,
-            timestamp: new Date(),
-            bookingId: bookingId
-          };
-          
-          const room = `booking_${bookingId}`;
-          const roomMembers = io.sockets.adapter.rooms.get(room);
-          
-          if (roomMembers && roomMembers.size > 0) {
-            socket.to(room).emit('customer_location_update', customerLocationData);
-            console.log(`📍 [DEBUG] Customer location sent to room ${room}:`, customerLocationData);
-          } else {
-            // Fallback to broadcast if room is empty
-            socket.broadcast.emit('customer_location_update', customerLocationData);
-            console.log(`📍 [DEBUG] Room ${room} empty, using broadcast fallback:`, customerLocationData);
-          }
-        }
-      } else {
-        console.log(`📍 [DEBUG] No bookingId provided, using fallback broadcast`);
-        // Fallback: broadcast to all (for testing or when bookingId is not available)
-        if (user.role === 'provider') {
-          const providerData = {
-            providerId: user.userId,
-            providerName: user.name,
-            location: locationData,
-            timestamp: new Date()
-          };
-          socket.broadcast.emit('provider_location_update', providerData);
-          console.log(`📍 [DEBUG] Provider location broadcasted:`, providerData);
-        } else if (user.role === 'customer') {
-          const customerData = {
-            customerId: user.userId,
-            customerName: user.name,
-            location: locationData,
-            timestamp: new Date()
-          };
-          socket.broadcast.emit('customer_location_update', customerData);
-          console.log(`📍 [DEBUG] Customer location broadcasted:`, customerData);
-        }
-      }
-    } else {
-      console.log(`⚠️ [DEBUG] Location update received from unauthenticated user:`, locationData);
-    }
-  });
-
-  // Handle booking status updates
-  socket.on('booking_status_update', (bookingData) => {
-    const user = connectedUsers.get(socket.id);
-    if (user) {
-      // Broadcast to all relevant parties
-      socket.to(`user_${bookingData.customerId}`).emit('booking_update', bookingData);
-      socket.to(`user_${bookingData.providerId}`).emit('booking_update', bookingData);
-      
-      console.log(`📢 Booking update broadcasted: ${bookingData.bookingId} - ${bookingData.status}`);
-    }
-  });
-
-  // Handle typing indicators
-  socket.on('typing', (data) => {
-    const user = connectedUsers.get(socket.id);
-    if (user && data.bookingId) {
-      const typingData = {
-        ...data,
-        userId: user.userId,
-        userName: user.name
-      };
-      
-      // Send typing indicator to booking room
-      const bookingRoom = `booking_${data.bookingId}`;
-      socket.to(bookingRoom).emit('user_typing', typingData);
-      
-      console.log(`💬 [DEBUG] Typing indicator sent to room ${bookingRoom}:`, typingData);
-    }
-  });
-
-  // Handle real-time chat
-  socket.on('send_message', async (messageData) => {
-    console.log('💬 [DEBUG] Chat message received:', messageData);
-    const user = connectedUsers.get(socket.id);
-    if (user) {
-      const message = {
-        ...messageData,
-        senderName: user.name,
-        senderRole: user.role,
-        timestamp: new Date()
-      };
-      
-      console.log('💬 [DEBUG] Processed message:', message);
-      console.log('💬 [DEBUG] Booking ID:', messageData.bookingId);
-      
-      // Save message to database
-      try {
-        const Chat = require('./models/Chat');
-        const chat = new Chat({
-          booking: messageData.bookingId,
-          sender: user.userId,
-          recipient: messageData.recipientId,
-          message: messageData.message,
-          type: messageData.type || 'text'
-        });
-        await chat.save();
-        console.log('💬 [DEBUG] Message saved to database:', chat._id);
-        
-        // Populate sender and recipient
-        await chat.populate('sender', 'name email');
-        await chat.populate('recipient', 'name email');
-        
-        // Create message data for socket emission
-        const messageDataForSocket = {
-          id: chat._id,
-          bookingId: chat.booking,
-          senderId: chat.sender._id,
-          senderName: chat.sender.name,
-          recipientId: chat.recipient._id,
-          recipientName: chat.recipient.name,
-          message: chat.message,
-          timestamp: chat.createdAt,
-          type: chat.type
-        };
-        
-        // Send message to booking room (both user and provider in same room)
-        const bookingRoom = `booking_${messageData.bookingId}`;
-        const roomMembers = io.sockets.adapter.rooms.get(bookingRoom);
-        
-        if (roomMembers && roomMembers.size > 0) {
-          socket.to(bookingRoom).emit('receive_message', messageDataForSocket);
-          console.log(`💬 [DEBUG] Message sent to booking room ${bookingRoom}:`, messageDataForSocket);
-        } else {
-          console.log(`💬 [DEBUG] Booking room ${bookingRoom} empty, sending to user rooms as fallback`);
-          // Fallback to user rooms
-          socket.to(`user_${messageData.recipientId}`).emit('receive_message', messageDataForSocket);
-          socket.to(`user_${user.userId}`).emit('receive_message', messageDataForSocket);
-        }
-      } catch (error) {
-        console.error('💬 [ERROR] Failed to save message to database:', error);
-      }
-    } else {
-      console.log('💬 [ERROR] User not found for chat message');
-    }
-  });
-  // Handle provider location updates for tracking
-  socket.on('provider_location_update', (data) => {
-    const user = connectedUsers.get(socket.id);
-    if (user && user.role === 'provider') {
-      const { providerId, location, timestamp } = data;
-      
-      // Update provider location
-      userLocations.set(providerId, {
-        ...location,
-        timestamp: new Date(timestamp),
-        userName: user.name,
-        userRole: 'provider'
-      });
-      
-      console.log(`📍 [TRACKING] Provider ${user.name} location updated:`, location);
-      
-      // Find all active bookings for this provider and notify customers
-      // This would typically come from database, but for now we'll broadcast
-      socket.broadcast.emit('provider_location_update', {
-        providerId,
-        providerName: user.name,
-        location,
-        timestamp,
-        bookingId: data.bookingId // If specific booking
-      });
-    }
-  });
-
-  // Handle joining booking tracking
-  socket.on('join_booking_tracking', (data) => {
-    const user = connectedUsers.get(socket.id);
-    if (user && data.bookingId) {
-      socket.join(`tracking_${data.bookingId}`);
-      console.log(`📍 [TRACKING] ${user.name} joined tracking for booking ${data.bookingId}`);
-    }
-  });
-
-  // Handle leaving booking tracking
-  socket.on('leave_booking_tracking', (data) => {
-    const user = connectedUsers.get(socket.id);
-    if (user && data.bookingId) {
-      socket.leave(`tracking_${data.bookingId}`);
-      console.log(`📍 [TRACKING] ${user.name} left tracking for booking ${data.bookingId}`);
-    }
-  });
-
-  // Handle tracking status updates
-  socket.on('tracking_status_update', (data) => {
-    const user = connectedUsers.get(socket.id);
-    if (user && data.bookingId) {
-      const statusUpdate = {
-        ...data,
-        providerId: user.userId,
-        providerName: user.name,
-        timestamp: new Date()
-      };
-      
-      // Send to tracking room
-      socket.to(`tracking_${data.bookingId}`).emit('tracking_status_update', statusUpdate);
-      console.log(`📍 [TRACKING] Status update for booking ${data.bookingId}:`, data.status);
-    }
-  });
-
-  // Handle getting tracking status
-  socket.on('get_tracking_status', async (data) => {
-    const user = connectedUsers.get(socket.id);
-    if (user && data.bookingId) {
-      // Get current provider location for this booking
-      // This would typically query the database for booking details
-      const providerLocation = userLocations.get(user.userId); // Simplified
-      
-      if (providerLocation) {
-        socket.emit('tracking_status_response', {
-          bookingId: data.bookingId,
-          providerId: user.userId,
-          location: providerLocation,
-          status: 'moving',
-          timestamp: providerLocation.timestamp
-        });
-      } else {
-        socket.emit('tracking_status_response', null);
-      }
-    }
-  });
-
-  // Handle stopping location sharing
-  socket.on('stop_location_sharing', () => {
-    const user = connectedUsers.get(socket.id);
-    if (user) {
-      console.log(`📍 [TRACKING] ${user.name} stopped location sharing`);
-      userLocations.delete(user.userId);
-      
-      // Notify all tracking rooms
-      socket.broadcast.emit('provider_location_stopped', {
-        providerId: user.userId,
-        providerName: user.name
-      });
-    }
-  });
-
-  // Handle disconnection
   socket.on('disconnect', () => {
-    const user = connectedUsers.get(socket.id);
-    if (user) {
-      console.log(`🔌 User disconnected: ${user.name} (${user.role})`);
-      connectedUsers.delete(socket.id);
-      userLocations.delete(user.userId);
-      
-      // Notify about provider disconnection
-      if (user.role === 'provider') {
-        socket.broadcast.emit('provider_disconnected', {
-          providerId: user.userId,
-          providerName: user.name
-        });
-      }
-    }
+    console.log('❌ User disconnected:', socket.id);
   });
+
 });
 
-// Make io and userLocations available to routes
+/* =========================================================
+   EXPORT SOCKET
+========================================================= */
 app.set('io', io);
-app.set('userLocations', userLocations);
 
+/* =========================================================
+   START SERVER
+========================================================= */
 const PORT = process.env.PORT || 5000;
+
 server.listen(PORT, () => {
+
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🔌 Socket.IO enabled for real-time features`);
+  console.log(`🔌 Socket.IO enabled`);
+
 });

@@ -1495,12 +1495,16 @@ const fetchProviderStatus = async () => {
               <span className="text-xs text-gray-600">Coordinates:</span>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(`${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`);
-                  toast.success('Coordinates copied!');
+                  if (currentLocation.lat != null && currentLocation.lng != null) {
+                    navigator.clipboard.writeText(`${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`);
+                    toast.success('Coordinates copied!');
+                  }
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700 font-mono"
               >
-                {currentLocation.lat.toFixed(4)}, {currentLocation.lng.toFixed(4)}
+                {currentLocation.lat != null && currentLocation.lng != null
+                  ? `${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)}`
+                  : 'N/A'}
               </button>
             </div>
             {lastLocationUpdate && (

@@ -595,16 +595,20 @@ const ProviderDashboard: React.FC = () => {
     }
   }, [activeTab, user, isLoading]);
 
-  // Auto-select in_progress booking for location sharing
+  // Auto-select confirmed or in_progress booking for location sharing
   useEffect(() => {
     if (bookings.length > 0) {
-      const inProgressBooking = bookings.find(b => b.status === 'in_progress');
-      if (inProgressBooking && !selectedNavigationBooking) {
-        console.log('📍 Auto-selecting in_progress booking for location sharing:', inProgressBooking._id);
-        setSelectedNavigationBooking(inProgressBooking);
-      } else if (!inProgressBooking && selectedNavigationBooking) {
-        console.log('📍 No in_progress booking, clearing selected navigation booking');
+      const activeBooking = bookings.find(b => b.status === 'in_progress' || b.status === 'confirmed');
+      if (activeBooking && !selectedNavigationBooking) {
+        console.log('📍 Auto-selecting active booking for location sharing:', activeBooking._id, activeBooking.status);
+        setSelectedNavigationBooking(activeBooking);
+        // Join the booking room for targeted location sharing
+        SocketService.joinBookingRoom(activeBooking._id);
+      } else if (!activeBooking && selectedNavigationBooking) {
+        console.log('📍 No active booking, clearing selected navigation booking');
         setSelectedNavigationBooking(null);
+        // Leave the booking room
+        SocketService.leaveBookingRoom(selectedNavigationBooking._id);
       }
     }
   }, [bookings, selectedNavigationBooking]);

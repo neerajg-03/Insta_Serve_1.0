@@ -399,7 +399,7 @@ const Dashboard: React.FC = () => {
       });
 
       // Listen for completion code generation
-      SocketService.on('completion_code_generated', (data: any) => {
+      SocketService.onCompletionCodeGenerated((data: any) => {
         console.log('🎯 Completion code received:', data);
 
         // Show completion code modal
@@ -444,7 +444,6 @@ const Dashboard: React.FC = () => {
       });
 
       return () => {
-        SocketService.off('completion_code_generated');
         SocketService.off('provider_location_update');
       };
     }

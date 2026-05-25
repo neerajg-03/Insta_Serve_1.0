@@ -114,7 +114,7 @@ router.post(
           );
 
           console.log(
-            `💰 Added 100 Rs signup bonus to provider wallet: ${user.email}`
+            `💰 Added 300 Rs signup bonus to provider wallet: ${user.email}`
           );
         } catch (walletError) {
           console.error(
@@ -275,9 +275,15 @@ router.get(
     next();
   },
 
-  passport.authenticate('google', {
-    scope: ['profile', 'email']
-  })
+  (req, res, next) => {
+    // Store callback_url in session state for later use
+    const callbackUrl = req.query.callback_url || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback`;
+    
+    passport.authenticate('google', {
+      scope: ['profile', 'email'],
+      state: encodeURIComponent(callbackUrl)
+    })(req, res, next);
+  }
 );
 
 // @route   GET /api/auth/google/callback
@@ -329,19 +335,22 @@ router.get('/google/callback', (req, res, next) => {
         const userProfile = user.getProfile();
         
         // Add isNewUser flag for new users
-        if (user.authMethod === 'google' && !user.phone || user.phone === '9999999999') {
+        if (user.authMethod === 'google' && (!user.phone || user.phone === '9999999999')) {
           userProfile.isNewUser = true;
         }
 
-        const redirectUrl =
-          `https://insta-serve-1-0.onrender.com/auth/callback?token=${token}&user=${encodeURIComponent(
-            JSON.stringify(
-              userProfile
-            )
-          )}`;
+        // Get callback URL from state parameter, default to frontend URL
+        const callbackUrl = decodeURIComponent(req.query.state || '') || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback`;
+        
+        const redirectUrl = `${callbackUrl}?token=${token}&user=${encodeURIComponent(
+          JSON.stringify(
+            userProfile
+          )
+        )}`;
 
         console.log(
-          '✅ GOOGLE LOGIN SUCCESS'
+          '✅ GOOGLE LOGIN SUCCESS - Redirecting to:',
+          redirectUrl
         );
 
         return res.redirect(redirectUrl);
@@ -385,6 +394,7 @@ router.post(
       const {
         googleData,
         phone,
+        password,
         role,
         address
       } = req.body;
@@ -398,6 +408,12 @@ router.post(
       if (!phone) {
         return res.status(400).json({
           message: 'Phone number is required'
+        });
+      }
+
+      if (!password || password.length < 6) {
+        return res.status(400).json({
+          message: 'Password must be at least 6 characters long'
         });
       }
 
@@ -415,6 +431,7 @@ router.post(
       if (user) {
         // Update existing user with new info
         user.phone = phone;
+        user.password = password;
         user.role = role;
         if (address) {
           user.address = address;
@@ -429,9 +446,7 @@ router.post(
           profilePicture: googleData.profilePicture || '',
           authMethod: 'google',
           emailVerified: true,
-          password:
-            Math.random().toString(36).slice(-8) +
-            'Google123!',
+          password,
           phone,
           role,
           address
@@ -450,12 +465,12 @@ router.post(
             );
 
           await wallet.addBonus(
-            100,
+            300,
             'Signup bonus - Welcome to InstaServe!'
           );
 
           console.log(
-            `💰 Added 100 Rs signup bonus to provider wallet: ${user.email}`
+            `💰 Added 300 Rs signup bonus to provider wallet: ${user.email}`
           );
         } catch (walletError) {
           console.error(

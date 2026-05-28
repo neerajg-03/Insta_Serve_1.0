@@ -394,57 +394,58 @@ const Dashboard: React.FC = () => {
         role: 'customer'
       }).then(() => {
         console.log('🔌 Dashboard socket connected for customer');
+
+        // Listen for completion code generation using the callback system
+        SocketService.onCompletionCodeGenerated((data: any) => {
+          console.log('🎯 Completion code received:', data);
+
+          // Show completion code modal
+          setCompletionCodeData({
+            bookingId: data.bookingId,
+            serviceTitle: data.serviceTitle,
+            providerName: data.providerName,
+            completionCode: data.completionCode
+          });
+
+          setShowCompletionCodeModal(true);
+        });
+
+        // Listen for real-time provider location updates using the callback system
+        SocketService.onLocationUpdate((data: any) => {
+          console.log('📍 Provider location update received:', data);
+
+          // Update provider location if navigation modal is open for this booking
+          // Accept updates with matching bookingId OR if provider matches the booking's provider (for backward compatibility)
+          if (showNavigationModal && selectedBookingForNav) {
+            const isMatchingBooking = data.bookingId === selectedBookingForNav._id;
+            const isMatchingProvider = data.providerId === selectedBookingForNav.provider?._id;
+
+            if (isMatchingBooking || isMatchingProvider) {
+              console.log('📍 Updating provider location:', {
+                bookingId: data.bookingId,
+                providerId: data.providerId,
+                isMatchingBooking,
+                isMatchingProvider
+              });
+              setProviderLocation({
+                lat: data.location.lat,
+                lng: data.location.lng
+              });
+
+              // Re-fetch route with new location
+              if (customerLocation) {
+                // This will trigger route recalculation via useEffect
+              }
+            }
+          }
+        });
       }).catch((err) => {
         console.error('🔌 Dashboard socket connection failed:', err);
       });
 
-      // Listen for completion code generation
-      SocketService.onCompletionCodeGenerated((data: any) => {
-        console.log('🎯 Completion code received:', data);
-
-        // Show completion code modal
-        setCompletionCodeData({
-          bookingId: data.bookingId,
-          serviceTitle: data.serviceTitle,
-          providerName: data.providerName,
-          completionCode: data.completionCode
-        });
-
-        setShowCompletionCodeModal(true);
-      });
-
-      // Listen for real-time provider location updates
-      SocketService.on('provider_location_update', (data: any) => {
-        console.log('📍 Provider location update received:', data);
-
-        // Update provider location if navigation modal is open for this booking
-        // Accept updates with matching bookingId OR if provider matches the booking's provider (for backward compatibility)
-        if (showNavigationModal && selectedBookingForNav) {
-          const isMatchingBooking = data.bookingId === selectedBookingForNav._id;
-          const isMatchingProvider = data.providerId === selectedBookingForNav.provider?._id;
-
-          if (isMatchingBooking || isMatchingProvider) {
-            console.log('📍 Updating provider location:', {
-              bookingId: data.bookingId,
-              providerId: data.providerId,
-              isMatchingBooking,
-              isMatchingProvider
-            });
-            setProviderLocation({
-              lat: data.location.lat,
-              lng: data.location.lng
-            });
-
-            // Re-fetch route with new location
-            if (customerLocation) {
-              // This will trigger route recalculation via useEffect
-            }
-          }
-        }
-      });
-
       return () => {
-        SocketService.off('provider_location_update');
+        // Note: The socket service manages callback cleanup internally
+        // We don't need to manually remove callbacks here
       };
     }
   }, [user, showNavigationModal, selectedBookingForNav, customerLocation]);

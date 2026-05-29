@@ -47,7 +47,7 @@ const CustomerCompletionModal: React.FC<CustomerCompletionModalProps> = ({
     return () => {
       // Cleanup listener
       import('../services/socketService').then(({ default: socketService }) => {
-        socketService.off('completion_code_generated', handleCompletionCodeGenerated);
+        socketService.offCompletionCodeGenerated(handleCompletionCodeGenerated);
       });
     };
   }, [isOpen, bookingId]);

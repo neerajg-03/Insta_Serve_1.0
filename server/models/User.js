@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
+    unique: true,
     match: [/^[6-9]\d{9}$/, 'Please enter a valid 10-digit phone number']
   },
   role: {
@@ -151,7 +152,11 @@ const userSchema = new mongoose.Schema({
     default: 'created'
   },
   // Additional KYC and business details for Route
-  pan: String,
+  pan: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   businessName: String,
   bankAccount: {
     accountHolderName: String,
@@ -180,9 +185,6 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  // Skip password hashing for Google OAuth users
-  if (this.authMethod === 'google') return next();
-  
   if (!this.isModified('password')) return next();
   
   try {

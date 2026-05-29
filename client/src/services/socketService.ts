@@ -65,13 +65,11 @@ class SocketService {
         return;
       }
 
-      // Try to connect with fallback options
-      const serverUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      // Remove /api from URL for Socket.IO connection
-      const socketUrl = serverUrl.replace('/api', '');
-      console.log('🔌 Attempting to connect to Socket.IO server:', socketUrl);
+      // Hardcoded production URL for Capacitor
+      const serverUrl = 'https://insta-serve-1-0.onrender.com';
+      console.log('🔌 Attempting to connect to Socket.IO server:', serverUrl);
 
-      this.socket = io(socketUrl, {
+      this.socket = io(serverUrl, {
         auth: {
           token
         },
@@ -181,7 +179,7 @@ class SocketService {
     });
 
     // Chat messages
-    this.socket.on('chat_message', (data) => {
+    this.socket.on('receive_message', (data) => {
       console.log('💬 Chat message received:', data);
       this.emitChatMessage(data);
     });
@@ -240,8 +238,22 @@ class SocketService {
     this.completionCodeGeneratedCallbacks.push(callback);
   }
 
+  offCompletionCodeGenerated(callback: (data: any) => void): void {
+    const index = this.completionCodeGeneratedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.completionCodeGeneratedCallbacks.splice(index, 1);
+    }
+  }
+
   onStartCodeGenerated(callback: (data: any) => void): void {
     this.startCodeGeneratedCallbacks.push(callback);
+  }
+
+  offStartCodeGenerated(callback: (data: any) => void): void {
+    const index = this.startCodeGeneratedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.startCodeGeneratedCallbacks.splice(index, 1);
+    }
   }
 
   private async emitLocationUpdate(data: any): Promise<void> {

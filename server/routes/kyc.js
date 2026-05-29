@@ -38,6 +38,77 @@ const upload = multer({
   }
 });
 
+// Verify document number before KYC submission
+router.post('/kyc/verify', protect, async (req, res) => {
+  try {
+    const { documentType, documentNumber } = req.body;
+
+    if (!documentType || !documentNumber) {
+      return res.status(400).json({ 
+        message: 'Document type and number are required' 
+      });
+    }
+
+    if (!['aadhar', 'pan'].includes(documentType)) {
+      return res.status(400).json({ 
+        message: 'Document type must be aadhar or pan' 
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user is a provider
+    if (user.role !== 'provider') {
+      return res.status(403).json({ 
+        message: 'Only providers can verify KYC documents' 
+      });
+    }
+
+    // Check if document number already exists
+    let existingUser;
+
+    if (documentType === 'pan') {
+      // Check PAN field
+      existingUser = await User.findOne({
+        pan: documentNumber,
+        role: 'provider',
+        _id: { $ne: req.user._id }
+      });
+    } else if (documentType === 'aadhar') {
+      // Check kycDocuments array for Aadhar
+      existingUser = await User.findOne({
+        'kycDocuments.documentNumber': documentNumber,
+        'kycDocuments.documentType': 'aadhar',
+        role: 'provider',
+        _id: { $ne: req.user._id }
+      });
+    }
+
+    if (existingUser) {
+      return res.status(400).json({ 
+        message: `This ${documentType.toUpperCase()} number is already registered with another provider`,
+        available: false
+      });
+    }
+
+    res.json({
+      message: `${documentType.toUpperCase()} number is available`,
+      available: true
+    });
+
+  } catch (error) {
+    console.error('KYC verification error:', error);
+    res.status(500).json({ 
+      message: 'Verification failed',
+      error: error.message 
+    });
+  }
+});
+
 // Upload KYC document
 router.post('/upload/kyc-document', protect, upload.single('document'), async (req, res) => {
   try {
@@ -130,13 +201,19 @@ router.post('/kyc', protect, async (req, res) => {
       });
     }
 
-    // Update user's KYC documents
+    // Update user's KYC documents and save PAN to pan field
     user.kycDocuments = documents.map(doc => ({
       documentType: doc.documentType,
       documentNumber: doc.documentNumber,
       documentUrl: doc.documentUrl,
       uploadDate: new Date()
     }));
+
+    // Save PAN number to pan field if PAN document is submitted
+    const panDoc = documents.find(doc => doc.documentType === 'pan');
+    if (panDoc) {
+      user.pan = panDoc.documentNumber;
+    }
 
     user.kycStatus = 'pending';
     await user.save();

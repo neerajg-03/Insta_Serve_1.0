@@ -25,6 +25,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckSolidIcon, StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import ChatComponent from '../components/ChatComponent';
+import NavigationModal from '../components/NavigationModal';
+import ServiceCompletionModal from '../components/ServiceCompletionModal';
 import razorpayService from '../services/razorpayService';
 
 interface Booking {
@@ -116,6 +118,13 @@ const UserTracking: React.FC = () => {
   const [locationWatchId, setLocationWatchId] = useState<number | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showNavigation, setShowNavigation] = useState(false);
+  const [showCompletionCodeModal, setShowCompletionCodeModal] = useState(false);
+  const [completionCodeData, setCompletionCodeData] = useState<{
+    bookingId: string;
+    serviceTitle: string;
+    providerName: string;
+  } | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -131,6 +140,18 @@ const UserTracking: React.FC = () => {
       cleanup();
     };
   }, [booking, user]);
+
+  // Recalculate distance when both locations are available
+  useEffect(() => {
+    if (providerLocation && customerLocation) {
+      console.log('📍 Both locations available, recalculating distance');
+      console.log('📍 Provider location:', providerLocation);
+      console.log('📍 Customer location:', customerLocation);
+      const info = calculateTrackingInfo(providerLocation, customerLocation);
+      console.log('📍 Recalculated tracking info:', info);
+      setTrackingInfo(info);
+    }
+  }, [providerLocation, customerLocation]);
 
   const initializeTracking = async () => {
     if (!booking || !user) return;
@@ -152,13 +173,17 @@ const UserTracking: React.FC = () => {
       // Set up location update listener
       socketService.onLocationUpdate((data) => {
         if (data.bookingId === booking._id) {
-          console.log('Provider location update received:', data.location);
+          console.log('📍 Location update received:', data.location);
+          console.log('📍 Current user role: customer');
+          console.log('📍 Customer location:', customerLocation);
+          console.log('📍 Setting provider location:', data.location);
           setProviderLocation(data.location);
           setIsTracking(true);
           
-          // Update tracking info
+          // Update tracking info - distance from provider to customer
           if (customerLocation) {
             const info = calculateTrackingInfo(data.location, customerLocation);
+            console.log('📍 Calculated tracking info:', info);
             setTrackingInfo(info);
           }
         }
@@ -170,6 +195,19 @@ const UserTracking: React.FC = () => {
           console.log('Booking status update:', data);
           setBooking(prev => prev ? { ...prev, status: data.status } : null);
           addTimelineEvent(data.status);
+        }
+      });
+
+      // Set up completion code generated listener
+      socketService.onCompletionCodeGenerated((data) => {
+        if (data.bookingId === booking._id) {
+          console.log('Completion code received:', data);
+          setCompletionCodeData({
+            bookingId: data.bookingId,
+            serviceTitle: data.serviceTitle,
+            providerName: data.providerName
+          });
+          setShowCompletionCodeModal(true);
         }
       });
 
@@ -210,7 +248,9 @@ const UserTracking: React.FC = () => {
     socketService.leaveBookingRoom(booking?._id || '');
     socketService.off('location_update');
     socketService.off('booking_update');
+    socketService.off('completion_code_generated');
   };
+
 
   const fetchBookingDetails = async () => {
     try {
@@ -556,11 +596,11 @@ const UserTracking: React.FC = () => {
                   
                   <div className="mt-4 grid grid-cols-2 gap-4">
                     <button
-                      onClick={handleNavigateToLocation}
+                      onClick={() => setShowNavigation(true)}
                       className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium flex items-center justify-center"
                     >
                       <MapPinIcon className="w-4 h-4 mr-2" />
-                      Get Directions
+                      Track Provider
                     </button>
                     <button
                       onClick={handleContactProvider}
@@ -868,6 +908,28 @@ const UserTracking: React.FC = () => {
           isOpen={showChat}
           onClose={() => setShowChat(false)}
           isProvider={false}
+        />
+      )}
+
+      {/* Navigation Modal */}
+      <NavigationModal
+        isOpen={showNavigation}
+        onClose={() => setShowNavigation(false)}
+        providerLocation={providerLocation}
+        customerLocation={customerLocation}
+        customerAddress={formatAddress(booking.address)}
+        bookingId={booking._id}
+      />
+
+      {/* Completion Code Modal */}
+      {completionCodeData && (
+        <ServiceCompletionModal
+          isOpen={showCompletionCodeModal}
+          onClose={() => setShowCompletionCodeModal(false)}
+          bookingId={completionCodeData.bookingId}
+          serviceTitle={completionCodeData.serviceTitle}
+          otherPartyName={completionCodeData.providerName}
+          userRole="customer"
         />
       )}
     </div>

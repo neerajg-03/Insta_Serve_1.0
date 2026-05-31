@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 // Temporarily using inline components to fix compilation
 // import CustomerTrackingView from '../components/booking/CustomerTrackingView';
 import ProviderTrackingView from '../components/booking/ProviderTrackingView';
-import CustomerCompletionModal from '../components/CustomerCompletionModal';
+import ServiceCompletionModal from '../components/ServiceCompletionModal';
 
 // Professional CustomerTrackingView matching ProviderTrackingView design
 const ProfessionalCustomerTrackingView: React.FC<any> = ({
@@ -604,6 +604,7 @@ const BookingTracking: React.FC = () => {
       SocketService.onChatMessage(handleChatMessage);
       SocketService.onCompletionCodeGenerated(handleCompletionCodeGenerated);
       console.log('ð [INIT] Socket.IO event listeners set up');
+      console.log('✅ Completion code listener registered on BookingTracking');
 
       // Join booking room for targeted location sharing
       if (id && booking) {
@@ -1187,12 +1188,13 @@ User: ${user?.name} (${user?.email})
           googleMapsData={googleMapsData}
         />
         {completionCodeData && (
-          <CustomerCompletionModal
+          <ServiceCompletionModal
             isOpen={showCompletionCodeModal}
             onClose={() => setShowCompletionCodeModal(false)}
             bookingId={completionCodeData.bookingId}
             serviceTitle={completionCodeData.serviceTitle}
-            providerName={completionCodeData.providerName}
+            otherPartyName={completionCodeData.providerName}
+            userRole="customer"
           />
         )}
       </>

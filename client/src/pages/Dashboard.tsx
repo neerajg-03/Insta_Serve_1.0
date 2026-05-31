@@ -36,7 +36,7 @@ import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import ReviewModal from '../components/ReviewModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import DeleteAccountModal from '../components/DeleteAccountModal';
-import CompletionCodeModal from '../components/CompletionCodeModal';
+import ServiceCompletionModal from '../components/ServiceCompletionModal';
 import StartCodeModal from '../components/StartCodeModal';
 import NavigationModal from '../components/NavigationModal';
 import ChatComponent from '../components/ChatComponent';
@@ -136,9 +136,7 @@ const Dashboard: React.FC = () => {
     bookingId: string;
     serviceTitle: string;
     providerName: string;
-    completionCode: string;
   } | null>(null);
-  const [verificationLoading, setVerificationLoading] = useState(false);
 
   // Start code modal state
   const [showStartCodeModal, setShowStartCodeModal] = useState(false);
@@ -294,27 +292,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Handle completion code verification
-  const handleVerifyCompletionCode = async (bookingId: string, code: string) => {
-    try {
-      setVerificationLoading(true);
-      const response = await bookingsAPI.verifyCompletionCode(bookingId, { completionCode: code });
-      
-      if (response.message) {
-        toast.success(response.message);
-        setShowCompletionCodeModal(false);
-        setCompletionCodeData(null);
-        
-        // Refresh bookings to update status
-        fetchBookings();
-      }
-    } catch (err: any) {
-      console.error('Verification error:', err);
-      toast.error(err.response?.data?.message || 'Failed to verify completion code');
-    } finally {
-      setVerificationLoading(false);
-    }
-  };
 
   // Handle navigate to provider location
   const handleNavigate = async (booking: Booking) => {
@@ -440,8 +417,7 @@ const Dashboard: React.FC = () => {
         setCompletionCodeData({
           bookingId: data.bookingId,
           serviceTitle: data.serviceTitle,
-          providerName: data.providerName,
-          completionCode: data.completionCode
+          providerName: data.providerName
         });
 
         setShowCompletionCodeModal(true);
@@ -1257,7 +1233,7 @@ const Dashboard: React.FC = () => {
 
       {/* Completion Code Modal */}
       {showCompletionCodeModal && completionCodeData && (
-        <CompletionCodeModal
+        <ServiceCompletionModal
           isOpen={showCompletionCodeModal}
           onClose={() => {
             setShowCompletionCodeModal(false);
@@ -1265,10 +1241,8 @@ const Dashboard: React.FC = () => {
           }}
           bookingId={completionCodeData.bookingId}
           serviceTitle={completionCodeData.serviceTitle}
-          providerName={completionCodeData.providerName}
-          completionCode={completionCodeData.completionCode}
-          onVerify={handleVerifyCompletionCode}
-          loading={verificationLoading}
+          otherPartyName={completionCodeData.providerName}
+          userRole="customer"
         />
       )}
 

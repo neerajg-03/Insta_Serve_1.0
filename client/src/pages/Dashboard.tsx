@@ -481,7 +481,7 @@ const Dashboard: React.FC = () => {
         SocketService.off('provider_location_update', handleProviderLocation);
       };
     }
-  }, [user, bookings]);
+  }, [user]);
 
   // Poll for start codes on confirmed bookings
   useEffect(() => {

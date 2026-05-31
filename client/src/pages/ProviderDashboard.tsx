@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { servicesAPI, bookingsAPI, providerAPI } from '../services/api';
+import api from '../services/api';
 import { RootState } from '../store';
+import { logout } from '../store/slices/authSlice';
 import LocationService, { Location } from '../services/locationService';
 import SocketService, { BookingUpdate, ChatMessage, UserData } from '../services/socketService';
 import toast from 'react-hot-toast';
@@ -67,7 +69,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon, FireIcon as FireSolidIcon } from '@heroicons/react/24/solid';
 import ProviderAvailabilityToggle from '../components/ProviderAvailabilityToggle';
-import ProviderCompletionModal from '../components/ProviderCompletionModal';
+import ServiceCompletionModal from '../components/ServiceCompletionModal';
 import ProviderNavigationModal from '../components/ProviderNavigationModal';
 import ChatComponent from '../components/ChatComponent';
 
@@ -198,7 +200,16 @@ const ProviderDashboard: React.FC = () => {
   const { user, isLoading } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Set active tab from URL parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['overview', 'services', 'incoming', 'bookings', 'profile'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
   const [availableServices, setAvailableServices] = useState<Service[]>([]);
   const [myServices, setMyServices] = useState<ProviderService[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -217,7 +228,6 @@ const ProviderDashboard: React.FC = () => {
   // Provider completion modal state
   const [showProviderCompletionModal, setShowProviderCompletionModal] = useState(false);
   const [selectedCompletionBooking, setSelectedCompletionBooking] = useState<Booking | null>(null);
-  const [completionLoading, setCompletionLoading] = useState(false);
 
 
   // Navigation modal state
@@ -332,7 +342,7 @@ const ProviderDashboard: React.FC = () => {
 
   const checkAPIConnectivity = async () => {
     try {
-      const response = await fetch('/api/health', { 
+      const response = await fetch('https://insta-serve-1-0.onrender.com/api/health', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -376,7 +386,7 @@ const ProviderDashboard: React.FC = () => {
   const fetchKycStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/kyc/status', {
+      const response = await fetch('https://insta-serve-1-0.onrender.com/api/kyc/status', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -395,22 +405,12 @@ const ProviderDashboard: React.FC = () => {
   const fetchWalletData = async () => {
     try {
       setWalletLoading(true);
-      
+
       // Fetch wallet data from API
-      const response = await fetch('/api/wallet/provider/me', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Wallet data fetched:', data);
-        
-        setWalletData(data.data);
-      } else {
-        console.error('Failed to fetch wallet data');
-      }
+      const response = await api.get('/wallet/provider/me');
+      console.log('Wallet data fetched:', response.data);
+
+      setWalletData(response.data.data);
     } catch (error) {
       console.error('Failed to fetch wallet data:', error);
     } finally {
@@ -421,9 +421,9 @@ const ProviderDashboard: React.FC = () => {
   const fetchEarningsData = async () => {
     try {
       setOverviewLoading(true);
-      
+
       // Fetch earnings data from API
-      const response = await fetch('/api/earnings/provider/me', {
+      const response = await fetch('https://insta-serve-1-0.onrender.com/api/earnings/provider/me', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -453,26 +453,12 @@ const ProviderDashboard: React.FC = () => {
   const handleRecharge = async (amount: number) => {
     try {
       setWalletLoading(true);
-      
-      const response = await fetch('/api/wallet/provider/recharge', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ amount, description: 'Manual recharge' })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Wallet recharged:', data);
-        
-        toast.success(`Wallet recharged with ₹${amount}`);
-        fetchWalletData(); // Refresh wallet data
-      } else {
-        console.error('Failed to recharge wallet');
-        toast.error('Failed to recharge wallet');
-      }
+
+      const response = await api.post('/wallet/provider/recharge', { amount, description: 'Manual recharge' });
+      console.log('Wallet recharged:', response.data);
+
+      toast.success(`Wallet recharged with ₹${amount}`);
+      fetchWalletData(); // Refresh wallet data
     } catch (error) {
       console.error('Failed to recharge wallet:', error);
       toast.error('Failed to recharge wallet');
@@ -594,24 +580,6 @@ const ProviderDashboard: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [activeTab, user, isLoading]);
-
-  // Auto-select confirmed or in_progress booking for location sharing
-  useEffect(() => {
-    if (bookings.length > 0) {
-      const activeBooking = bookings.find(b => b.status === 'in_progress' || b.status === 'confirmed');
-      if (activeBooking && !selectedNavigationBooking) {
-        console.log('📍 Auto-selecting active booking for location sharing:', activeBooking._id, activeBooking.status);
-        setSelectedNavigationBooking(activeBooking);
-        // Join the booking room for targeted location sharing
-        SocketService.joinBookingRoom(activeBooking._id);
-      } else if (!activeBooking && selectedNavigationBooking) {
-        console.log('📍 No active booking, clearing selected navigation booking');
-        setSelectedNavigationBooking(null);
-        // Leave the booking room
-        SocketService.leaveBookingRoom(selectedNavigationBooking._id);
-      }
-    }
-  }, [bookings, selectedNavigationBooking]);
 
   const fetchAvailableServices = async () => {
     try {
@@ -764,37 +732,6 @@ const ProviderDashboard: React.FC = () => {
     setShowNavigationModal(true);
   };
 
-  const handleProviderCompletion = async (bookingId: string, code: string) => {
-    try {
-      setCompletionLoading(true);
-      
-      if (code === '') {
-        // Generate completion code
-        const response = await bookingsAPI.completeBooking(bookingId);
-        if (response.completionCode) {
-          toast.success('Completion code generated and sent to customer', {
-            duration: 5000,
-            icon: '✅'
-          });
-        }
-      } else {
-        // Verify completion code
-        const response = await bookingsAPI.verifyCompletionCode(bookingId, { completionCode: code });
-        if (response.message) {
-          toast.success(response.message);
-          setShowProviderCompletionModal(false);
-          setSelectedCompletionBooking(null);
-          fetchBookings(); // Refresh bookings
-          fetchIncomingRequests(); // Refresh incoming requests to show broadcast requests again
-        }
-      }
-    } catch (err: any) {
-      console.error('Provider completion error:', err);
-      toast.error(err.response?.data?.message || 'Failed to process completion code');
-    } finally {
-      setCompletionLoading(false);
-    }
-  };
 
 
   const handleViewServiceDetails = (serviceId: string) => {
@@ -1513,16 +1450,12 @@ const fetchProviderStatus = async () => {
               <span className="text-xs text-gray-600">Coordinates:</span>
               <button
                 onClick={() => {
-                  if (currentLocation.lat != null && currentLocation.lng != null) {
-                    navigator.clipboard.writeText(`${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`);
-                    toast.success('Coordinates copied!');
-                  }
+                  navigator.clipboard.writeText(`${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`);
+                  toast.success('Coordinates copied!');
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700 font-mono"
               >
-                {currentLocation.lat != null && currentLocation.lng != null
-                  ? `${currentLocation.lat.toFixed(4)}, ${currentLocation.lng.toFixed(4)}`
-                  : 'N/A'}
+                {currentLocation.lat.toFixed(4)}, {currentLocation.lng.toFixed(4)}
               </button>
             </div>
             {lastLocationUpdate && (
@@ -2107,7 +2040,7 @@ const fetchProviderStatus = async () => {
 
   const renderIncomingRequests = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <button
             onClick={() => setActiveTab('overview')}
@@ -2121,7 +2054,7 @@ const fetchProviderStatus = async () => {
         </div>
         <button
           onClick={fetchIncomingRequests}
-          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center"
+          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium flex items-center self-start sm:self-auto"
           disabled={loading}
         >
           {loading ? (
@@ -2150,7 +2083,7 @@ const fetchProviderStatus = async () => {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="p-6">
           {loading ? (
             <div className="flex justify-center py-12">
@@ -2180,56 +2113,54 @@ const fetchProviderStatus = async () => {
                 
                 return (
                   <div key={booking._id} className={`border rounded-lg p-6 hover:shadow-md transition-all ${urgencyColors[urgencyLevel]}`}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
+                      <div className="flex-1 w-full">
                         <h4 className="text-lg font-semibold text-gray-900 mb-2">
                           {booking.service?.title || 'Unknown Service'}
                         </h4>
                         <div className="space-y-2">
                           <div className="flex items-center text-sm text-gray-600">
-                            <UserIcon className="w-4 h-4 mr-2" />
+                            <UserIcon className="w-4 h-4 mr-2 flex-shrink-0" />
                             <span className="font-medium">Customer:</span> {booking.customer.name}
                           </div>
                           <div className="flex items-center text-sm text-gray-600">
-                            <PhoneIcon className="w-4 h-4 mr-2" />
+                            <PhoneIcon className="w-4 h-4 mr-2 flex-shrink-0" />
                             <span className="font-medium">Contact:</span> {booking.customer.phone}
                           </div>
                           <div className="flex items-center text-sm text-gray-600">
-                            <EnvelopeIcon className="w-4 h-4 mr-2" />
+                            <EnvelopeIcon className="w-4 h-4 mr-2 flex-shrink-0" />
                             <span className="font-medium">Email:</span> {booking.customer.email}
                           </div>
                         </div>
                       </div>
-                      <div className="text-right ml-4">
-                        <div className="flex flex-col items-end space-y-2">
-                          <span className="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                            <BellIcon className="w-4 h-4 mr-1" />
-                            BROADCAST REQUEST
-                          </span>
-                          <div className={`px-3 py-2 rounded-lg font-mono text-sm font-bold ${timerColors[urgencyLevel]} border ${urgencyLevel === 'high' ? 'border-red-300 animate-pulse' : urgencyLevel === 'medium' ? 'border-yellow-300' : 'border-purple-200'}`}>
-                            <ClockIcon className="w-4 h-4 mr-1 inline" />
-                            {String(timeRemaining.minutes).padStart(2, '0')}:{String(timeRemaining.seconds).padStart(2, '0')}
-                          </div>
-                          <p className="text-lg font-bold text-gray-900">
-                            ₹{booking.totalAmount || booking.price?.totalPrice || 'N/A'}
-                          </p>
+                      <div className="text-right w-full lg:w-auto flex flex-row lg:flex-col items-start lg:items-end justify-between lg:justify-end gap-2">
+                        <span className="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-200 whitespace-nowrap">
+                          <BellIcon className="w-4 h-4 mr-1" />
+                          BROADCAST REQUEST
+                        </span>
+                        <div className={`px-3 py-2 rounded-lg font-mono text-sm font-bold ${timerColors[urgencyLevel]} border ${urgencyLevel === 'high' ? 'border-red-300 animate-pulse' : urgencyLevel === 'medium' ? 'border-yellow-300' : 'border-purple-200'} whitespace-nowrap`}>
+                          <ClockIcon className="w-4 h-4 mr-1 inline" />
+                          {String(timeRemaining.minutes).padStart(2, '0')}:{String(timeRemaining.seconds).padStart(2, '0')}
                         </div>
+                        <p className="text-lg font-bold text-gray-900 whitespace-nowrap">
+                          ₹{booking.totalAmount || booking.price?.totalPrice || 'N/A'}
+                        </p>
                       </div>
                     </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-gray-600 font-medium mb-1">Request Raised Time</p>
-                      <p className="text-gray-900">
+                      <p className="text-gray-900 break-words">
                         {new Date(booking.broadcastSentAt || booking.createdAt).toLocaleDateString()} at {new Date(booking.broadcastSentAt || booking.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         {getTimeAgo(booking.broadcastSentAt || booking.createdAt)}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-gray-600 font-medium mb-1">Service Address</p>
-                      <p className="text-gray-900">
+                      <p className="text-gray-900 break-words">
                         {typeof booking.address === 'string' 
                           ? (booking.address === 'Current Location' ? 'Customer Location (Exact address will be shared after acceptance)' : booking.address)
                           : (() => {
@@ -2254,12 +2185,12 @@ const fetchProviderStatus = async () => {
                         }
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-gray-600 font-medium mb-1">Distance from You</p>
                       <div className="flex items-center">
                         {getBookingDistance(booking) !== null ? (
                           <>
-                            <MapPinIcon className="w-4 h-4 mr-1 text-blue-500" />
+                            <MapPinIcon className="w-4 h-4 mr-1 text-blue-500 flex-shrink-0" />
                             <span className="font-medium text-gray-900">
                               {getBookingDistance(booking)?.toFixed(1)} km
                             </span>
@@ -2279,7 +2210,7 @@ const fetchProviderStatus = async () => {
                         <span className="mr-2">🎙️</span> Voice Note from Customer:
                       </p>
                       <audio controls className="w-full" style={{height: '40px'}}>
-                        <source src={`${(process.env.REACT_APP_API_URL || 'http://localhost:5000').replace('/api', '')}${booking.voiceNote}`} type="audio/webm" />
+                        <source src={`https://insta-serve-1-0.onrender.com${booking.voiceNote}`} type="audio/webm" />
                         Your browser does not support the audio element.
                       </audio>
                     </div>
@@ -2288,17 +2219,17 @@ const fetchProviderStatus = async () => {
                   {booking.notes && (
                     <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
                       <p className="text-gray-600 text-sm font-medium mb-1">Customer Notes:</p>
-                      <p className="text-gray-900 text-sm">{booking.notes}</p>
+                      <p className="text-gray-900 text-sm break-words">{booking.notes}</p>
                     </div>
                   )}
 
-                  <div className="flex justify-end space-x-3">
+                  <div className="flex flex-col sm:flex-row justify-end gap-3">
                     <button
                       onClick={() => {
                         setSelectedBookingForChat(booking);
                         setShowChat(true);
                       }}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm flex items-center"
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm flex items-center justify-center"
                       disabled={loading}
                     >
                       <ChatBubbleLeftIcon className="w-4 h-4 mr-2" />
@@ -2306,7 +2237,7 @@ const fetchProviderStatus = async () => {
                     </button>
                     <button
                       onClick={() => handleRejectBroadcastRequest(booking._id)}
-                      className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm flex items-center"
+                      className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm flex items-center justify-center"
                       disabled={loading}
                     >
                       <XMarkIcon className="w-4 h-4 mr-2" />
@@ -2314,7 +2245,7 @@ const fetchProviderStatus = async () => {
                     </button>
                     <button
                       onClick={() => handleAcceptBooking(booking._id)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center"
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center justify-center"
                       disabled={loading}
                     >
                       📢 Accept Booking
@@ -2392,11 +2323,11 @@ const fetchProviderStatus = async () => {
                 ) : (
                   <div className="space-y-4">
                     {bookings.map((booking) => (
-                      <div key={booking._id} className="border border-gray-200 rounded-lg p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h4 className="text-lg font-medium text-gray-900">{booking.service?.title || 'Unknown Service'}</h4>
-                            <div className="mt-1 space-y-1">
+                      <div key={booking._id} className="border border-gray-200 rounded-lg p-6 overflow-hidden">
+                        <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-lg font-medium text-gray-900 break-words">{booking.service?.title || 'Unknown Service'}</h4>
+                            <div className="mt-2 space-y-1">
                               <p className="text-sm text-gray-600">
                                 <span className="font-medium">Customer:</span> {booking.customer.name}
                               </p>
@@ -2408,7 +2339,7 @@ const fetchProviderStatus = async () => {
                               </p>
                             </div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex-shrink-0">
                             <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
                               booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               booking.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
@@ -2428,13 +2359,13 @@ const fetchProviderStatus = async () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
                           <div>
                             <p className="text-gray-600">Scheduled Date & Time</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-gray-900 break-words">
                               {new Date(booking.scheduledDate).toLocaleDateString()} at {booking.scheduledTime}
                             </p>
                           </div>
                           <div>
                             <p className="text-gray-600">Time of Acceptance</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-gray-900 break-words">
                               {booking.acceptedAt ? (
                                 <>
                                   {new Date(booking.acceptedAt).toLocaleDateString()} at {new Date(booking.acceptedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -2448,7 +2379,7 @@ const fetchProviderStatus = async () => {
 
                         <div className="mb-4">
                           <p className="text-gray-600 text-sm font-medium mb-1">Service Address</p>
-                          <p className="text-gray-900 text-sm">
+                          <p className="text-gray-900 text-sm break-words">
                             {typeof booking.address === 'string' 
                               ? booking.address
                               : (() => {
@@ -2470,7 +2401,7 @@ const fetchProviderStatus = async () => {
                             <div className="flex items-center">
                               {getBookingDistance(booking) !== null ? (
                                 <>
-                                  <MapPinIcon className="w-4 h-4 mr-1 text-blue-500" />
+                                  <MapPinIcon className="w-4 h-4 mr-1 text-blue-500 flex-shrink-0" />
                                   <span className="font-medium text-gray-900">
                                     {getBookingDistance(booking)?.toFixed(1)} km
                                   </span>
@@ -2490,7 +2421,7 @@ const fetchProviderStatus = async () => {
                               <span className="mr-2">🎙️</span> Voice Note from Customer:
                             </p>
                             <audio controls className="w-full" style={{height: '40px'}}>
-                              <source src={`${(process.env.REACT_APP_API_URL || 'http://localhost:5000').replace('/api', '')}${booking.voiceNote}`} type="audio/webm" />
+                              <source src={`https://insta-serve-1-0.onrender.com${booking.voiceNote}`} type="audio/webm" />
                               Your browser does not support the audio element.
                             </audio>
                           </div>
@@ -2499,11 +2430,11 @@ const fetchProviderStatus = async () => {
                         {booking.notes && (
                           <div className="mb-4">
                             <p className="text-gray-600 text-sm">Customer Notes:</p>
-                            <p className="text-gray-900 bg-gray-50 p-3 rounded">{booking.notes}</p>
+                            <p className="text-gray-900 bg-gray-50 p-3 rounded break-words">{booking.notes}</p>
                           </div>
                         )}
 
-                        <div className="flex justify-end space-x-3">
+                        <div className="flex flex-wrap justify-end gap-3">
                           {(booking.status === 'confirmed' || booking.status === 'in_progress') && (
                             <>
                               <button
@@ -2807,9 +2738,15 @@ const fetchProviderStatus = async () => {
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="mt-6 pt-6 border-t border-gray-200 flex flex-col sm:flex-row gap-3">
                 <button className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium">
                   Edit Profile
+                </button>
+                <button 
+                  onClick={() => dispatch(logout())}
+                  className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                >
+                  Logout
                 </button>
               </div>
             </div>
@@ -2964,7 +2901,7 @@ const fetchProviderStatus = async () => {
       
       {/* Provider Completion Modal */}
       {showProviderCompletionModal && selectedCompletionBooking && (
-        <ProviderCompletionModal
+        <ServiceCompletionModal
           isOpen={showProviderCompletionModal}
           onClose={() => {
             setShowProviderCompletionModal(false);
@@ -2972,9 +2909,8 @@ const fetchProviderStatus = async () => {
           }}
           bookingId={selectedCompletionBooking._id}
           serviceTitle={selectedCompletionBooking.service?.title || 'Unknown Service'}
-          customerName={selectedCompletionBooking.customer?.name || 'Unknown Customer'}
-          onVerify={handleProviderCompletion}
-          loading={completionLoading}
+          otherPartyName={selectedCompletionBooking.customer?.name || 'Unknown Customer'}
+          userRole="provider"
         />
       )}
 

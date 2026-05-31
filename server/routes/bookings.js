@@ -1089,6 +1089,19 @@ router.post('/:id/complete', protect, authorize('provider'), async (req, res) =>
     // Emit Socket.IO notification to customer about completion code
     const io = req.app.get('io');
     if (io) {
+      const roomName = `user_${booking.customer}`;
+      const roomMembers = io.sockets.adapter.rooms.get(roomName);
+      
+      console.log(`🔍 [DEBUG] Checking room ${roomName}:`);
+      console.log(`  - Room exists: ${roomMembers ? 'YES' : 'NO'}`);
+      console.log(`  - Room members: ${roomMembers ? roomMembers.size : 0}`);
+      
+      if (roomMembers && roomMembers.size > 0) {
+        console.log(`  - Socket IDs in room:`, Array.from(roomMembers));
+      } else {
+        console.log(`  - ⚠️ WARNING: Customer ${booking.customer} is not in their room!`);
+      }
+
       const completionCodeData = {
         bookingId: booking._id,
         customerId: booking.customer,
@@ -1098,7 +1111,7 @@ router.post('/:id/complete', protect, authorize('provider'), async (req, res) =>
         timestamp: new Date()
       };
       
-      io.to(`user_${booking.customer}`).emit('completion_code_generated', completionCodeData);
+      io.to(roomName).emit('completion_code_generated', completionCodeData);
       console.log(`Completion code ${completionCode} sent to customer ${booking.customer} for booking ${booking._id}`);
     }
 

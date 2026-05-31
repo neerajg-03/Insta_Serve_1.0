@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 // Temporarily using inline components to fix compilation
 // import CustomerTrackingView from '../components/booking/CustomerTrackingView';
 import ProviderTrackingView from '../components/booking/ProviderTrackingView';
+import CustomerCompletionModal from '../components/CustomerCompletionModal';
 
 // Professional CustomerTrackingView matching ProviderTrackingView design
 const ProfessionalCustomerTrackingView: React.FC<any> = ({
@@ -537,6 +538,10 @@ const BookingTracking: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   
+  // Completion code modal state
+  const [showCompletionCodeModal, setShowCompletionCodeModal] = useState(false);
+  const [completionCodeData, setCompletionCodeData] = useState<any>(null);
+  
   // Map and refs
   const mapRef = useRef<HTMLDivElement>(null);
   const socketConnected = useRef(false);
@@ -552,6 +557,7 @@ const BookingTracking: React.FC = () => {
       if (id) {
         SocketService.leaveBookingRoom(id);
       }
+      SocketService.offCompletionCodeGenerated(handleCompletionCodeGenerated);
       SocketService.disconnect();
       setIsTracking(false);
     };
@@ -596,6 +602,7 @@ const BookingTracking: React.FC = () => {
       SocketService.onLocationUpdate(handleLocationUpdate);
       SocketService.onBookingUpdate(handleBookingStatusUpdate);
       SocketService.onChatMessage(handleChatMessage);
+      SocketService.onCompletionCodeGenerated(handleCompletionCodeGenerated);
       console.log('ð [INIT] Socket.IO event listeners set up');
 
       // Join booking room for targeted location sharing
@@ -830,6 +837,20 @@ const BookingTracking: React.FC = () => {
     }
   };
 
+  const handleCompletionCodeGenerated = (data: any) => {
+    if (data.bookingId === id) {
+      console.log('Completion code received:', data);
+      setCompletionCodeData({
+        bookingId: data.bookingId,
+        serviceTitle: data.serviceTitle,
+        providerName: data.providerName,
+        completionCode: data.completionCode
+      });
+      setShowCompletionCodeModal(true);
+      toast.success(`Completion code received: ${data.completionCode}`);
+    }
+  };
+
   // Payment functions
   const handlePayment = async () => {
     if (!booking) return;
@@ -876,7 +897,7 @@ const BookingTracking: React.FC = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/chat', {
+      const response = await fetch('https://insta-serve-1-0.onrender.com/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1147,23 +1168,34 @@ User: ${user?.name} (${user?.email})
   // Render role-specific view
   if (isCustomer) {
     return (
-      <ProfessionalCustomerTrackingView
-        booking={booking}
-        currentLocation={currentLocation}
-        providerLocation={providerLocation}
-        distance={distance}
-        estimatedArrival={estimatedArrival}
-        connectionStatus={connectionStatus}
-        isTracking={isTracking}
-        onContactProvider={handleContactProvider}
-        onNavigateToLocation={handleNavigateToLocation}
-        onPayNow={handlePayNow}
-        onManualLocationUpdate={handleManualLocationUpdate}
-        paymentStatus={paymentStatus}
-        trackingUpdates={trackingUpdates}
-        getStatusIcon={getStatusIcon}
-        googleMapsData={googleMapsData}
-      />
+      <>
+        <ProfessionalCustomerTrackingView
+          booking={booking}
+          currentLocation={currentLocation}
+          providerLocation={providerLocation}
+          distance={distance}
+          estimatedArrival={estimatedArrival}
+          connectionStatus={connectionStatus}
+          isTracking={isTracking}
+          onContactProvider={handleContactProvider}
+          onNavigateToLocation={handleNavigateToLocation}
+          onPayNow={handlePayNow}
+          onManualLocationUpdate={handleManualLocationUpdate}
+          paymentStatus={paymentStatus}
+          trackingUpdates={trackingUpdates}
+          getStatusIcon={getStatusIcon}
+          googleMapsData={googleMapsData}
+        />
+        {completionCodeData && (
+          <CustomerCompletionModal
+            isOpen={showCompletionCodeModal}
+            onClose={() => setShowCompletionCodeModal(false)}
+            bookingId={completionCodeData.bookingId}
+            serviceTitle={completionCodeData.serviceTitle}
+            providerName={completionCodeData.providerName}
+          />
+        )}
+      </>
     );
   } else {
     return (

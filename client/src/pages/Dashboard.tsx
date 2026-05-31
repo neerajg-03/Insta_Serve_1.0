@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsAPI, servicesAPI, usersAPI, authAPI } from '../services/api';
 import { logout } from '../store/slices/authSlice';
 import toast from 'react-hot-toast';
@@ -93,7 +93,16 @@ interface Service {
 const Dashboard: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Set active tab from URL parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['overview', 'bookings', 'profile'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +155,7 @@ const Dashboard: React.FC = () => {
   const [providerLocation, setProviderLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [customerLocation, setCustomerLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [eta, setEta] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // Chat state
   const [showChat, setShowChat] = useState(false);
@@ -316,6 +326,25 @@ const Dashboard: React.FC = () => {
     setSelectedBookingForNav(booking);
 
     try {
+      // Get user's current location
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const userLoc = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
+            setUserLocation(userLoc);
+            setCustomerLocation(userLoc);
+            console.log('📍 User location set:', userLoc);
+          },
+          (error) => {
+            console.error('📍 Error getting user location:', error);
+            toast.error('Could not get your location. Please enable location services.');
+          }
+        );
+      }
+
       // Fetch provider's current location from the booking
       const bookingDetails = await bookingsAPI.getBooking(booking._id);
 
@@ -345,23 +374,28 @@ const Dashboard: React.FC = () => {
       }
 
       setProviderLocation(provLocation);
-      setCustomerLocation(custLocation);
+      if (custLocation) {
+        setCustomerLocation(custLocation);
+      }
 
       // Calculate ETA using Google Maps Distance Matrix API
-      if (provLocation && custLocation) {
-        try {
-          const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${provLocation.lat},${provLocation.lng}&destinations=${custLocation.lat},${custLocation.lng}&mode=driving&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
-          const response = await fetch(url);
-          const data = await response.json();
+      if (provLocation && (custLocation || userLocation)) {
+        const targetLocation = custLocation || userLocation;
+        if (targetLocation) {
+          try {
+            const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${provLocation.lat},${provLocation.lng}&destinations=${targetLocation.lat},${targetLocation.lng}&mode=driving&key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}`;
+            const response = await fetch(url);
+            const data = await response.json();
 
-          if (data.rows && data.rows[0] && data.rows[0].elements && data.rows[0].elements[0].status === 'OK') {
-            const duration = data.rows[0].elements[0].duration.value; // in seconds
-            const minutes = Math.round(duration / 60);
-            setEta(`${minutes} min`);
+            if (data.rows && data.rows[0] && data.rows[0].elements && data.rows[0].elements[0].status === 'OK') {
+              const duration = data.rows[0].elements[0].duration.value; // in seconds
+              const minutes = Math.round(duration / 60);
+              setEta(`${minutes} min`);
+            }
+          } catch (err) {
+            console.error('Error calculating ETA:', err);
+            setEta('Calculating...');
           }
-        } catch (err) {
-          console.error('Error calculating ETA:', err);
-          setEta('Calculating...');
         }
       }
 
@@ -394,61 +428,60 @@ const Dashboard: React.FC = () => {
         role: 'customer'
       }).then(() => {
         console.log('🔌 Dashboard socket connected for customer');
+      }).catch((err) => {
+        console.error('🔌 Dashboard socket connection failed:', err);
+      });
 
-        // Listen for completion code generation using the callback system
-        SocketService.onCompletionCodeGenerated((data: any) => {
-          console.log('🎯 Completion code received:', data);
+      // Listen for completion code generation
+      const handleCompletionCode = (data: any) => {
+        console.log('🎯 Completion code received:', data);
 
-          // Show completion code modal
-          setCompletionCodeData({
-            bookingId: data.bookingId,
-            serviceTitle: data.serviceTitle,
-            providerName: data.providerName,
-            completionCode: data.completionCode
-          });
-
-          setShowCompletionCodeModal(true);
+        // Show completion code modal
+        setCompletionCodeData({
+          bookingId: data.bookingId,
+          serviceTitle: data.serviceTitle,
+          providerName: data.providerName,
+          completionCode: data.completionCode
         });
 
-        // Listen for real-time provider location updates using the callback system
-        SocketService.onLocationUpdate((data: any) => {
-          console.log('📍 Provider location update received:', data);
+        setShowCompletionCodeModal(true);
+      };
+      SocketService.onCompletionCodeGenerated(handleCompletionCode);
 
-          // Update provider location if navigation modal is open for this booking
-          // Accept updates with matching bookingId OR if provider matches the booking's provider (for backward compatibility)
+      // Listen for real-time provider location updates
+      const handleProviderLocation = (data: any) => {
+        console.log('📍 Provider location update received:', data);
+
+        // Always update provider location for matching booking, even if modal is not open yet
+        // This ensures location is available when user opens navigation
+        const matchingBooking = bookings.find(b => b._id === data.bookingId);
+        
+        if (matchingBooking && data.location) {
+          console.log('📍 Updating provider location for booking:', data.bookingId);
+          setProviderLocation({
+            lat: data.location.lat,
+            lng: data.location.lng
+          });
+
+          // If navigation modal is open for this booking, update it
           if (showNavigationModal && selectedBookingForNav) {
             const isMatchingBooking = data.bookingId === selectedBookingForNav._id;
             const isMatchingProvider = data.providerId === selectedBookingForNav.provider?._id;
 
             if (isMatchingBooking || isMatchingProvider) {
-              console.log('📍 Updating provider location:', {
-                bookingId: data.bookingId,
-                providerId: data.providerId,
-                isMatchingBooking,
-                isMatchingProvider
-              });
-              setProviderLocation({
-                lat: data.location.lat,
-                lng: data.location.lng
-              });
-
-              // Re-fetch route with new location
-              if (customerLocation) {
-                // This will trigger route recalculation via useEffect
-              }
+              console.log('📍 Navigation modal open, updating live location');
             }
           }
-        });
-      }).catch((err) => {
-        console.error('🔌 Dashboard socket connection failed:', err);
-      });
+        }
+      };
+      SocketService.on('provider_location_update', handleProviderLocation);
 
       return () => {
-        // Note: The socket service manages callback cleanup internally
-        // We don't need to manually remove callbacks here
+        SocketService.offCompletionCodeGenerated(handleCompletionCode);
+        SocketService.off('provider_location_update', handleProviderLocation);
       };
     }
-  }, [user, showNavigationModal, selectedBookingForNav, customerLocation]);
+  }, [user, bookings]);
 
   // Poll for start codes on confirmed bookings
   useEffect(() => {
@@ -653,13 +686,13 @@ const Dashboard: React.FC = () => {
         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow border border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-xs sm:text-sm text-gray-600 font-medium">Pending</p>
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">In Progress</p>
               <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
-                {bookings.filter(b => b.status === 'pending' || b.status === 'confirmed').length}
+                {bookings.filter(b => b.status === 'in_progress').length}
               </p>
               <p className="text-xs text-yellow-600 mt-1 sm:mt-2 flex items-center">
                 <ClockIcon className="w-3 h-3 mr-1" />
-                Action needed
+                Currently active
               </p>
             </div>
             <div className="p-3 sm:p-4 bg-yellow-100 rounded-xl ml-2 sm:ml-0">
@@ -1114,6 +1147,18 @@ const Dashboard: React.FC = () => {
                 className="px-3 py-2 sm:px-4 sm:py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-xs sm:text-sm w-full sm:w-auto"
               >
                 Change Password
+              </button>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors gap-2">
+              <div>
+                <h4 className="font-medium text-gray-900 text-sm sm:text-base">Logout</h4>
+                <p className="text-xs sm:text-sm text-gray-600">Sign out of your account</p>
+              </div>
+              <button 
+                onClick={() => dispatch(logout())}
+                className="px-3 py-2 sm:px-4 sm:py-2 bg-gray-50 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium text-xs sm:text-sm w-full sm:w-auto"
+              >
+                Logout
               </button>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors gap-2">

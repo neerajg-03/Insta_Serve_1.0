@@ -447,6 +447,7 @@ const Dashboard: React.FC = () => {
         setShowCompletionCodeModal(true);
       };
       SocketService.onCompletionCodeGenerated(handleCompletionCode);
+      console.log('✅ Completion code listener registered on Dashboard');
 
       // Listen for real-time provider location updates
       const handleProviderLocation = (data: any) => {

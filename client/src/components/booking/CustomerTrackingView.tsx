@@ -3,7 +3,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import LocationService, { Location, GoogleMapsDistanceResult } from '../../services/locationService';
 import toast from 'react-hot-toast';
-import CustomerCompletionModal from '../CustomerCompletionModal';
+import ServiceCompletionModal from '../ServiceCompletionModal';
+import CustomerNavigationModal from '../CustomerNavigationModal';
 
 interface CustomerTrackingViewProps {
   booking: any;
@@ -44,6 +45,7 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
   const [showMap, setShowMap] = useState(false);
   const [mapUrl, setMapUrl] = useState('');
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [showNavigationModal, setShowNavigationModal] = useState(false);
 
   useEffect(() => {
     if (providerLocation && booking.address) {
@@ -413,19 +415,18 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
                     onClick={onContactProvider}
                     className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
                   >
-                    ð Call Provider
+                    📞 Call Provider
                   </button>
                   <button
-                    onClick={onNavigateToLocation}
+                    onClick={() => setShowNavigationModal(true)}
                     className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    ð Navigate to Location
+                    📍 Navigate to Location
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Broadcast Status */}
             {!booking.provider && booking.status === 'broadcast' && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">ð¢ Broadcast Status</h3>
@@ -499,12 +500,22 @@ const CustomerTrackingView: React.FC<CustomerTrackingViewProps> = ({
     </div>
 
     {/* Customer Completion Modal */}
-    <CustomerCompletionModal
+    <ServiceCompletionModal
       isOpen={showCompletionModal}
       onClose={() => setShowCompletionModal(false)}
       bookingId={booking._id}
       serviceTitle={booking.service?.title || 'Service'}
-      providerName={booking.provider?.name || 'Provider'}
+      otherPartyName={booking.provider?.name || 'Provider'}
+      userRole="customer"
+    />
+
+    {/* Customer Navigation Modal */}
+    <CustomerNavigationModal
+      isOpen={showNavigationModal}
+      onClose={() => setShowNavigationModal(false)}
+      booking={booking}
+      providerLocation={providerLocation}
+      customerLocation={currentLocation}
     />
     </>
   );

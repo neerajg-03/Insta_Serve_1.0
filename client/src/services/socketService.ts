@@ -85,7 +85,16 @@ class SocketService {
         console.log('ð [SOCKET] Connected to Socket.IO server');
         console.log('ð [SOCKET] Socket ID:', this.socket?.id);
         // Authenticate with the server
-        this.socket?.emit('authenticate', userData);
+        console.log('ð [SOCKET] Sending authenticate event with userData:', userData);
+        this.socket?.emit('authenticate', userData, (ack: any) => {
+          console.log('ð [SOCKET] Authenticate event acknowledged:', ack);
+          if (ack && ack.success) {
+            console.log('ð [SOCKET] Successfully joined room:', ack.room);
+          } else {
+            console.error('ð [SOCKET] Failed to join room:', ack?.error);
+          }
+        });
+        
         resolve();
       });
 
@@ -195,12 +204,6 @@ class SocketService {
       console.log('Completion code generated received:', data);
       this.emitCompletionCodeGenerated(data);
     });
-
-    // Start code generated (for customers)
-    this.socket.on('start_code_generated', (data) => {
-      console.log('Start code generated received:', data);
-      this.emitStartCodeGenerated(data);
-    });
   }
 
   // Custom event emitters for components
@@ -210,7 +213,6 @@ class SocketService {
   private chatMessageCallbacks: ((data: any) => void)[] = [];
   private newServiceAvailableCallbacks: ((data: any) => void)[] = [];
   private completionCodeGeneratedCallbacks: ((data: any) => void)[] = [];
-  private startCodeGeneratedCallbacks: ((data: any) => void)[] = [];
 
   onLocationUpdate(callback: (data: any) => void): void {
     console.log('🔌 Registering location update callback');
@@ -242,17 +244,6 @@ class SocketService {
     const index = this.completionCodeGeneratedCallbacks.indexOf(callback);
     if (index > -1) {
       this.completionCodeGeneratedCallbacks.splice(index, 1);
-    }
-  }
-
-  onStartCodeGenerated(callback: (data: any) => void): void {
-    this.startCodeGeneratedCallbacks.push(callback);
-  }
-
-  offStartCodeGenerated(callback: (data: any) => void): void {
-    const index = this.startCodeGeneratedCallbacks.indexOf(callback);
-    if (index > -1) {
-      this.startCodeGeneratedCallbacks.splice(index, 1);
     }
   }
 
@@ -290,12 +281,6 @@ class SocketService {
 
   private async emitCompletionCodeGenerated(data: any): Promise<void> {
     for (const callback of this.completionCodeGeneratedCallbacks) {
-      await callback(data);
-    }
-  }
-
-  private async emitStartCodeGenerated(data: any): Promise<void> {
-    for (const callback of this.startCodeGeneratedCallbacks) {
       await callback(data);
     }
   }
@@ -360,7 +345,17 @@ class SocketService {
   // Join a room
   joinRoom(room: string): void {
     if (this.socket && (this.socket as any).connected) {
+      console.log('🔌 [SOCKET] Joining room:', room);
       (this.socket as any).emit('join_room', room);
+    }
+  }
+
+  // Join user's personal room (for completion codes, etc.)
+  joinUserRoom(userId: string): void {
+    if (this.socket && (this.socket as any).connected) {
+      const roomName = `user_${userId}`;
+      console.log('🔌 [SOCKET] Joining user room:', roomName);
+      (this.socket as any).emit('join_room', roomName);
     }
   }
 

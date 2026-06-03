@@ -539,7 +539,7 @@ router.post(
       if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || process.env.EMAIL_PASS === 'your_gmail_app_password_here') {
         console.error('Email not configured. Please set EMAIL_USER and EMAIL_PASS in .env file');
         return res.status(500).json({
-          message: 'Email service not configured. Please contact administrator.'
+          message: 'Email service not configured. Please set up Gmail App Password in server environment variables.'
         });
       }
 
@@ -550,9 +550,12 @@ router.post(
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
         },
-        connectionTimeout: 10000,
-        greetingTimeout: 5000,
-        socketTimeout: 10000
+        connectionTimeout: 30000,
+        greetingTimeout: 10000,
+        socketTimeout: 30000,
+        tls: {
+          rejectUnauthorized: false
+        }
       });
 
       // Send password to user's email

@@ -502,6 +502,36 @@ router.post(
   }
 );
 
+// @route   GET /api/auth/smtp-test
+// @desc    Test SMTP connection
+// @access  Public
+router.get('/smtp-test', async (req, res) => {
+  try {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || process.env.EMAIL_PASS === 'your_gmail_app_password_here') {
+      return res.status(500).send('Email not configured');
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      connectionTimeout: 60000,
+      greetingTimeout: 30000,
+      socketTimeout: 60000
+    });
+
+    await transporter.verify();
+    res.send('SMTP OK');
+  } catch (err) {
+    console.error('SMTP Test Error:', err);
+    res.status(500).send(err.message);
+  }
+});
+
 // @route   POST /api/auth/forgot-password
 // @desc    Send password to registered email
 // @access  Public
@@ -543,20 +573,43 @@ router.post(
         });
       }
 
-      // Create email transporter
+      // Debug logs for environment variables
+      console.log('EMAIL_USER:', process.env.EMAIL_USER);
+      console.log('EMAIL_PASS exists:', !!process.env.EMAIL_PASS);
+
+      // Create email transporter with correct SMTP configuration for Render
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS
         },
-        connectionTimeout: 30000,
-        greetingTimeout: 10000,
-        socketTimeout: 30000,
-        tls: {
-          rejectUnauthorized: false
-        }
+        connectionTimeout: 60000,
+        greetingTimeout: 30000,
+        socketTimeout: 60000
       });
+
+      // Verify SMTP connection before sending
+      try {
+        await new Promise((resolve, reject) => {
+          transporter.verify((error, success) => {
+            if (error) {
+              console.error('SMTP Verify Error:', error);
+              reject(error);
+            } else {
+              console.log('SMTP Server Ready');
+              resolve(success);
+            }
+          });
+        });
+      } catch (verifyError) {
+        console.error('SMTP connection verification failed:', verifyError);
+        return res.status(500).json({
+          message: 'Unable to connect to email server. Please try again later.'
+        });
+      }
 
       // Send password to user's email
       const mailOptions = {

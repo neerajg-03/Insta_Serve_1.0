@@ -5,6 +5,7 @@ const User = require('../models/User');
 const ProviderWallet = require('../models/ProviderWallet');
 const { protect } = require('../middleware/auth');
 const passport = require('../config/googleAuth');
+const nodemailer = require('nodemailer');
 
 const router = express.Router();
 
@@ -496,6 +497,96 @@ router.post(
       res.status(500).json({
         message:
           'Server error during Google sign-up completion'
+      });
+    }
+  }
+);
+
+// @route   POST /api/auth/forgot-password
+// @desc    Send password to registered email
+// @access  Public
+router.post(
+  '/forgot-password',
+  [
+    body('email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Please provide a valid email')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { email } = req.body;
+
+      // Find user by email
+      const user = await User.findOne({ email }).select('+password');
+
+      if (!user) {
+        return res.status(404).json({
+          message: 'No account found with this email address'
+        });
+      }
+
+      // Check if email is configured
+      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || process.env.EMAIL_PASS === 'your_gmail_app_password_here') {
+        console.error('Email not configured. Please set EMAIL_USER and EMAIL_PASS in .env file');
+        return res.status(500).json({
+          message: 'Email service not configured. Please contact administrator.'
+        });
+      }
+
+      // Create email transporter
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000
+      });
+
+      // Send password to user's email
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: 'Your InstaServe Password',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #7C3AED;">Your InstaServe Password</h2>
+            <p>Hello ${user.name},</p>
+            <p>You requested to receive your password for your InstaServe account.</p>
+            <p style="background: #f3f4f6; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; color: #7C3AED;">
+              Password: ${user.password}
+            </p>
+            <p><strong>Security Note:</strong> For your security, please change your password after logging in.</p>
+            <p>If you didn't request this, please ignore this email or contact our support team.</p>
+            <p>Best regards,<br>The InstaServe Team</p>
+          </div>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+
+      console.log(`Password sent to email: ${user.email}`);
+
+      res.json({
+        message: 'Password has been sent to your registered email address'
+      });
+    } catch (error) {
+      console.error('Forgot password error:', error);
+
+      res.status(500).json({
+        message: 'Server error while sending password. Please try again later.'
       });
     }
   }

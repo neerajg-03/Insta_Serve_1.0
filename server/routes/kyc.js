@@ -72,9 +72,15 @@ router.post('/kyc/verify', protect, async (req, res) => {
     let existingUser;
 
     if (documentType === 'pan') {
-      // Check PAN field
+      // Check both PAN field and kycDocuments array for PAN
       existingUser = await User.findOne({
-        pan: documentNumber,
+        $or: [
+          { pan: documentNumber },
+          {
+            'kycDocuments.documentNumber': documentNumber,
+            'kycDocuments.documentType': 'pan'
+          }
+        ],
         role: 'provider',
         _id: { $ne: req.user._id }
       });
@@ -90,7 +96,7 @@ router.post('/kyc/verify', protect, async (req, res) => {
 
     if (existingUser) {
       return res.status(400).json({ 
-        message: `This ${documentType.toUpperCase()} number is already registered with another provider`,
+        message: `This ${documentType.toUpperCase()} number already exists with another user`,
         available: false
       });
     }
@@ -197,7 +203,7 @@ router.post('/kyc', protect, async (req, res) => {
       );
 
       return res.status(400).json({ 
-        message: `Duplicate document numbers found: ${duplicateNumbers.join(', ')}. Each document number must be unique.` 
+        message: `Document number(s) already exist with another user: ${duplicateNumbers.join(', ')}` 
       });
     }
 

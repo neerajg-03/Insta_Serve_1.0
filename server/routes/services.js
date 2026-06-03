@@ -168,7 +168,7 @@ router.get('/available', protect, authorize('provider'), async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 1000,
       category,
       search,
       sortBy = 'createdAt',
@@ -202,11 +202,23 @@ router.get('/available', protect, authorize('provider'), async (req, res) => {
       .skip((page - 1) * limit)
       .exec();
 
+    // Filter out services that the provider has already requested
+    const availableServices = services.filter(service => {
+      if (!service.providerRequests || service.providerRequests.length === 0) {
+        return true;
+      }
+      // Check if provider has already requested this service
+      const hasRequested = service.providerRequests.some(
+        request => request.provider.toString() === req.user._id.toString()
+      );
+      return !hasRequested;
+    });
+
     // Get total count
     const total = await Service.countDocuments(query);
 
     res.json({
-      services,
+      services: availableServices,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),

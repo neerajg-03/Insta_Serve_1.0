@@ -3,6 +3,7 @@ const axios = require('axios');
 // Initialize MSG91 with credentials
 const authKey = process.env.MSG91_AUTH_KEY;
 const widgetId = process.env.MSG91_WIDGET_ID;
+const templateId = process.env.MSG91_TEMPLATE_ID;
 
 // In-memory OTP storage (in production, use Redis)
 const otpStore = new Map();
@@ -33,7 +34,7 @@ const sendOTP = async (phone) => {
     }
 
     // Check if MSG91 is configured
-    if (!authKey || authKey === 'your_msg91_auth_key_here' || !widgetId || widgetId === 'your_msg91_widget_id_here') {
+    if (!authKey || authKey === 'your_msg91_auth_key_here' || !templateId || templateId === 'your_msg91_template_id_here') {
       console.warn('MSG91 not configured. Using mock OTP for testing.');
       // For testing without MSG91 credentials
       const mockOTP = generateOTP();
@@ -66,7 +67,7 @@ const sendOTP = async (phone) => {
     const msg91Url = `https://control.msg91.com/api/v5/otp`;
     
     const payload = {
-      template_id: widgetId,
+      template_id: templateId,
       mobile: `91${phone}`,
       otp: otp,
       expiry: 300 // 5 minutes in seconds
@@ -82,6 +83,7 @@ const sendOTP = async (phone) => {
     console.log('URL:', msg91Url);
     console.log('Payload:', JSON.stringify(payload));
     console.log('AuthKey:', authKey);
+    console.log('TemplateId:', templateId);
     console.log('WidgetId:', widgetId);
 
     const response = await axios.post(msg91Url, payload, { headers });
@@ -208,7 +210,7 @@ const verifyOTPWithWidget = async (phone, otp) => {
     }
 
     // Check if MSG91 is configured
-    if (!authKey || authKey === 'your_msg91_auth_key_here' || !widgetId || widgetId === 'your_msg91_widget_id_here') {
+    if (!authKey || authKey === 'your_msg91_auth_key_here' || !templateId || templateId === 'your_msg91_template_id_here') {
       // Fall back to local verification for testing
       return verifyOTP(phone, otp);
     }

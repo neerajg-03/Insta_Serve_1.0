@@ -10,8 +10,11 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
+    required: function() {
+      return this.authMethod !== 'otp';
+    },
     unique: true,
+    sparse: true,
     lowercase: true,
     trim: true,
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
@@ -19,7 +22,7 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: function() {
-      return this.authMethod !== 'google';
+      return this.authMethod === 'local';
     },
     minlength: [6, 'Password must be at least 6 characters long']
   },
@@ -172,7 +175,7 @@ const userSchema = new mongoose.Schema({
   },
   authMethod: {
     type: String,
-    enum: ['local', 'google'],
+    enum: ['local', 'google', 'otp'],
     default: 'local'
   },
   profilePicture: {

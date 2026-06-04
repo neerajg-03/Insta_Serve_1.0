@@ -1,4 +1,4 @@
-const msg91 = require('msg91');
+const axios = require('axios');
 
 // Initialize MSG91 with credentials
 const authKey = process.env.MSG91_AUTH_KEY;
@@ -61,15 +61,34 @@ const sendOTP = async (phone) => {
       attempts: 0
     });
 
-    // Send OTP via MSG91 using the correct API
-    // MSG91 OTP API format
-    const response = await msg91.sendOTP(authKey, `91${phone}`, otp, {
-      template: widgetId, // Use widgetId as template ID
-      country: '91'
-    });
+    // Send OTP via MSG91 REST API
+    // MSG91 OTP API endpoint - using send OTP API
+    const msg91Url = `https://control.msg91.com/api/v5/otp`;
+    
+    const payload = {
+      template_id: widgetId,
+      mobile: `91${phone}`,
+      otp: otp,
+      expiry: 300 // 5 minutes in seconds
+    };
+
+    const headers = {
+      'authkey': authKey,
+      'Content-Type': 'application/json',
+      'accept': 'application/json'
+    };
+
+    console.log('Sending OTP via MSG91 REST API...');
+    console.log('URL:', msg91Url);
+    console.log('Payload:', JSON.stringify(payload));
+    console.log('AuthKey:', authKey);
+    console.log('WidgetId:', widgetId);
+
+    const response = await axios.post(msg91Url, payload, { headers });
 
     console.log(`OTP sent to ${phone}: ${otp}`);
-    console.log('MSG91 Response:', response);
+    console.log('MSG91 Response:', response.data);
+    console.log('MSG91 Status:', response.status);
 
     return {
       success: true,
@@ -194,10 +213,28 @@ const verifyOTPWithWidget = async (phone, otp) => {
       return verifyOTP(phone, otp);
     }
 
-    // Verify OTP via MSG91 Widget
-    const response = await msg91.verifyOTP(authKey, phone, otp);
+    // Verify OTP via MSG91 REST API
+    const msg91Url = `https://control.msg91.com/api/v5/otp/verify`;
+    
+    const payload = {
+      mobile: `91${phone}`,
+      otp: otp
+    };
 
-    if (response.type === 'success') {
+    const headers = {
+      'authkey': authKey,
+      'Content-Type': 'application/json'
+    };
+
+    console.log('Verifying OTP via MSG91 REST API...');
+    console.log('URL:', msg91Url);
+    console.log('Payload:', JSON.stringify(payload));
+
+    const response = await axios.post(msg91Url, payload, { headers });
+
+    console.log('MSG91 Verify Response:', response.data);
+
+    if (response.data.type === 'success') {
       return {
         success: true,
         message: 'OTP verified successfully'
@@ -205,7 +242,7 @@ const verifyOTPWithWidget = async (phone, otp) => {
     } else {
       return {
         success: false,
-        message: response.message || 'Invalid OTP'
+        message: response.data.message || 'Invalid OTP'
       };
     }
   } catch (error) {

@@ -6,6 +6,7 @@ const ProviderWallet = require('../models/ProviderWallet');
 const { protect } = require('../middleware/auth');
 const passport = require('../config/googleAuth');
 const nodemailer = require('nodemailer');
+const { sendOTP, verifyOTP, verifyOTPWithWidget } = require('../services/otpService');
 
 const router = express.Router();
 
@@ -579,13 +580,13 @@ router.post(
 
       // Create email transporter with correct SMTP configuration for Render
       const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        },
         connectionTimeout: 60000,
         greetingTimeout: 30000,
         socketTimeout: 60000
@@ -643,6 +644,231 @@ router.post(
 
       res.status(500).json({
         message: 'Server error while sending password. Please try again later.'
+      });
+    }
+  }
+);
+
+// ===============================
+// OTP AUTHENTICATION ROUTES
+// ===============================
+
+// @route   POST /api/auth/otp/send
+// @desc    Send OTP to mobile number
+// @access  Public
+router.post(
+  '/otp/send',
+  [
+    body('phone')
+      .matches(/^[6-9]\d{9}$/)
+      .withMessage('Please provide a valid 10-digit phone number')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { phone } = req.body;
+
+      // Send OTP
+      const result = await sendOTP(phone);
+
+      if (result.success) {
+        res.json({
+          message: result.message,
+          // Only include OTP in response for testing/mock mode
+          ...(result.otp && { otp: result.otp })
+        });
+      } else {
+        res.status(500).json({
+          message: result.message,
+          error: result.error
+        });
+      }
+    } catch (error) {
+      console.error('Send OTP error:', error);
+      res.status(500).json({
+        message: 'Server error while sending OTP'
+      });
+    }
+  }
+);
+
+// @route   POST /api/auth/otp/verify
+// @desc    Verify OTP and login/register user
+// @access  Public
+router.post(
+  '/otp/verify',
+  [
+    body('phone')
+      .matches(/^[6-9]\d{9}$/)
+      .withMessage('Please provide a valid 10-digit phone number'),
+    body('otp')
+      .isLength({ min: 6, max: 6 })
+      .withMessage('OTP must be 6 digits')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { phone, otp, name, role, address } = req.body;
+
+      // Verify OTP using MSG91 Widget
+      const verificationResult = await verifyOTPWithWidget(phone, otp);
+
+      if (!verificationResult.success) {
+        return res.status(400).json({
+          message: verificationResult.message
+        });
+      }
+
+      // Check if user exists
+      let user = await User.findOne({ phone });
+
+      if (user) {
+        // Existing user - login
+        if (!user.isActive) {
+          return res.status(401).json({
+            message: 'Account is deactivated'
+          });
+        }
+
+        user.lastLogin = new Date();
+        await user.save();
+
+        const token = generateToken(user._id);
+
+        res.json({
+          message: 'Login successful',
+          token,
+          user: user.getProfile(),
+          isNewUser: false
+        });
+      } else {
+        // New user - register with OTP
+        if (!name) {
+          return res.status(400).json({
+            message: 'Name is required for new user registration'
+          });
+        }
+
+        const newUser = new User({
+          name,
+          phone,
+          role: role || 'customer',
+          address,
+          authMethod: 'otp',
+          isVerified: true // Phone verified via OTP
+        });
+
+        await newUser.save();
+
+        // Provider signup bonus
+        if (newUser.role === 'provider') {
+          try {
+            const wallet = await ProviderWallet.getOrCreateWallet(newUser._id);
+            await wallet.addBonus(300, 'Signup bonus - Welcome to InstaServe!');
+            console.log(`💰 Added 300 Rs signup bonus to provider wallet: ${newUser.phone}`);
+          } catch (walletError) {
+            console.error('Wallet bonus error:', walletError);
+          }
+        }
+
+        const token = generateToken(newUser._id);
+
+        res.status(201).json({
+          message: 'Registration successful',
+          token,
+          user: newUser.getProfile(),
+          isNewUser: true
+        });
+      }
+    } catch (error) {
+      console.error('OTP verify error:', error);
+      res.status(500).json({
+        message: 'Server error during OTP verification'
+      });
+    }
+  }
+);
+
+// @route   POST /api/auth/otp/login
+// @desc    Login with OTP (for existing users only)
+// @access  Public
+router.post(
+  '/otp/login',
+  [
+    body('phone')
+      .matches(/^[6-9]\d{9}$/)
+      .withMessage('Please provide a valid 10-digit phone number'),
+    body('otp')
+      .isLength({ min: 6, max: 6 })
+      .withMessage('OTP must be 6 digits')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { phone, otp } = req.body;
+
+      // Verify OTP using MSG91 Widget
+      const verificationResult = await verifyOTPWithWidget(phone, otp);
+
+      if (!verificationResult.success) {
+        return res.status(400).json({
+          message: verificationResult.message
+        });
+      }
+
+      // Check if user exists
+      const user = await User.findOne({ phone });
+
+      if (!user) {
+        return res.status(404).json({
+          message: 'No account found with this phone number. Please register first.'
+        });
+      }
+
+      if (!user.isActive) {
+        return res.status(401).json({
+          message: 'Account is deactivated'
+        });
+      }
+
+      user.lastLogin = new Date();
+      await user.save();
+
+      const token = generateToken(user._id);
+
+      res.json({
+        message: 'Login successful',
+        token,
+        user: user.getProfile()
+      });
+    } catch (error) {
+      console.error('OTP login error:', error);
+      res.status(500).json({
+        message: 'Server error during OTP login'
       });
     }
   }

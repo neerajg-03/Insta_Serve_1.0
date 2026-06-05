@@ -167,7 +167,7 @@ router.get('/:id', protect, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate('customer', 'name email phone address')
-      .populate('provider', 'name email phone address ratings')
+      .populate('provider', 'name email phone address ratings currentLocation isAvailable locationSharingEnabled')
       .populate('service', 'title category description price images provider');
 
     if (!booking) {

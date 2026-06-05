@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = 'https://insta-serve-1-0.onrender.com/api';
 
 // Create axios instance
 const api = axios.create({
@@ -72,6 +72,19 @@ export const authAPI = {
   
   logout: () =>
     api.post('/auth/logout').then(res => res.data),
+  
+  forgotPassword: (email: string) =>
+    api.post('/auth/forgot-password', { email }).then(res => res.data),
+
+  // OTP Authentication
+  sendOTP: (phone: string) =>
+    api.post('/auth/otp/send', { phone }).then(res => res.data),
+
+  verifyOTP: (data: { phone: string; otp: string; name?: string; role?: string; address?: any }) =>
+    api.post('/auth/otp/verify', data).then(res => res.data),
+
+  loginWithOTP: (phone: string, otp: string) =>
+    api.post('/auth/otp/login', { phone, otp }).then(res => res.data),
 };
 
 // Services API
@@ -144,13 +157,6 @@ export const bookingsAPI = {
   
   verifyCompletionCode: (id: string, data: { completionCode: string }) =>
     api.post(`/bookings/${id}/verify-completion-code`, data).then(res => res.data),
-  
-  generateStartCode: (id: string) =>
-    api.post(`/bookings/${id}/generate-start-code`).then(res => res.data),
-
-  verifyStartCode: (id: string, data: { startCode: string }) =>
-    api.post(`/bookings/${id}/verify-start-code`, data).then(res => res.data),
-
 };
 
 // Payments API
@@ -229,6 +235,9 @@ export const usersAPI = {
   getKYCStatus: () =>
     api.get('/kyc/status').then(res => res.data),
   
+  verifyKYCDocument: (documentData: { documentType: string; documentNumber: string }) =>
+    api.post('/kyc/verify', documentData).then(res => res.data),
+  
   uploadProfilePicture: (formData: FormData) =>
     api.post('/users/profile-picture', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
@@ -264,7 +273,7 @@ export const adminAPI = {
   getPendingKYC: () =>
     api.get('/admin/kyc/pending').then(res => res.data),
   
-getAllKYC: (status?: string) =>
+  getAllKYC: (status?: string) =>
     api.get('/admin/kyc/all', { params: { status } }).then(res => res.data),
   
   approveKYC: (userId: string) =>
@@ -272,16 +281,14 @@ getAllKYC: (status?: string) =>
   
   rejectKYC: (userId: string, reason: string) =>
     api.post(`/admin/kyc/${userId}/reject`, { reason }).then(res => res.data),
-
+  
   addProviderBonus: (providerId: string, amount: number, description?: string) =>
     api.post(`/admin/wallet/${providerId}/bonus`, { amount, description }).then(res => res.data),
-  
   
   getKYCDocumentUrl: (filename: string) => {
     const baseUrl = API_BASE_URL.replace('/api', '');
     return `${baseUrl}/uploads/kyc/${filename}`;
   },
-  
   
   getAnalytics: () =>
     api.get('/admin/analytics').then(res => res.data),
@@ -297,7 +304,6 @@ getAllKYC: (status?: string) =>
 
   deleteService: (serviceId: string) =>
     api.delete(`/admin/services/${serviceId}`).then(res => res.data),
-
 
   createService: (serviceData: any) =>
     api.post('/admin/services', serviceData).then(res => res.data),
@@ -324,11 +330,19 @@ getAllKYC: (status?: string) =>
   getCouponStats: (id: string) =>
     api.get(`/admin/coupons/${id}/stats`).then(res => res.data),
 
-// Booking Management
+  // Booking Management
   getBookings: (params?: any) =>
     api.get('/admin/bookings', { params }).then(res => res.data),
 
   updateBooking: (id: string, bookingData: any) =>
     api.put(`/admin/bookings/${id}`, bookingData).then(res => res.data),
+
+  // Feedback Management
+  getFeedback: (params?: any) =>
+    api.get('/contact/messages', { params }).then(res => res.data),
+
+  deleteFeedback: (id: string) =>
+    api.delete(`/contact/messages/${id}`).then(res => res.data),
 };
+
 export default api;

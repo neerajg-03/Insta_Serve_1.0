@@ -360,8 +360,8 @@ router.get('/google/callback', (req, res, next) => {
         const userProfile = user.getProfile();
         
         // Add isNewUser flag for new users who haven't completed their profile
-        // Users with placeholder phone '9999999999' need to complete profile
-        if (user.authMethod === 'google' && (!user.phone || user.phone === '9999999999')) {
+        // Users with placeholder phone starting with '999' need to complete profile
+        if (user.authMethod === 'google' && (!user.phone || user.phone.startsWith('999'))) {
           userProfile.isNewUser = true;
         }
 
@@ -434,6 +434,13 @@ router.post(
       if (!phone) {
         return res.status(400).json({
           message: 'Phone number is required'
+        });
+      }
+
+      // Prevent users from using placeholder phone pattern (starts with 999)
+      if (phone.startsWith('999')) {
+        return res.status(400).json({
+          message: 'Phone number cannot start with 999'
         });
       }
 

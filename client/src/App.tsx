@@ -7,7 +7,6 @@ import { store, AppDispatch } from './store';
 import { getCurrentUser } from './store/slices/authSlice';
 import socketService, { ChatMessage } from './services/socketService';
 import Layout from './components/Layout';
-import SplashScreen from './components/SplashScreen';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';

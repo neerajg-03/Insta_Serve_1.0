@@ -4,6 +4,21 @@ import { useDispatch, useSelector } from 'react-redux';
 import { loginUser } from '../store/slices/authSlice';
 import { RootState } from '../store';
 import toast from 'react-hot-toast';
+import { authAPI } from '../services/api';
+
+// Dynamically import Capacitor modules only when needed (for mobile)
+let Browser: any = null;
+let Capacitor: any = null;
+
+try {
+  const capacitorCore = require('@capacitor/core');
+  const capacitorBrowser = require('@capacitor/browser');
+  Capacitor = capacitorCore.Capacitor;
+  Browser = capacitorBrowser.Browser;
+} catch (e) {
+  // Capacitor not available (web build)
+  console.log('Capacitor not available - running in web mode');
+}
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +26,9 @@ const Login: React.FC = () => {
     password: ''
   });
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -51,6 +69,27 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      toast.error('Please enter your email address');
+      return;
+    }
+
+    setForgotLoading(true);
+
+    try {
+      const response = await authAPI.forgotPassword(forgotEmail);
+      toast.success(response.message || 'Password reset link has been sent to your email');
+      setShowForgotPassword(false);
+      setForgotEmail('');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to send password. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -65,6 +104,13 @@ const Login: React.FC = () => {
               className="font-medium text-primary-600 hover:text-primary-500"
             >
               create a new account
+            </Link>
+            {' '}or{' '}
+            <Link
+              to="/login-otp"
+              className="font-medium text-primary-600 hover:text-primary-500"
+            >
+              login with OTP
             </Link>
           </p>
         </div>
@@ -118,7 +164,11 @@ const Login: React.FC = () => {
             </div>
 
             <div className="text-sm">
-              <button type="button" className="font-medium text-primary-600 hover:text-primary-500">
+              <button 
+                type="button" 
+                onClick={() => setShowForgotPassword(true)}
+                className="font-medium text-primary-600 hover:text-primary-500"
+              >
                 Forgot your password?
               </button>
             </div>
@@ -156,9 +206,24 @@ const Login: React.FC = () => {
                     return;
                   }
                   
-                  window.location.href = 'https://insta-serve-1-0.onrender.com/api/auth/google';
+                  // Check if running in Capacitor (mobile app)
+                  if (Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
+                    // Use custom URL scheme for callback
+                    const callbackUrl = 'com.instaserve.app://auth/callback';
+                    const authUrl = `https://insta-serve-1-0.onrender.com/api/auth/google?callback_url=${encodeURIComponent(callbackUrl)}`;
+                    
+                    await Browser.open({ 
+                      url: authUrl,
+                      presentationStyle: 'fullscreen'
+                    });
+                  } else {
+                    // For web, use regular redirect with web callback
+                    const callbackUrl = `${window.location.origin}/auth/callback`;
+                    const authUrl = `https://insta-serve-1-0.onrender.com/api/auth/google?callback_url=${encodeURIComponent(callbackUrl)}`;
+                    window.location.href = authUrl;
+                  }
                 } catch (error) {
-                  window.location.href = 'https://insta-serve-1-0.onrender.com/api/auth/google';
+                  toast.error('Failed to open Google authentication');
                 }
               }}
               className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
@@ -186,6 +251,54 @@ const Login: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Forgot Password</h3>
+              <button
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setForgotEmail('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter your registered email address and we'll send you a password reset link.
+            </p>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div>
+                <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address
+                </label>
+                <input
+                  id="forgot-email"
+                  type="email"
+                  required
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  placeholder="Enter your email"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={forgotLoading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {forgotLoading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -14,6 +14,7 @@ import Services from './pages/Services';
 import ServiceDetail from './pages/ServiceDetail';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import ResetPassword from './pages/ResetPassword';
 import ProviderDashboard from './pages/ProviderDashboard';
 import KYCVerification from './pages/KYCVerification';
 import ProviderTracking from './pages/ProviderTracking';
@@ -113,6 +114,7 @@ function AppContent() {
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
           <Route path="auth/callback" element={<GoogleAuthCallback />} />
+          <Route path="reset-password" element={<ResetPassword />} />
           <Route path="auth/google/complete" element={<GoogleSignupComplete />} />
           <Route path="services" element={<Services />} />
           <Route path="services/:id" element={<ServiceDetail />} />

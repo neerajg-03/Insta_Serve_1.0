@@ -6,7 +6,6 @@ import { Toaster, toast } from 'react-hot-toast';
 import { store, AppDispatch } from './store';
 import { getCurrentUser } from './store/slices/authSlice';
 import socketService, { ChatMessage } from './services/socketService';
-import notificationService from './services/notificationService';
 import Layout from './components/Layout';
 import SplashScreen from './components/SplashScreen';
 import Home from './pages/Home';

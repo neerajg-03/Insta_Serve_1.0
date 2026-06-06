@@ -181,6 +181,10 @@ const userSchema = new mongoose.Schema({
   profilePicture: {
     type: String,
     default: ''
+  },
+  pushToken: {
+    type: String,
+    sparse: true
   }
 }, {
   timestamps: true

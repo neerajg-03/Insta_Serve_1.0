@@ -5,6 +5,20 @@ import { registerUser } from '../store/slices/authSlice';
 import { RootState } from '../store';
 import toast from 'react-hot-toast';
 
+// Dynamically import Capacitor modules only when needed (for mobile)
+let Browser: any = null;
+let Capacitor: any = null;
+
+try {
+  const capacitorCore = require('@capacitor/core');
+  const capacitorBrowser = require('@capacitor/browser');
+  Capacitor = capacitorCore.Capacitor;
+  Browser = capacitorBrowser.Browser;
+} catch (e) {
+  // Capacitor not available (web build)
+  console.log('Capacitor not available - running in web mode');
+}
+
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -274,9 +288,24 @@ const Register: React.FC = () => {
                     return;
                   }
                   
-                  window.location.href = 'https://insta-serve-1-0.onrender.com/api/auth/google';
+                  // Check if running in Capacitor (mobile app)
+                  if (Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
+                    // Use custom URL scheme for callback
+                    const callbackUrl = 'com.instaserve.app://auth/callback';
+                    const authUrl = `https://insta-serve-1-0.onrender.com/api/auth/google?callback_url=${encodeURIComponent(callbackUrl)}`;
+                    
+                    await Browser.open({ 
+                      url: authUrl,
+                      presentationStyle: 'fullscreen'
+                    });
+                  } else {
+                    // For web, use regular redirect with web callback
+                    const callbackUrl = `${window.location.origin}/auth/callback`;
+                    const authUrl = `https://insta-serve-1-0.onrender.com/api/auth/google?callback_url=${encodeURIComponent(callbackUrl)}`;
+                    window.location.href = authUrl;
+                  }
                 } catch (error) {
-                  window.location.href = 'https://insta-serve-1-0.onrender.com/api/auth/google';
+                  toast.error('Failed to open Google authentication');
                 }
               }}
               className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"

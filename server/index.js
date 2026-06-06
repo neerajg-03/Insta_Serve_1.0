@@ -597,3 +597,48 @@ server.listen(PORT, () => {
   console.log(`🔌 Socket.IO enabled`);
 
 });
+
+// Scheduled job to cancel expired broadcast bookings (older than 10 minutes)
+setInterval(async () => {
+  try {
+    const Booking = require('./models/Booking');
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    
+    // Find broadcast bookings that are older than 10 minutes and not accepted
+    const expiredBookings = await Booking.find({
+      status: 'broadcast',
+      broadcastSentAt: { $lt: tenMinutesAgo }
+    });
+    
+    if (expiredBookings.length > 0) {
+      console.log(`🕐 Found ${expiredBookings.length} expired broadcast bookings to cancel`);
+      
+      for (const booking of expiredBookings) {
+        booking.status = 'cancelled';
+        booking.cancelledAt = new Date();
+        booking.cancellationReason = 'Booking expired - not accepted within 10 minutes';
+        booking.timeline.push({
+          status: 'cancelled',
+          timestamp: new Date(),
+          note: 'Booking expired - not accepted within 10 minutes',
+          updatedBy: booking.customer
+        });
+        
+        await booking.save();
+        console.log(`✅ Cancelled expired booking: ${booking._id}`);
+        
+        // Notify customer about cancellation
+        if (io) {
+          io.to(`user_${booking.customer}`).emit('booking_expired', {
+            bookingId: booking._id,
+            message: 'Your booking has expired as no provider accepted it within 10 minutes',
+            timestamp: new Date()
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error cancelling expired broadcast bookings:', error);
+  }
+}, 60 * 1000); // Run every minute
+

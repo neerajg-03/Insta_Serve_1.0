@@ -265,7 +265,6 @@ router.get(
   '/google',
 
   (req, res, next) => {
-    console.log('========== GOOGLE AUTH INIT ==========');
     console.log('Query params:', req.query);
 
     if (
@@ -299,7 +298,6 @@ router.get(
 // @desc    Google OAuth callback
 // @access  Public
 router.get('/google/callback', (req, res, next) => {
-  console.log('========== GOOGLE CALLBACK HIT ==========');
   console.log('Request URL:', req.originalUrl);
   console.log('Query params:', req.query);
   console.log('Configured callback URL:', process.env.GOOGLE_CALLBACK_URL);
@@ -309,9 +307,7 @@ router.get('/google/callback', (req, res, next) => {
     { session: false },
     async (err, user, info) => {
       try {
-        console.log(
-          '========== GOOGLE CALLBACK =========='
-        );
+        
 
         console.log('ERROR:', err);
         console.log('USER:', user);

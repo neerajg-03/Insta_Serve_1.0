@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const ProviderWallet = require('../models/ProviderWallet');
@@ -545,7 +546,7 @@ router.get('/smtp-test', async (req, res) => {
 });
 
 // @route   POST /api/auth/forgot-password
-// @desc    Send password to registered email
+// @desc    Send password reset link to registered email
 // @access  Public
 router.post(
   '/forgot-password',
@@ -569,7 +570,7 @@ router.post(
       const { email } = req.body;
 
       // Find user by email
-      const user = await User.findOne({ email }).select('+password');
+      const user = await User.findOne({ email });
 
       if (!user) {
         return res.status(404).json({
@@ -585,11 +586,19 @@ router.post(
         });
       }
 
-      // Debug logs for environment variables
-      console.log('EMAIL_USER:', process.env.EMAIL_USER);
-      console.log('EMAIL_PASS exists:', !!process.env.EMAIL_PASS);
+      // Generate secure reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenExpiry = Date.now() + 3600000; // 1 hour from now
 
-      // Create email transporter with correct SMTP configuration for Render
+      // Save reset token to user
+      user.passwordResetToken = resetToken;
+      user.passwordResetExpires = resetTokenExpiry;
+      await user.save();
+
+      // Create reset link
+      const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+
+      // Create email transporter
       const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 587,
@@ -623,20 +632,27 @@ router.post(
         });
       }
 
-      // Send password to user's email
+      // Send reset link to user's email
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: user.email,
-        subject: 'Your InstaServe Password',
+        subject: 'Password Reset - InstaServe',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #7C3AED;">Your InstaServe Password</h2>
+            <h2 style="color: #7C3AED;">Password Reset Request</h2>
             <p>Hello ${user.name},</p>
-            <p>You requested to receive your password for your InstaServe account.</p>
-            <p style="background: #f3f4f6; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; color: #7C3AED;">
-              Password: ${user.password}
+            <p>You requested to reset your password for your InstaServe account.</p>
+            <p>Click the button below to reset your password:</p>
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${resetLink}" style="background: #7C3AED; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; display: inline-block;">
+                Reset Password
+              </a>
             </p>
-            <p><strong>Security Note:</strong> For your security, please change your password after logging in.</p>
+            <p>Or copy and paste this link in your browser:</p>
+            <p style="background: #f3f4f6; padding: 15px; border-radius: 8px; word-break: break-all; font-size: 14px;">
+              ${resetLink}
+            </p>
+            <p><strong>This link will expire in 1 hour.</strong></p>
             <p>If you didn't request this, please ignore this email or contact our support team.</p>
             <p>Best regards,<br>The InstaServe Team</p>
           </div>
@@ -645,16 +661,75 @@ router.post(
 
       await transporter.sendMail(mailOptions);
 
-      console.log(`Password sent to email: ${user.email}`);
+      console.log(`Password reset link sent to email: ${user.email}`);
 
       res.json({
-        message: 'Password has been sent to your registered email address'
+        message: 'Password reset link has been sent to your registered email address'
       });
     } catch (error) {
       console.error('Forgot password error:', error);
 
       res.status(500).json({
-        message: 'Server error while sending password. Please try again later.'
+        message: 'Server error while sending reset link. Please try again later.'
+      });
+    }
+  }
+);
+
+// @route   POST /api/auth/reset-password
+// @desc    Reset password using token
+// @access  Public
+router.post(
+  '/reset-password',
+  [
+    body('token')
+      .notEmpty()
+      .withMessage('Reset token is required'),
+    body('password')
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters long')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { token, password } = req.body;
+
+      // Find user with valid reset token
+      const user = await User.findOne({
+        passwordResetToken: token,
+        passwordResetExpires: { $gt: Date.now() }
+      });
+
+      if (!user) {
+        return res.status(400).json({
+          message: 'Invalid or expired reset token. Please request a new password reset link.'
+        });
+      }
+
+      // Update password
+      user.password = password;
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save();
+
+      console.log(`Password reset successful for user: ${user.email}`);
+
+      res.json({
+        message: 'Password has been reset successfully. You can now login with your new password.'
+      });
+    } catch (error) {
+      console.error('Reset password error:', error);
+
+      res.status(500).json({
+        message: 'Server error while resetting password. Please try again later.'
       });
     }
   }

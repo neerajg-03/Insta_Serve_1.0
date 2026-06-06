@@ -3,8 +3,20 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { loginUser } from '../store/slices/authSlice';
 import toast from 'react-hot-toast';
-import { Browser } from '@capacitor/browser';
-import { Capacitor } from '@capacitor/core';
+
+// Dynamically import Capacitor modules only when needed (for mobile)
+let Browser: any = null;
+let Capacitor: any = null;
+
+try {
+  const capacitorCore = require('@capacitor/core');
+  const capacitorBrowser = require('@capacitor/browser');
+  Capacitor = capacitorCore.Capacitor;
+  Browser = capacitorBrowser.Browser;
+} catch (e) {
+  // Capacitor not available (web build)
+  console.log('Capacitor not available - running in web mode');
+}
 
 const GoogleAuthCallback: React.FC = () => {
   const navigate = useNavigate();
@@ -15,7 +27,7 @@ const GoogleAuthCallback: React.FC = () => {
     const handleGoogleCallback = async () => {
       try {
         // Close the in-app browser if running in Capacitor
-        if (Capacitor.isNativePlatform()) {
+        if (Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
           await Browser.close();
         }
 

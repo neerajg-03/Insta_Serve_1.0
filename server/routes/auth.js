@@ -359,7 +359,8 @@ router.get('/google/callback', (req, res, next) => {
 
         const userProfile = user.getProfile();
         
-        // Add isNewUser flag for new users
+        // Add isNewUser flag for new users who haven't completed their profile
+        // Users with placeholder phone '9999999999' need to complete profile
         if (user.authMethod === 'google' && (!user.phone || user.phone === '9999999999')) {
           userProfile.isNewUser = true;
         }
@@ -454,6 +455,18 @@ router.post(
       });
 
       if (user) {
+        // Check if phone number is already taken by another user
+        const phoneExists = await User.findOne({
+          phone,
+          _id: { $ne: user._id }
+        });
+
+        if (phoneExists) {
+          return res.status(400).json({
+            message: 'This phone number is already registered with another account'
+          });
+        }
+
         // Update existing user with new info
         user.phone = phone;
         user.password = password;
@@ -463,6 +476,15 @@ router.post(
         }
         await user.save();
       } else {
+        // Check if phone number is already taken
+        const phoneExists = await User.findOne({ phone });
+
+        if (phoneExists) {
+          return res.status(400).json({
+            message: 'This phone number is already registered with another account'
+          });
+        }
+
         // Create new user with Google data and additional info
         const newUser = new User({
           googleId: googleData.googleId,

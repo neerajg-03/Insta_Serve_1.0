@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,7 +10,6 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import OTPLogin from './pages/OTPLogin';
 import Services from './pages/Services';
 import ServiceDetail from './pages/ServiceDetail';
 import Dashboard from './pages/Dashboard';
@@ -28,10 +27,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import GoogleAuthCallback from './pages/GoogleAuthCallback';
 import GoogleSignupComplete from './pages/GoogleSignupComplete';
-import ResetPassword from './pages/ResetPassword';
 import ProtectedRoute from './components/ProtectedRoute';
-import { App as CapacitorApp } from '@capacitor/app';
-import { Capacitor } from '@capacitor/core';
 
 // Scroll to top component
 function ScrollToTop() {
@@ -47,23 +43,6 @@ function ScrollToTop() {
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: any) => state.auth);
-  const location = useLocation();
-  const [showSplash, setShowSplash] = useState(true);
-
-  useEffect(() => {
-    // Skip splash screen for Google auth callback
-    if (location.pathname === '/auth/callback' || location.pathname === '/auth/google/complete') {
-      setShowSplash(false);
-      return;
-    }
-
-    // Hide splash screen after 6 seconds
-    const splashTimer = setTimeout(() => {
-      setShowSplash(false);
-    }, 6000);
-
-    return () => clearTimeout(splashTimer);
-  }, [location.pathname]);
 
   useEffect(() => {
     // Restore user session on app startup
@@ -76,46 +55,12 @@ function AppContent() {
     }
   }, [dispatch]);
 
-  // Handle deep link callback from OAuth
-  useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      const setupAppUrlOpenListener = async () => {
-        const listener = await CapacitorApp.addListener('appUrlOpen', (event: { url: string }) => {
-          console.log('Deep link received:', event.url);
-          
-          // Check if the URL is our OAuth callback
-          if (event.url.includes('com.instaserve.app://auth/callback')) {
-            // Parse the URL to extract query parameters
-            const url = new URL(event.url.replace('com.instaserve.app://', 'https://'));
-            const params = new URLSearchParams(url.search);
-            const token = params.get('token');
-            const userParam = params.get('user');
-            
-            if (token && userParam) {
-              // Navigate to the callback route in the app with the parameters
-              window.location.href = `/auth/callback?token=${token}&user=${userParam}`;
-            }
-          }
-        });
-
-        return () => {
-          listener.remove();
-        };
-      };
-
-      setupAppUrlOpenListener();
-    }
-  }, [dispatch]);
-
   // Global socket listener for incoming messages
   useEffect(() => {
     if (!user) return;
 
     const setupSocketListener = async () => {
       try {
-        // Initialize notification service
-        await notificationService.initialize();
-
         // Connect to socket if not already connected
         if (!socketService.isConnected()) {
           await socketService.connect({
@@ -160,20 +105,13 @@ function AppContent() {
     };
   }, [user]);
 
-  // Show splash screen while loading
-  if (showSplash) {
-    return <SplashScreen />;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="login" element={<Login />} />
-          <Route path="login-otp" element={<OTPLogin />} />
           <Route path="register" element={<Register />} />
-          <Route path="reset-password" element={<ResetPassword />} />
           <Route path="auth/callback" element={<GoogleAuthCallback />} />
           <Route path="auth/google/complete" element={<GoogleSignupComplete />} />
           <Route path="services" element={<Services />} />
@@ -259,4 +197,3 @@ function App() {
 }
 
 export default App;
-s

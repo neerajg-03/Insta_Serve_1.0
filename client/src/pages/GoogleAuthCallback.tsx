@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { loginUser } from '../store/slices/authSlice';
 import toast from 'react-hot-toast';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 const GoogleAuthCallback: React.FC = () => {
   const navigate = useNavigate();
@@ -12,7 +14,13 @@ const GoogleAuthCallback: React.FC = () => {
   useEffect(() => {
     const handleGoogleCallback = async () => {
       try {
+        // Close the in-app browser if running in Capacitor
+        if (Capacitor.isNativePlatform()) {
+          await Browser.close();
+        }
+
         const error = searchParams.get('error');
+        const message = searchParams.get('message');
         const token = searchParams.get('token');
         const userParam = searchParams.get('user');
         
@@ -20,7 +28,12 @@ const GoogleAuthCallback: React.FC = () => {
         if (error) {
           switch (error) {
             case 'google_auth_failed':
-              toast.error('Google authentication failed. Please try again.');
+              if (message === 'redirect_uri_mismatch') {
+                toast.error('Google OAuth configuration error. Please contact administrator.');
+                console.error('Redirect URI mismatch - Check Google Cloud Console configuration');
+              } else {
+                toast.error('Google authentication failed. Please try again.');
+              }
               break;
             case 'google_not_configured':
               toast.error('Google OAuth is not configured. Please contact administrator.');

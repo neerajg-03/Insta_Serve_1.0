@@ -8,6 +8,7 @@ const { protect, authorize } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { sendPushNotification } = require('../services/firebaseService');
 
 // Configure multer for image and audio uploads
 const storage = multer.diskStorage({
@@ -609,6 +610,13 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
       // Send only to specific providers in broadcastTo array
       availableProviders.forEach(providerId => {
         io.to(`user_${providerId}`).emit('new_service_request', broadcastData);
+        // Also send push notification
+        sendPushNotification(
+          providerId,
+          'New Service Request',
+          `You have a new ${serviceData.name} request`,
+          { type: 'new_service_request', bookingId: booking._id }
+        );
       });
 
       console.log(`Broadcast sent to ${availableProviders.length} providers:`, availableProviders);
@@ -1112,6 +1120,13 @@ router.post('/:id/complete', protect, authorize('provider'), async (req, res) =>
       };
       
       io.to(roomName).emit('completion_code_generated', completionCodeData);
+      // Also send push notification
+      sendPushNotification(
+        booking.customer,
+        'Completion Code Generated',
+        `Your completion code is: ${completionCode}`,
+        { type: 'completion_code', bookingId: booking._id, code: completionCode }
+      );
       console.log(`Completion code ${completionCode} sent to customer ${booking.customer} for booking ${booking._id}`);
     }
 
@@ -1251,6 +1266,13 @@ router.post('/:id/verify-completion-code', protect, authorize('provider'), async
         message: 'Service has been completed',
         timestamp: new Date()
       });
+      // Also send push notification to customer
+      sendPushNotification(
+        booking.customer,
+        'Service Completed',
+        'Your service has been completed successfully',
+        { type: 'booking_update', bookingId: booking._id, status: 'completed' }
+      );
     }
 
     const updatedBooking = await Booking.findById(booking._id)
@@ -1468,6 +1490,13 @@ router.post('/:id/verify-start-code', protect, authorize('provider'), async (req
         message: 'Service has been started',
         timestamp: new Date()
       });
+      // Also send push notification to customer
+      sendPushNotification(
+        booking.customer,
+        'Service Started',
+        'Your service provider has started the service',
+        { type: 'booking_update', bookingId: booking._id, status: 'in_progress' }
+      );
     }
 
     const updatedBooking = await Booking.findById(booking._id)

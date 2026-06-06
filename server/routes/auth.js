@@ -311,6 +311,17 @@ router.get('/google/callback', (req, res, next) => {
             err
           );
 
+          // Check for specific OAuth errors
+          if (err.code === 'invalid_grant') {
+            console.error('❌ INVALID_GRANT ERROR - Redirect URI mismatch detected');
+            console.error('Expected callback URL:', process.env.GOOGLE_CALLBACK_URL);
+            console.error('This error usually means the redirect URI in Google Cloud Console does not match the callback URL in server configuration.');
+            
+            const callbackUrl = decodeURIComponent(req.query.state || '') || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback`;
+            const errorUrl = `${callbackUrl}?error=google_auth_failed&message=redirect_uri_mismatch`;
+            return res.redirect(errorUrl);
+          }
+
           return res.status(500).json({
             message:
               'Google authentication failed',

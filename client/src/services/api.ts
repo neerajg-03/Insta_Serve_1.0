@@ -76,6 +76,9 @@ export const authAPI = {
   forgotPassword: (email: string) =>
     api.post('/auth/forgot-password', { email }).then(res => res.data),
 
+  resetPassword: (token: string, password: string) =>
+    api.post('/auth/reset-password', { token, password }).then(res => res.data),
+
   // OTP Authentication
   sendOTP: (phone: string) =>
     api.post('/auth/otp/send', { phone }).then(res => res.data),

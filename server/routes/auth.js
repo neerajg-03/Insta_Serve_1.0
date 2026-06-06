@@ -265,6 +265,9 @@ router.get(
   '/google',
 
   (req, res, next) => {
+    console.log('========== GOOGLE AUTH INIT ==========');
+    console.log('Query params:', req.query);
+
     if (
       !process.env.GOOGLE_CLIENT_ID ||
       !process.env.GOOGLE_CLIENT_SECRET
@@ -282,6 +285,9 @@ router.get(
     // Store callback_url in session state for later use
     const callbackUrl = req.query.callback_url || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback`;
     
+    console.log('Frontend callback URL:', callbackUrl);
+    console.log('Server callback URL (for Google):', process.env.GOOGLE_CALLBACK_URL);
+    
     passport.authenticate('google', {
       scope: ['profile', 'email'],
       state: encodeURIComponent(callbackUrl)
@@ -293,6 +299,11 @@ router.get(
 // @desc    Google OAuth callback
 // @access  Public
 router.get('/google/callback', (req, res, next) => {
+  console.log('========== GOOGLE CALLBACK HIT ==========');
+  console.log('Request URL:', req.originalUrl);
+  console.log('Query params:', req.query);
+  console.log('Configured callback URL:', process.env.GOOGLE_CALLBACK_URL);
+
   passport.authenticate(
     'google',
     { session: false },
@@ -596,7 +607,7 @@ router.post(
       await user.save();
 
       // Create reset link
-      const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+      const resetLink = `https://insta-serve-1-0.onrender.com/reset-password?token=${resetToken}`;
 
       // Create email transporter
       const transporter = nodemailer.createTransport({

@@ -265,6 +265,7 @@ router.get(
   '/google',
 
   (req, res, next) => {
+    console.log('========== GOOGLE AUTH INIT ==========');
     console.log('Query params:', req.query);
 
     if (
@@ -298,6 +299,7 @@ router.get(
 // @desc    Google OAuth callback
 // @access  Public
 router.get('/google/callback', (req, res, next) => {
+  console.log('========== GOOGLE CALLBACK HIT ==========');
   console.log('Request URL:', req.originalUrl);
   console.log('Query params:', req.query);
   console.log('Configured callback URL:', process.env.GOOGLE_CALLBACK_URL);
@@ -307,7 +309,9 @@ router.get('/google/callback', (req, res, next) => {
     { session: false },
     async (err, user, info) => {
       try {
-        
+        console.log(
+          '========== GOOGLE CALLBACK =========='
+        );
 
         console.log('ERROR:', err);
         console.log('USER:', user);
@@ -995,5 +999,38 @@ router.post(
     }
   }
 );
+
+// @route   POST /api/push-token
+// @desc    Save push notification token
+// @access  Private
+router.post('/push-token', protect, async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        message: 'Push token is required'
+      });
+    }
+
+    // Update user's push token
+    await User.findByIdAndUpdate(
+      req.user._id,
+      { pushToken: token },
+      { new: true }
+    );
+
+    console.log(`✅ Push token saved for user: ${req.user._id}`);
+
+    res.json({
+      message: 'Push token saved successfully'
+    });
+  } catch (error) {
+    console.error('Push token save error:', error);
+    res.status(500).json({
+      message: 'Server error while saving push token'
+    });
+  }
+});
 
 module.exports = router;

@@ -1,11 +1,23 @@
-const admin = require('firebase-admin');
+let admin = null;
+let firebaseInitialized = false;
+
+// Try to load firebase-admin, but don't crash if it's not installed
+try {
+  admin = require('firebase-admin');
+} catch (error) {
+  console.warn('⚠️ firebase-admin module not found. Push notifications will be disabled.');
+  console.warn('⚠️ To enable push notifications, run: npm install firebase-admin');
+}
 
 // Initialize Firebase Admin SDK
 // Note: You need to set up a Firebase project and download the service account key
 // For now, we'll use a placeholder - you'll need to replace this with actual Firebase credentials
-let firebaseInitialized = false;
-
 function initializeFirebase() {
+  if (!admin) {
+    console.warn('⚠️ firebase-admin not installed, skipping Firebase initialization');
+    return;
+  }
+
   if (firebaseInitialized) return;
 
   try {
@@ -33,6 +45,13 @@ function initializeFirebase() {
 
 // Send push notification to a specific user
 async function sendPushNotification(userId, title, body, data = {}) {
+  // If firebase-admin is not installed, just log and return
+  if (!admin) {
+    console.log(`📤 [PUSH] Would send push notification to user ${userId}: ${title} - ${body}`);
+    console.log('📤 [PUSH] (firebase-admin not installed, notification not sent)');
+    return { success: false, message: 'firebase-admin not installed' };
+  }
+
   try {
     if (!firebaseInitialized) {
       initializeFirebase();
@@ -61,7 +80,17 @@ async function sendPushNotification(userId, title, body, data = {}) {
       android: {
         notification: {
           channelId: 'default',
-          priority: 'high'
+          priority: 'high',
+          sound: 'default',
+          visibility: 'public'
+        }
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+            badge: 1
+          }
         }
       }
     };
@@ -85,6 +114,13 @@ async function sendPushNotification(userId, title, body, data = {}) {
 
 // Send push notification to multiple users
 async function sendPushNotificationToMultiple(userIds, title, body, data = {}) {
+  // If firebase-admin is not installed, just log and return
+  if (!admin) {
+    console.log(`📤 [PUSH] Would send push notifications to ${userIds.length} users: ${title} - ${body}`);
+    console.log('📤 [PUSH] (firebase-admin not installed, notifications not sent)');
+    return { success: false, message: 'firebase-admin not installed' };
+  }
+
   try {
     if (!firebaseInitialized) {
       initializeFirebase();
@@ -113,7 +149,17 @@ async function sendPushNotificationToMultiple(userIds, title, body, data = {}) {
       android: {
         notification: {
           channelId: 'default',
-          priority: 'high'
+          priority: 'high',
+          sound: 'default',
+          visibility: 'public'
+        }
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: 'default',
+            badge: 1
+          }
         }
       }
     }));

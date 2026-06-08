@@ -395,7 +395,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
             console.log(`  Provider ${provider.name} currentLocation age: ${ageInMinutes} minutes`);
             
             // Skip stale locations for 7km filter (older than 30 minutes)
-            if (ageInMinutes > 30) {
+            if (ageInMinutes > 200) {
               console.log(`  ❌ ${provider.name}: location too old (${ageInMinutes}min > 30min), checking address fallback`);
               // Don't return false here, let it fall through to address check
             } else {
@@ -615,7 +615,17 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
           providerId,
           'New Service Request',
           `You have a new ${serviceData.name} request`,
-          { type: 'new_service_request', bookingId: booking._id.toString() }
+          {
+            type: 'new_service_request',
+            bookingId: booking._id.toString(),
+            serviceTitle: serviceData.title,
+            serviceCategory: serviceData.category,
+            customerName: req.user.name,
+            customerId: req.user._id.toString(),
+            address: booking.address,
+            price: totalPrice.toString(),
+            scheduledDate: booking.scheduledDate ? booking.scheduledDate.toString() : ''
+          }
         );
       });
 

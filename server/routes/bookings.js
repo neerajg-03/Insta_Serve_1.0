@@ -615,7 +615,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
           providerId,
           'New Service Request',
           `You have a new ${serviceData.name} request`,
-          { type: 'new_service_request', bookingId: booking._id }
+          { type: 'new_service_request', bookingId: booking._id.toString() }
         );
       });
 
@@ -1125,7 +1125,7 @@ router.post('/:id/complete', protect, authorize('provider'), async (req, res) =>
         booking.customer,
         'Completion Code Generated',
         `Your completion code is: ${completionCode}`,
-        { type: 'completion_code', bookingId: booking._id, code: completionCode }
+        { type: 'completion_code', bookingId: booking._id.toString(), code: completionCode }
       );
       console.log(`Completion code ${completionCode} sent to customer ${booking.customer} for booking ${booking._id}`);
     }
@@ -1271,7 +1271,7 @@ router.post('/:id/verify-completion-code', protect, authorize('provider'), async
         booking.customer,
         'Service Completed',
         'Your service has been completed successfully',
-        { type: 'booking_update', bookingId: booking._id, status: 'completed' }
+        { type: 'booking_update', bookingId: booking._id.toString(), status: 'completed' }
       );
     }
 
@@ -1495,7 +1495,7 @@ router.post('/:id/verify-start-code', protect, authorize('provider'), async (req
         booking.customer,
         'Service Started',
         'Your service provider has started the service',
-        { type: 'booking_update', bookingId: booking._id, status: 'in_progress' }
+        { type: 'booking_update', bookingId: booking._id.toString(), status: 'in_progress' }
       );
     }
 

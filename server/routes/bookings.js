@@ -615,7 +615,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
         const result = await sendPushNotification(
           providerId,
           'New Service Request',
-          `You have a new ${serviceData.name} request`,
+          `You have a new service request from Customer`,
           {
             type: 'new_service_request',
             bookingId: booking._id.toString(),

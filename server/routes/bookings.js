@@ -608,10 +608,11 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
       };
 
       // Send only to specific providers in broadcastTo array
-      availableProviders.forEach(providerId => {
+      availableProviders.forEach(async (providerId) => {
         io.to(`user_${providerId}`).emit('new_service_request', broadcastData);
         // Also send push notification
-        sendPushNotification(
+        console.log(`📤 Attempting to send push notification to provider ${providerId}`);
+        const result = await sendPushNotification(
           providerId,
           'New Service Request',
           `You have a new ${serviceData.name} request`,
@@ -627,6 +628,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
             scheduledDate: booking.scheduledDate ? booking.scheduledDate.toString() : ''
           }
         );
+        console.log(`📤 Push notification result for provider ${providerId}:`, result);
       });
 
       console.log(`Broadcast sent to ${availableProviders.length} providers:`, availableProviders);

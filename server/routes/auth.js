@@ -1033,4 +1033,51 @@ router.post('/push-token', protect, async (req, res) => {
   }
 });
 
+// @route   DELETE /api/auth/delete-account
+// @desc    Delete user account
+// @access  Private
+router.delete('/delete-account', protect, async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        message: 'Password is required to delete account'
+      });
+    }
+
+    // Get user with password
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found'
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        message: 'Invalid password'
+      });
+    }
+
+    // Delete user account (cascade delete will handle related data)
+    await User.findByIdAndDelete(req.user._id);
+
+    console.log(`✅ Account deleted for user: ${user.email}`);
+
+    res.json({
+      message: 'Account deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({
+      message: 'Server error while deleting account'
+    });
+  }
+});
+
 module.exports = router;

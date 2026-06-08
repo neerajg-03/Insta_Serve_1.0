@@ -623,7 +623,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
             serviceCategory: serviceData.category,
             customerName: req.user.name,
             customerId: req.user._id.toString(),
-            address: booking.address,
+            address: typeof booking.address === 'string' ? booking.address : `${booking.address?.street || ''}, ${booking.address?.city || ''}`,
             price: totalPrice.toString(),
             scheduledDate: booking.scheduledDate ? booking.scheduledDate.toString() : ''
           }

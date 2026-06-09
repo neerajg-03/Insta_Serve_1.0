@@ -120,6 +120,16 @@ const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [showViewUserModal, setShowViewUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [userFormData, setUserFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: '',
+    isActive: true
+  });
 
   // KYC Management State
   const [pendingKYC, setPendingKYC] = useState<any[]>([]);
@@ -255,6 +265,43 @@ const AdminDashboard: React.FC = () => {
       fetchUsers();
     } catch (err: any) {
       setUsersError(err.response?.data?.message || 'Failed to update user');
+    }
+  };
+
+  const handleViewUser = (user: any) => {
+    setSelectedUser(user);
+    setShowViewUserModal(true);
+  };
+
+  const handleEditUser = (user: any) => {
+    setSelectedUser(user);
+    setUserFormData({
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      role: user.role,
+      isActive: user.isActive
+    });
+    setShowEditUserModal(true);
+  };
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+
+    try {
+      setUsersLoading(true);
+      await adminAPI.updateUser(selectedUser._id, userFormData);
+      toast.success('User updated successfully');
+      setShowEditUserModal(false);
+      setSelectedUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      console.error('Error updating user:', err);
+      toast.error(err.response?.data?.message || 'Failed to update user');
+      setUsersError(err.response?.data?.message || 'Failed to update user');
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -974,7 +1021,7 @@ const AdminDashboard: React.FC = () => {
                     <p className="text-gray-600">No users found</p>
                   </div>
                 ) : (
-                  users.slice(0, 10).map((user) => (
+                  users.map((user) => (
                     <div key={`user_${user._id}`} className="bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -1001,10 +1048,16 @@ const AdminDashboard: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2 ml-4">
-                          <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => handleViewUser(user)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
                             <EyeIcon className="w-4 h-4" />
                           </button>
-                          <button className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => handleEditUser(user)}
+                            className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                          >
                             <PencilIcon className="w-4 h-4" />
                           </button>
                           <button 
@@ -1026,6 +1079,176 @@ const AdminDashboard: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* View User Modal */}
+        {showViewUserModal && selectedUser && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="p-8">
+                <div className="flex justify-between items-center mb-8">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 rounded-xl shadow-lg">
+                      <UserIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">User Details</h2>
+                      <p className="text-gray-600 mt-1">View user information</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowViewUserModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedUser.name}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedUser.email}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Phone</label>
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedUser.phone || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedUser.role}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                      <span className={`px-3 py-1 text-sm font-medium rounded-full ${
+                        selectedUser.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {selectedUser.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">User ID</label>
+                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg text-sm">{selectedUser._id}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex justify-end">
+                  <button
+                    onClick={() => setShowViewUserModal(false)}
+                    className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit User Modal */}
+        {showEditUserModal && selectedUser && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="p-8">
+                <div className="flex justify-between items-center mb-8">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 rounded-xl shadow-lg">
+                      <PencilIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">Edit User</h2>
+                      <p className="text-gray-600 mt-1">Update user information</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowEditUserModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveUser} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                      <input
+                        type="text"
+                        value={userFormData.name}
+                        onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={userFormData.email}
+                        onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Phone</label>
+                      <input
+                        type="text"
+                        value={userFormData.phone}
+                        onChange={(e) => setUserFormData({ ...userFormData, phone: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+                      <select
+                        value={userFormData.role}
+                        onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="customer">Customer</option>
+                        <option value="provider">Provider</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          checked={userFormData.isActive}
+                          onChange={(e) => setUserFormData({ ...userFormData, isActive: e.target.checked })}
+                          className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-semibold text-gray-700">Active Status</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowEditUserModal(false)}
+                      className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1079,8 +1302,8 @@ const AdminDashboard: React.FC = () => {
             </h4>
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-white rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{services.filter(s => s.isActive).length}</p>
-                <p className="text-sm text-gray-600">Active Services</p>
+                <p className="text-2xl font-bold text-green-600">{services.filter(s => s.isActive && !s.provider).length}</p>
+                <p className="text-sm text-gray-600">Active Service Types</p>
               </div>
               <div className="text-center p-4 bg-white rounded-lg">
                 <p className="text-2xl font-bold text-blue-600">{providerRequests.filter(r => !r.isApproved).length}</p>
@@ -1380,7 +1603,7 @@ const AdminDashboard: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                services.map((service: any) => (
+                services.filter(s => !s.provider).map((service: any) => (
                   <div key={`service_${service._id}`} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-300">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">

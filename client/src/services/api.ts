@@ -88,6 +88,9 @@ export const authAPI = {
 
   loginWithOTP: (phone: string, otp: string) =>
     api.post('/auth/otp/login', { phone, otp }).then(res => res.data),
+
+  savePushToken: (token: string) =>
+    api.post('/auth/push-token', { token }).then(res => res.data),
 };
 
 // Services API
@@ -303,7 +306,7 @@ export const adminAPI = {
     api.post(`/admin/services/${serviceId}/approve`).then(res => res.data),
 
   updateService: (serviceId: string, serviceData: any) =>
-    api.put(`/services/${serviceId}`, serviceData).then(res => res.data),
+    api.put(`/admin/services/${serviceId}`, serviceData).then(res => res.data),
 
   deleteService: (serviceId: string) =>
     api.delete(`/admin/services/${serviceId}`).then(res => res.data),

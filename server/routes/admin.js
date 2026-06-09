@@ -37,7 +37,7 @@ router.get('/users', protect, authorize('admin'), async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 1000,
+      limit = 10,
       role,
       kycStatus,
       isActive,
@@ -131,7 +131,7 @@ router.put('/users/:id', protect, authorize('admin'), async (req, res) => {
 // @access  Private (Admin)
 router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
   try {
-    const { status, page = 1, limit = 1000 } = req.query;
+    const { status, page = 1, limit = 10 } = req.query;
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -173,7 +173,7 @@ router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
 // @access  Private (Admin)
 router.get('/kyc/pending', protect, authorize('admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 1000 } = req.query;
+    const { page = 1, limit = 10 } = req.query;
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -325,7 +325,7 @@ router.get('/services', protect, authorize('admin'), async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 1000,
+      limit = 10,
       isApproved,
       isActive,
       category,
@@ -618,7 +618,7 @@ router.get('/coupons', protect, authorize('admin'), async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 1000,
+      limit = 10,
       status,
       discountType,
       search,
@@ -813,13 +813,92 @@ router.put('/coupons/:id', protect, authorize('admin'), async (req, res) => {
   }
 });
 
+// @route   PUT /api/admin/services/:id
+// @desc    Update a service (admin only)
+// @access  Private (Admin)
+router.put('/services/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id);
+
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    const allowedUpdates = [
+      'title',
+      'description',
+      'category',
+      'subcategory',
+      'price',
+      'priceType',
+      'duration',
+      'serviceArea',
+      'skills',
+      'requirements',
+      'tools',
+      'isActive',
+      'isApproved'
+    ];
+
+    const updates = {};
+    Object.keys(req.body).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
+
+    // Handle duration conversion
+    if (req.body.estimatedDuration) {
+      updates.duration = {
+        value: parseInt(req.body.estimatedDuration),
+        unit: 'hours'
+      };
+      delete updates.estimatedDuration;
+    }
+
+    // Handle base price conversion
+    if (req.body.basePrice) {
+      updates.price = parseFloat(req.body.basePrice);
+      delete updates.basePrice;
+    }
+
+    // Handle tools/skills conversion
+    if (req.body.tools) {
+      updates.skills = req.body.tools.split(',').map(t => t.trim());
+      delete updates.tools;
+    }
+
+    // Handle requirements mapping
+    if (req.body.requirements) {
+      updates.subcategory = req.body.requirements;
+      delete updates.requirements;
+    }
+
+    const updatedService = await Service.findByIdAndUpdate(
+      req.params.id,
+      { ...updates, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    ).populate('provider', 'name email phone');
+
+    console.log('✏️ Service updated:', updatedService.title);
+
+    res.json({
+      message: 'Service updated successfully',
+      service: updatedService
+    });
+  } catch (error) {
+    console.error('Update service error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   DELETE /api/admin/services/:id
 // @desc    Delete a service
 // @access  Private (Admin)
 router.delete('/services/:id', protect, authorize('admin'), async (req, res) => {
   try {
     const service = await Service.findById(req.params.id);
-    
+
     if (!service) {
       return res.status(404).json({ message: 'Service not found' });
     }
@@ -922,7 +1001,7 @@ router.get('/bookings', protect, authorize('admin'), async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 1000,
+      limit = 10,
       status,
       paymentStatus,
       dateFrom,

@@ -146,12 +146,22 @@ router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
     }
 
     const users = await User.find(query)
-      .select('name email phone kycDocuments kycStatus kycRejectionReason createdAt')
+      .select('name email phone kycDocuments kycStatus kycRejectionReason kycVerificationPhoto createdAt')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
 
     const total = await User.countDocuments(query);
+
+    console.log('KYC users fetched:', users.length);
+    users.forEach(user => {
+      console.log(`User ${user.name} - KYC Status: ${user.kycStatus}, Documents: ${user.kycDocuments?.length || 0}`);
+      if (user.kycDocuments && user.kycDocuments.length > 0) {
+        user.kycDocuments.forEach((doc, index) => {
+          console.log(`  Document ${index + 1}: ${doc.documentType}, URL: ${doc.documentUrl}`);
+        });
+      }
+    });
 
     res.json({
       users,
@@ -183,7 +193,7 @@ router.get('/kyc/pending', protect, authorize('admin'), async (req, res) => {
       role: 'provider',
       kycStatus: 'pending'
     })
-      .select('name email phone kycDocuments kycStatus kycRejectionReason createdAt')
+      .select('name email phone kycDocuments kycStatus kycRejectionReason kycVerificationPhoto createdAt')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);

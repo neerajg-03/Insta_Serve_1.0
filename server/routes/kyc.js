@@ -107,15 +107,24 @@ router.post('/upload/kyc-document', protect, upload.single('document'), async (r
     }
 
     const { documentType } = req.body;
-    
+
     if (!documentType) {
-      // Clean up uploaded file if document type is missing
-      fs.unlinkSync(req.file.path);
+      // Clean up uploaded file from Cloudinary if document type is missing
+      await cloudinary.uploader.destroy(req.file.public_id);
       return res.status(400).json({ message: 'Document type is required' });
     }
 
-    // Create file URL
-    const documentUrl = `/uploads/kyc/${req.file.filename}`;
+    console.log('Cloudinary file object:', JSON.stringify({
+      path: req.file.path,
+      secure_url: req.file.secure_url,
+      public_id: req.file.public_id,
+      filename: req.file.filename
+    }, null, 2));
+
+    // Cloudinary returns the secure URL in req.file.path or req.file.secure_url
+    const documentUrl = req.file.secure_url || req.file.path;
+
+    console.log('Document URL to save:', documentUrl);
 
     res.json({
       message: 'Document uploaded successfully',
@@ -125,15 +134,15 @@ router.post('/upload/kyc-document', protect, upload.single('document'), async (r
 
   } catch (error) {
     console.error('Upload error:', error);
-    
-    // Clean up uploaded file if error occurred
+
+    // Clean up uploaded file from Cloudinary if error occurred
     if (req.file) {
-      fs.unlinkSync(req.file.path);
+      await cloudinary.uploader.destroy(req.file.public_id);
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       message: 'Upload failed',
-      error: error.message 
+      error: error.message
     });
   }
 });
@@ -145,8 +154,17 @@ router.post('/kyc/upload-verification-photo', protect, upload.single('photo'), a
       return res.status(400).json({ message: 'No photo uploaded' });
     }
 
+    console.log('Cloudinary file object:', JSON.stringify({
+      path: req.file.path,
+      secure_url: req.file.secure_url,
+      public_id: req.file.public_id,
+      filename: req.file.filename
+    }, null, 2));
+
     // Cloudinary returns the secure URL in req.file.path or req.file.secure_url
     const photoUrl = req.file.secure_url || req.file.path;
+
+    console.log('Photo URL to save:', photoUrl);
 
     // Update user's kycVerificationPhoto
     const user = await User.findById(req.user._id);
@@ -172,6 +190,8 @@ router.post('/kyc/upload-verification-photo', protect, upload.single('photo'), a
 
     user.kycVerificationPhoto = photoUrl;
     await user.save();
+
+    console.log('User updated with photo URL:', user.kycVerificationPhoto);
 
     res.json({
       message: 'Verification photo uploaded successfully',

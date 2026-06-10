@@ -182,6 +182,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  kycVerificationPhoto: {
+    type: String,
+    default: ''
+  },
   pushToken: {
     type: String,
     sparse: true

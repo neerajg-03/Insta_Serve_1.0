@@ -1,412 +1,220 @@
 const express = require('express');
-const multer = require('multer');
 const router = express.Router();
 const User = require('../models/User');
-const { protect } = require('../middleware/auth');
-const { storage, cloudinary } = require('../config/cloudinary');
+const Service = require('../models/Service');
+const Booking = require('../models/Booking');
+const Coupon = require('../models/Coupon');
+const ProviderWallet = require('../models/ProviderWallet');
+const { protect, authorize } = require('../middleware/auth');
 
-const fileFilter = (req, file, cb) => {
-  // Accept images and PDFs
-  if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image and PDF files are allowed'), false);
-  }
-};
-
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  }
-});
-
-// Verify document number before KYC submission
-router.post('/kyc/verify', protect, async (req, res) => {
+// @route   GET /api/admin/users/:id
+// @desc    Get detailed user information for admin
+// @access  Private (Admin)
+router.get('/users/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const { documentType, documentNumber } = req.body;
-
-    if (!documentType || !documentNumber) {
-      return res.status(400).json({ 
-        message: 'Document type and number are required' 
+    const user = await User.findById(req.params.id)
+      .select('-password -emailVerificationToken -passwordResetToken -passwordResetExpires')
+      .populate({
+        path: 'services',
+        select: 'title category price isActive isApproved ratings bookingCount createdAt'
       });
-    }
 
-    if (!['aadhar', 'pan'].includes(documentType)) {
-      return res.status(400).json({ 
-        message: 'Document type must be aadhar or pan' 
-      });
-    }
-
-    const user = await User.findById(req.user._id);
-    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user is a provider
-    if (user.role !== 'provider') {
-      return res.status(403).json({ 
-        message: 'Only providers can verify KYC documents' 
-      });
-    }
-
-    // Check if document number already exists
-    let existingUser;
-
-    if (documentType === 'pan') {
-      // Check both PAN field and kycDocuments array for PAN
-      existingUser = await User.findOne({
-        $or: [
-          { pan: documentNumber },
-          {
-            'kycDocuments.documentNumber': documentNumber,
-            'kycDocuments.documentType': 'pan'
-          }
-        ],
-        role: 'provider',
-        _id: { $ne: req.user._id }
-      });
-    } else if (documentType === 'aadhar') {
-      // Check kycDocuments array for Aadhar
-      existingUser = await User.findOne({
-        'kycDocuments.documentNumber': documentNumber,
-        'kycDocuments.documentType': 'aadhar',
-        role: 'provider',
-        _id: { $ne: req.user._id }
-      });
-    }
-
-    if (existingUser) {
-      return res.status(400).json({ 
-        message: `This ${documentType.toUpperCase()} number already exists with another user`,
-        available: false
-      });
-    }
-
-    res.json({
-      message: `${documentType.toUpperCase()} number is available`,
-      available: true
-    });
-
+    res.json({ user });
   } catch (error) {
-    console.error('KYC verification error:', error);
-    res.status(500).json({ 
-      message: 'Verification failed',
-      error: error.message 
-    });
+    console.error('Get user details error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Upload KYC document
-router.post('/upload/kyc-document', protect, upload.single('document'), async (req, res) => {
+// @route   GET /api/admin/users
+// @desc    Get all users with pagination and filtering
+// @access  Private (Admin)
+router.get('/users', protect, authorize('admin'), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
+    const {
+      page = 1,
+      limit = 10,
+      role,
+      kycStatus,
+      isActive,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
 
-    const { documentType } = req.body;
+    // Build query
+    const query = {};
     
-    if (!documentType) {
-      // Clean up uploaded file if document type is missing
-      fs.unlinkSync(req.file.path);
-      return res.status(400).json({ message: 'Document type is required' });
-    }
-
-    // Create file URL
-    const documentUrl = `/uploads/kyc/${req.file.filename}`;
-
-    res.json({
-      message: 'Document uploaded successfully',
-      documentUrl: documentUrl,
-      filename: req.file.filename
-    });
-
-  } catch (error) {
-    console.error('Upload error:', error);
+    if (role) query.role = role;
+    if (kycStatus) query.kycStatus = kycStatus;
+    if (isActive !== undefined) query.isActive = isActive === 'true';
     
-    // Clean up uploaded file if error occurred
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
-    
-    res.status(500).json({ 
-      message: 'Upload failed',
-      error: error.message 
-    });
-  }
-});
-
-// Upload KYC verification photo
-router.post('/upload/kyc-verification-photo', protect, upload.single('photo'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No photo uploaded' });
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } }
+      ];
     }
 
-    // Cloudinary returns the secure URL in req.file.path
-    const photoUrl = req.file.path;
+    // Sort
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    // Update user's kycVerificationPhoto
-    const user = await User.findById(req.user._id);
-    
-    if (!user) {
-      // Delete uploaded file from Cloudinary if user not found
-      await cloudinary.uploader.destroy(req.file.filename);
-      return res.status(404).json({ message: 'User not found' });
-    }
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
 
-    // Delete old photo from Cloudinary if exists
-    if (user.kycVerificationPhoto) {
-      try {
-        const publicId = user.kycVerificationPhoto.split('/').pop().split('.')[0];
-        await cloudinary.uploader.destroy(`kyc-verification/${publicId}`);
-      } catch (err) {
-        console.error('Error deleting old photo from Cloudinary:', err);
-      }
-    }
+    const users = await User.find(query)
+      .select('-password -emailVerificationToken -passwordResetToken -passwordResetExpires')
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
 
-    user.kycVerificationPhoto = photoUrl;
-    await user.save();
-
-    res.json({
-      message: 'Verification photo uploaded successfully',
-      photoUrl: photoUrl
-    });
-
-  } catch (error) {
-    console.error('Photo upload error:', error);
-    
-    // Clean up uploaded file from Cloudinary if error occurred
-    if (req.file) {
-      await cloudinary.uploader.destroy(req.file.filename);
-    }
-    
-    res.status(500).json({ 
-      message: 'Photo upload failed',
-      error: error.message 
-    });
-  }
-});
-
-// Submit KYC documents
-router.post('/kyc', protect, async (req, res) => {
-  try {
-    const { documents } = req.body;
-    
-    if (!documents || !Array.isArray(documents) || documents.length === 0) {
-      return res.status(400).json({ message: 'Documents are required' });
-    }
-
-    const user = await User.findById(req.user._id);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Check if user is a provider
-    if (user.role !== 'provider') {
-      return res.status(403).json({ message: 'Only providers can submit KYC documents' });
-    }
-
-    // Check if KYC is already submitted and approved
-    if (user.kycStatus === 'approved') {
-      return res.status(400).json({ message: 'KYC already approved' });
-    }
-
-    // Validate each document
-    for (const doc of documents) {
-      if (!doc.documentType || !doc.documentNumber || !doc.documentUrl) {
-        return res.status(400).json({ 
-          message: 'All documents must have type, number, and URL' 
-        });
-      }
-    }
-
-    // Check for duplicate document numbers across all users
-    const documentNumbers = documents.map(doc => doc.documentNumber);
-    const existingUsers = await User.find({
-      'kycDocuments.documentNumber': { $in: documentNumbers },
-      _id: { $ne: req.user._id }
-    });
-
-    if (existingUsers.length > 0) {
-      const duplicateNumbers = existingUsers.flatMap(user => 
-        user.kycDocuments
-          .filter(doc => documentNumbers.includes(doc.documentNumber))
-          .map(doc => doc.documentNumber)
-      );
-
-      return res.status(400).json({ 
-        message: `Document number(s) already exist with another user: ${duplicateNumbers.join(', ')}` 
-      });
-    }
-
-    // Update user's KYC documents and save PAN to pan field
-    user.kycDocuments = documents.map(doc => ({
-      documentType: doc.documentType,
-      documentNumber: doc.documentNumber,
-      documentUrl: doc.documentUrl,
-      uploadDate: new Date()
-    }));
-
-    // Save PAN number to pan field if PAN document is submitted
-    const panDoc = documents.find(doc => doc.documentType === 'pan');
-    if (panDoc) {
-      user.pan = panDoc.documentNumber;
-    }
-
-    user.kycStatus = 'pending';
-    await user.save();
-
-    res.json({
-      message: 'KYC documents submitted successfully',
-      kycStatus: user.kycStatus,
-      documents: user.kycDocuments
-    });
-
-  } catch (error) {
-    console.error('KYC submission error:', error);
-    res.status(500).json({ 
-      message: 'KYC submission failed',
-      error: error.message 
-    });
-  }
-});
-
-// Get KYC status
-router.get('/kyc/status', protect, async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id).select('kycStatus kycDocuments');
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json({
-      kycStatus: user.kycStatus,
-      documents: user.kycDocuments
-    });
-
-  } catch (error) {
-    console.error('KYC status error:', error);
-    res.status(500).json({ 
-      message: 'Failed to get KYC status',
-      error: error.message 
-    });
-  }
-});
-
-// Admin routes for KYC management
-router.get('/admin/kyc/pending', protect, async (req, res) => {
-  try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-
-    const pendingUsers = await User.find({
-      role: 'provider',
-      kycStatus: 'pending'
-    }).select('name email phone kycDocuments kycStatus createdAt');
-
-    res.json({
-      pendingUsers,
-      count: pendingUsers.length
-    });
-
-  } catch (error) {
-    console.error('Get pending KYC error:', error);
-    res.status(500).json({ 
-      message: 'Failed to get pending KYC applications',
-      error: error.message 
-    });
-  }
-});
-
-// Get all KYC applications (pending, approved, rejected)
-router.get('/admin/kyc/all', protect, async (req, res) => {
-  try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-
-    const { status } = req.query;
-    let filter = { role: 'provider' };
-    
-    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
-      filter.kycStatus = status;
-    }
-
-    const users = await User.find(filter)
-      .select('name email phone kycDocuments kycStatus kycRejectionReason createdAt')
-      .sort({ createdAt: -1 });
+    const total = await User.countDocuments(query);
 
     res.json({
       users,
-      count: users.length
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/users/:id
+// @desc    Update user (admin only)
+// @access  Private (Admin)
+router.put('/users/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const allowedUpdates = ['name', 'email', 'phone', 'role', 'isActive', 'isVerified', 'kycStatus'];
+    const updates = {};
+
+    Object.keys(req.body).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
     });
 
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    ).select('-password -emailVerificationToken -passwordResetToken -passwordResetExpires');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      message: 'User updated successfully',
+      user: user.getProfile()
+    });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/kyc/all
+// @desc    Get all KYC applications by status
+// @access  Private (Admin)
+router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const query = {
+      role: 'provider'
+    };
+
+    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+      query.kycStatus = status;
+    }
+
+    const users = await User.find(query)
+      .select('name email phone kycDocuments kycStatus kycRejectionReason kycVerificationPhoto createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await User.countDocuments(query);
+
+    res.json({
+      users,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
   } catch (error) {
     console.error('Get all KYC error:', error);
-    res.status(500).json({ 
-      message: 'Failed to get KYC applications',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Serve uploaded documents
-router.get('/uploads/kyc/:filename', protect, async (req, res) => {
+// @route   GET /api/admin/kyc/pending
+// @desc    Get pending KYC applications
+// @access  Private (Admin)
+router.get('/kyc/pending', protect, authorize('admin'), async (req, res) => {
   try {
-    const { filename } = req.params;
-    const filePath = path.join(__dirname, '../uploads/kyc', filename);
-    
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'Document not found' });
-    }
+    const { page = 1, limit = 10 } = req.query;
 
-    // Get file extension to determine content type
-    const ext = path.extname(filename).toLowerCase();
-    let contentType = 'application/octet-stream';
-    
-    if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
-    else if (ext === '.png') contentType = 'image/png';
-    else if (ext === '.gif') contentType = 'image/gif';
-    else if (ext === '.pdf') contentType = 'application/pdf';
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
 
-    res.setHeader('Content-Type', contentType);
-    res.sendFile(filePath);
+    const users = await User.find({
+      role: 'provider',
+      kycStatus: 'pending'
+    })
+      .select('name email phone kycDocuments kycStatus kycRejectionReason kycVerificationPhoto createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
 
+    const total = await User.countDocuments({
+      role: 'provider',
+      kycStatus: 'pending'
+    });
+
+    res.json({
+      users,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
   } catch (error) {
-    console.error('Serve document error:', error);
-    res.status(500).json({ 
-      message: 'Failed to serve document',
-      error: error.message 
-    });
+    console.error('Get pending KYC error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Approve/Reject KYC
-router.post('/admin/kyc/:userId/review', protect, async (req, res) => {
+// @route   POST /api/admin/kyc/:userId/approve
+// @desc    Approve KYC application
+// @access  Private (Admin)
+router.post('/kyc/:userId/approve', protect, authorize('admin'), async (req, res) => {
   try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
+    const user = await User.findById(req.params.userId);
 
-    const { status, reason } = req.body;
-    const { userId } = req.params;
-
-    if (!['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ message: 'Invalid status' });
-    }
-
-    const user = await User.findById(userId);
-    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -415,25 +223,1139 @@ router.post('/admin/kyc/:userId/review', protect, async (req, res) => {
       return res.status(400).json({ message: 'User is not a provider' });
     }
 
-    user.kycStatus = status;
-    
-    if (status === 'rejected' && reason) {
-      user.kycRejectionReason = reason;
+    if (user.kycStatus !== 'pending') {
+      return res.status(400).json({ message: 'KYC is not pending' });
     }
 
+    user.kycStatus = 'approved';
+    user.isVerified = true;
     await user.save();
 
     res.json({
-      message: `KYC ${status} successfully`,
+      message: 'KYC approved successfully',
+      userId: user._id,
       kycStatus: user.kycStatus
     });
-
   } catch (error) {
-    console.error('KYC review error:', error);
-    res.status(500).json({ 
-      message: 'KYC review failed',
-      error: error.message 
+    console.error('Approve KYC error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/wallet/:providerId/bonus
+// @desc    Add bonus to provider wallet (admin only)
+// @access  Private (Admin)
+router.post('/wallet/:providerId/bonus', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { amount, description } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: 'Bonus amount must be positive' });
+    }
+
+    const user = await User.findById(req.params.providerId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.role !== 'provider') {
+      return res.status(400).json({ message: 'User is not a provider' });
+    }
+
+    const wallet = await ProviderWallet.getOrCreateWallet(user._id);
+    await wallet.addBonus(amount, description || 'Bonus added by admin');
+
+    res.json({
+      message: 'Bonus added successfully',
+      providerId: user._id,
+      amount,
+      newBalance: wallet.balance
     });
+  } catch (error) {
+    console.error('Add bonus error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/kyc/:userId/reject
+// @desc    Reject KYC application
+// @access  Private (Admin)
+router.post('/kyc/:userId/reject', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ message: 'Rejection reason is required' });
+    }
+
+    const user = await User.findById(req.params.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.role !== 'provider') {
+      return res.status(400).json({ message: 'User is not a provider' });
+    }
+
+    if (user.kycStatus !== 'pending') {
+      return res.status(400).json({ message: 'KYC is not pending' });
+    }
+
+    user.kycStatus = 'rejected';
+    await user.save();
+
+    res.json({
+      message: 'KYC rejected successfully',
+      userId: user._id,
+      kycStatus: user.kycStatus,
+      rejectionReason: reason
+    });
+  } catch (error) {
+    console.error('Reject KYC error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/services
+// @desc    Get all services for admin review
+// @access  Private (Admin)
+router.get('/services', protect, authorize('admin'), async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      isApproved,
+      isActive,
+      category,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build query
+    const query = {};
+    
+    if (isApproved !== undefined) query.isApproved = isApproved === 'true';
+    if (isActive !== undefined) query.isActive = isActive === 'true';
+    if (category) query.category = category;
+    
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Sort
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const services = await Service.find(query)
+      .populate('provider', 'name email phone kycVerificationPhoto')
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Service.countDocuments(query);
+
+    res.json({
+      services,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get services error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/services
+// @desc    Create a new service type
+// @access  Private (Admin)
+router.post('/services', protect, authorize('admin'), async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      category,
+      estimatedDuration,
+      basePrice,
+      serviceArea,
+      requirements,
+      tools
+    } = req.body;
+
+    // Validate required fields
+    if (!title || !description || !category || !estimatedDuration || !basePrice || !serviceArea) {
+      return res.status(400).json({ 
+        message: 'Please provide all required fields: title, description, category, estimatedDuration, basePrice, serviceArea' 
+      });
+    }
+
+    // Map category values - frontend sends enum values directly
+    const categoryMap = {
+      'home_cleaning': 'home_cleaning',
+      'beauty_wellness': 'beauty_wellness',
+      'appliance_repair': 'appliance_repair',
+      'plumbing': 'plumbing',
+      'electrical': 'electrical',
+      'carpentry': 'carpentry',
+      'painting': 'painting',
+      'pest_control': 'pest_control',
+      'packers_movers': 'packers_movers',
+      'home_tutoring': 'home_tutoring',
+      'fitness_training': 'fitness_training',
+      'event_management': 'event_management',
+      'photography': 'photography',
+      'web_development': 'web_development',
+      'digital_marketing': 'digital_marketing',
+      'other': 'other'
+    };
+
+    // Create new service
+    const service = new Service({
+      title,
+      description,
+      category: categoryMap[category] || category || 'other',
+      subcategory: requirements || 'general',
+      provider: null, // Admin-created services don't have a provider initially
+      price: parseFloat(basePrice),
+      priceType: 'fixed',
+      duration: {
+        value: parseInt(estimatedDuration),
+        unit: 'hours'
+      },
+      serviceArea,
+      skills: tools ? [tools] : [],
+      isActive: true,
+      isApproved: true,
+      ratings: { average: 0, count: 0 },
+      reviews: [],
+      bookingCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    await service.save();
+
+    // Populate provider info for response
+    await service.populate('provider', 'name email phone kycVerificationPhoto');
+
+    res.status(201).json({
+      message: 'Service created successfully',
+      service
+    });
+  } catch (error) {
+    console.error('Create service error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/services/:serviceId/approve
+// @desc    Approve a service
+// @access  Private (Admin)
+router.post('/services/:serviceId/approve', protect, authorize('admin'), async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.serviceId);
+
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    if (service.isApproved) {
+      return res.status(400).json({ message: 'Service is already approved' });
+    }
+
+    service.isApproved = true;
+    await service.save();
+
+    // Update provider's services array if service has a provider
+    if (service.provider) {
+      await User.findByIdAndUpdate(service.provider, {
+        $push: { services: service._id }
+      });
+    }
+
+    const populatedService = await Service.findById(service._id)
+      .populate('provider', 'name email phone kycVerificationPhoto');
+
+    res.json({
+      message: 'Service approved successfully',
+      service: populatedService
+    });
+  } catch (error) {
+    console.error('Approve service error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/analytics
+// @desc    Get platform analytics
+// @access  Private (Admin)
+router.get('/analytics', protect, authorize('admin'), async (req, res) => {
+  try {
+    const {
+      startDate,
+      endDate
+    } = req.query;
+
+    // Date filter
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    // User statistics
+    const totalUsers = await User.countDocuments();
+    const totalCustomers = await User.countDocuments({ role: 'customer' });
+    const totalProviders = await User.countDocuments({ role: 'provider' });
+    const verifiedProviders = await User.countDocuments({ 
+      role: 'provider', 
+      kycStatus: 'approved' 
+    });
+    const pendingKYC = await User.countDocuments({ 
+      role: 'provider', 
+      kycStatus: 'pending' 
+    });
+
+    // Service statistics
+    const totalServices = await Service.countDocuments({ createdBy: 'admin' });
+    const activeServices = await Service.countDocuments({ 
+      isActive: true, 
+      isApproved: true,
+      createdBy: 'admin'
+    });
+    const pendingServices = await Service.countDocuments({ 
+      isApproved: false,
+      createdBy: 'admin'
+    });
+
+    // Booking statistics
+    const totalBookings = await Booking.countDocuments(dateFilter);
+    const completedBookings = await Booking.countDocuments({
+      ...dateFilter,
+      status: 'completed'
+    });
+    const cancelledBookings = await Booking.countDocuments({
+      ...dateFilter,
+      status: 'cancelled'
+    });
+
+    // Revenue statistics - only from completed services
+    const revenueResult = await Booking.aggregate([
+      { $match: { ...dateFilter, paymentStatus: 'paid', status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$price.totalPrice' } } }
+    ]);
+
+    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+
+    // Recent activities
+    const recentUsers = await User.find(dateFilter)
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('name email role createdAt');
+
+    const recentBookings = await Booking.find(dateFilter)
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('customer', 'name')
+      .populate('provider', 'name kycVerificationPhoto')
+      .populate('service', 'title');
+
+    res.json({
+      users: {
+        total: totalUsers,
+        customers: totalCustomers,
+        providers: totalProviders,
+        verifiedProviders,
+        pendingKYC
+      },
+      services: {
+        total: totalServices,
+        active: activeServices,
+        pending: pendingServices
+      },
+      bookings: {
+        total: totalBookings,
+        completed: completedBookings,
+        cancelled: cancelledBookings,
+        completionRate: totalBookings > 0 ? (completedBookings / totalBookings * 100).toFixed(2) : 0
+      },
+      revenue: {
+        total: totalRevenue,
+        currency: 'INR'
+      },
+      recent: {
+        users: recentUsers,
+        bookings: recentBookings
+      }
+    });
+  } catch (error) {
+    console.error('Get analytics error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== COUPON MANAGEMENT ====================
+
+// @route   GET /api/admin/coupons
+// @desc    Get all coupons with pagination and filtering
+// @access  Private (Admin)
+router.get('/coupons', protect, authorize('admin'), async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      discountType,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build query
+    const query = {};
+    
+    if (status === 'active') {
+      query.isActive = true;
+      query.startDate = { $lte: new Date() };
+      query.endDate = { $gte: new Date() };
+    } else if (status === 'inactive') {
+      query.$or = [
+        { isActive: false },
+        { startDate: { $gt: new Date() } },
+        { endDate: { $lt: new Date() } }
+      ];
+    }
+    
+    if (discountType) query.discountType = discountType;
+    
+    if (search) {
+      query.$or = [
+        { code: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Sort
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const coupons = await Coupon.find(query)
+      .populate('createdBy', 'name email')
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Coupon.countDocuments(query);
+
+    res.json({
+      coupons,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get coupons error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/coupons
+// @desc    Create a new coupon
+// @access  Private (Admin)
+router.post('/coupons', protect, authorize('admin'), async (req, res) => {
+  try {
+    const {
+      code,
+      description,
+      discountType,
+      discountValue,
+      minOrderAmount = 0,
+      maxDiscountAmount,
+      usageLimit,
+      userLimit = 1,
+      applicableTo = 'all',
+      applicableServices = [],
+      applicableCategories = [],
+      startDate,
+      endDate
+    } = req.body;
+
+    // Validate dates
+    if (new Date(startDate) >= new Date(endDate)) {
+      return res.status(400).json({ message: 'End date must be after start date' });
+    }
+
+    // Check if coupon code already exists
+    const existingCoupon = await Coupon.findOne({ code: code.toUpperCase() });
+    if (existingCoupon) {
+      return res.status(400).json({ message: 'Coupon code already exists' });
+    }
+
+    const coupon = new Coupon({
+      code: code.toUpperCase(),
+      description,
+      discountType,
+      discountValue,
+      minOrderAmount,
+      maxDiscountAmount,
+      usageLimit,
+      userLimit,
+      applicableTo,
+      applicableServices,
+      applicableCategories,
+      startDate,
+      endDate,
+      createdBy: req.user._id
+    });
+
+    await coupon.save();
+    await coupon.populate('createdBy', 'name email');
+
+    res.status(201).json({
+      message: 'Coupon created successfully',
+      coupon
+    });
+  } catch (error) {
+    console.error('Create coupon error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: 'Validation error', 
+        errors: Object.values(error.errors).map(err => err.message)
+      });
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/coupons/:id
+// @desc    Update a coupon
+// @access  Private (Admin)
+router.put('/coupons/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id);
+    
+    if (!coupon) {
+      return res.status(404).json({ message: 'Coupon not found' });
+    }
+
+    const allowedUpdates = [
+      'description', 'discountType', 'discountValue', 'minOrderAmount',
+      'maxDiscountAmount', 'usageLimit', 'userLimit', 'applicableTo',
+      'applicableServices', 'applicableCategories', 'startDate', 'endDate', 'isActive'
+    ];
+
+    const updates = {};
+    Object.keys(req.body).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
+
+    // Special handling for code - only allow if not used yet
+    if (req.body.code && req.body.code !== coupon.code) {
+      if (coupon.usageCount > 0) {
+        return res.status(400).json({ message: 'Cannot change coupon code after it has been used' });
+      }
+      
+      const existingCoupon = await Coupon.findOne({ code: req.body.code.toUpperCase() });
+      if (existingCoupon) {
+        return res.status(400).json({ message: 'Coupon code already exists' });
+      }
+      updates.code = req.body.code.toUpperCase();
+    }
+
+    // Validate dates if both are provided
+    if (updates.startDate && updates.endDate) {
+      if (new Date(updates.startDate) >= new Date(updates.endDate)) {
+        return res.status(400).json({ message: 'End date must be after start date' });
+      }
+    }
+
+    Object.assign(coupon, updates);
+    await coupon.save();
+    await coupon.populate('createdBy', 'name email');
+
+    res.json({
+      message: 'Coupon updated successfully',
+      coupon
+    });
+  } catch (error) {
+    console.error('Update coupon error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: 'Validation error', 
+        errors: Object.values(error.errors).map(err => err.message)
+      });
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/services/:id
+// @desc    Update a service (admin only)
+// @access  Private (Admin)
+router.put('/services/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id);
+
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    const allowedUpdates = [
+      'title',
+      'description',
+      'category',
+      'subcategory',
+      'price',
+      'priceType',
+      'duration',
+      'serviceArea',
+      'skills',
+      'requirements',
+      'tools',
+      'isActive',
+      'isApproved'
+    ];
+
+    const updates = {};
+    Object.keys(req.body).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
+
+    // Handle duration conversion
+    if (req.body.estimatedDuration) {
+      updates.duration = {
+        value: parseInt(req.body.estimatedDuration),
+        unit: 'hours'
+      };
+      delete updates.estimatedDuration;
+    }
+
+    // Handle base price conversion
+    if (req.body.basePrice) {
+      updates.price = parseFloat(req.body.basePrice);
+      delete updates.basePrice;
+    }
+
+    // Handle tools/skills conversion
+    if (req.body.tools) {
+      updates.skills = req.body.tools.split(',').map(t => t.trim());
+      delete updates.tools;
+    }
+
+    // Handle requirements mapping
+    if (req.body.requirements) {
+      updates.subcategory = req.body.requirements;
+      delete updates.requirements;
+    }
+
+    const updatedService = await Service.findByIdAndUpdate(
+      req.params.id,
+      { ...updates, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    ).populate('provider', 'name email phone');
+
+    console.log('✏️ Service updated:', updatedService.title);
+
+    res.json({
+      message: 'Service updated successfully',
+      service: updatedService
+    });
+  } catch (error) {
+    console.error('Update service error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/admin/services/:id
+// @desc    Delete a service
+// @access  Private (Admin)
+router.delete('/services/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id);
+
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    // Check if service has active bookings
+    if (service.bookingCount > 0) {
+      return res.status(400).json({ message: 'Cannot delete service that has active bookings' });
+    }
+
+    await Service.findByIdAndDelete(req.params.id);
+
+    console.log('🗑️ Service deleted:', service.title);
+
+    res.json({
+      message: 'Service deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete service error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/admin/coupons/:id
+// @desc    Delete a coupon
+// @access  Private (Admin)
+router.delete('/coupons/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id);
+    
+    if (!coupon) {
+      return res.status(404).json({ message: 'Coupon not found' });
+    }
+
+    if (coupon.usageCount > 0) {
+      return res.status(400).json({ message: 'Cannot delete coupon that has been used' });
+    }
+
+    await Coupon.findByIdAndDelete(req.params.id);
+
+    res.json({
+      message: 'Coupon deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete coupon error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/coupons/:id/stats
+// @desc    Get coupon usage statistics
+// @access  Private (Admin)
+router.get('/coupons/:id/stats', protect, authorize('admin'), async (req, res) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id);
+    
+    if (!coupon) {
+      return res.status(404).json({ message: 'Coupon not found' });
+    }
+
+    // Get bookings that used this coupon
+    const couponBookings = await Booking.find({
+      'coupon.code': coupon.code,
+      paymentStatus: 'paid'
+    }).populate('customer', 'name email')
+      .populate('service', 'title')
+      .sort({ createdAt: -1 });
+
+    const totalDiscount = couponBookings.reduce((sum, booking) => {
+      return sum + (booking.coupon.discountAmount || 0);
+    }, 0);
+
+    const uniqueUsers = new Set(couponBookings.map(b => b.customer._id.toString())).size;
+
+    res.json({
+      coupon: {
+        code: coupon.code,
+        description: coupon.description,
+        usageLimit: coupon.usageLimit,
+        usageCount: coupon.usageCount,
+        isActive: coupon.isValid()
+      },
+      stats: {
+        totalUsage: coupon.usageCount,
+        uniqueUsers,
+        totalDiscount,
+        averageDiscount: coupon.usageCount > 0 ? totalDiscount / coupon.usageCount : 0,
+        recentBookings: couponBookings.slice(0, 10)
+      }
+    });
+  } catch (error) {
+    console.error('Get coupon stats error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/bookings
+// @desc    Get all bookings for admin management
+// @access  Private (Admin)
+router.get('/bookings', protect, authorize('admin'), async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      paymentStatus,
+      dateFrom,
+      dateTo,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build query
+    const query = {};
+    
+    if (status) query.status = status;
+    if (paymentStatus) query.paymentStatus = paymentStatus;
+    
+    if (dateFrom || dateTo) {
+      query.scheduledDate = {};
+      if (dateFrom) query.scheduledDate.$gte = new Date(dateFrom);
+      if (dateTo) query.scheduledDate.$lte = new Date(dateTo);
+    }
+
+    // Sort
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const bookings = await Booking.find(query)
+      .populate('customer', 'name email phone')
+      .populate('provider', 'name email phone')
+      .populate('service', 'title category price')
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Booking.countDocuments(query);
+
+    res.json({
+      bookings,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get admin bookings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/bookings/:id
+// @desc    Update booking status (admin only)
+// @access  Private (Admin)
+router.put('/bookings/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { status, notes } = req.body;
+
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (status) {
+      booking.status = status;
+    }
+
+    if (notes) {
+      booking.providerNotes = notes;
+    }
+
+    await booking.save();
+
+    const updatedBooking = await Booking.findById(req.params.id)
+      .populate('customer', 'name email phone')
+      .populate('provider', 'name email phone')
+      .populate('service', 'title category price');
+
+    res.json({
+      message: 'Booking updated successfully',
+      booking: updatedBooking
+    });
+  } catch (error) {
+    console.error('Update booking error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/provider-services/:requestId/approve
+// @desc    Approve a provider's service request
+// @access  Private (Admin)
+router.post('/provider-services/:requestId/approve', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { providerId } = req.body;
+    const serviceId = req.params.requestId;
+
+    console.log(' Approving provider request:', { serviceId, providerId });
+
+    // Find the service with provider requests
+    const service = await Service.findById(serviceId);
+
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    // Find the specific provider request in the providerRequests array
+    const providerRequest = service.providerRequests?.find(
+      request => request.provider.toString() === providerId
+    );
+
+    if (!providerRequest) {
+      return res.status(404).json({ message: 'Provider request not found' });
+    }
+
+    if (providerRequest.isApproved) {
+      return res.status(400).json({ message: 'Provider request is already approved' });
+    }
+
+    // Update the provider request
+    providerRequest.isApproved = true;
+    providerRequest.reviewedAt = new Date();
+    providerRequest.reviewedBy = req.user._id;
+
+    // Create a new service instance for the provider based on the admin template
+    const newService = new Service({
+      title: service.title,
+      description: service.description,
+      category: service.category,
+      subcategory: service.subcategory,
+      provider: providerId,
+      price: service.price,
+      priceType: service.priceType,
+      duration: service.duration,
+      serviceArea: service.serviceArea,
+      maxDistance: service.maxDistance,
+      skills: service.skills,
+      images: service.images,
+      isActive: true,
+      isApproved: true,
+      isTemplate: false,
+      templateServiceId: service._id,
+      createdBy: 'provider',
+      ratings: { average: 0, count: 0 },
+      reviews: [],
+      bookingCount: 0
+    });
+
+    await newService.save();
+
+    // Update provider's services array with the new service
+    const User = require('../models/User');
+    await User.findByIdAndUpdate(providerId, {
+      $push: { services: newService._id }
+    });
+
+    // Mark the provider request as processed and remove it from pending
+    providerRequest.isProcessed = true;
+    providerRequest.processedAt = new Date();
+    providerRequest.approvedServiceId = newService._id;
+
+    await service.save(); // Save the updated service with processed request
+
+    console.log(' Service approved:', providerRequest.title, 'by provider:', providerRequest.provider?.name);
+
+    // Get Socket.IO instance to notify providers
+    const io = req.app.get('io');
+    if (io) {
+      // Find all active providers to notify about new service
+      const activeProviders = await User.find({
+        role: 'provider',
+        isActive: true
+      }).select('_id name email');
+      
+      console.log(`Notifying ${activeProviders.length} active providers about new service: ${providerRequest.title}`);
+      
+      // Send notification to all active providers
+      activeProviders.forEach(provider => {
+        io.to(`user_${provider._id}`).emit('new_service_available', {
+          service: {
+            _id: providerRequest._id,
+            title: providerRequest.title,
+            category: providerRequest.category,
+            price: providerRequest.price,
+            priceType: providerRequest.priceType,
+            description: providerRequest.description,
+            provider: providerRequest.provider?.name,
+            createdAt: providerRequest.createdAt
+          },
+          message: `New service "${providerRequest.title}" is now available for booking!`
+        });
+      });
+    }
+
+    res.json({
+      message: 'Service request approved successfully',
+      service: providerRequest
+    });
+  } catch (error) {
+    console.error('Approve provider service error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   POST /api/admin/provider-services/:requestId/reject
+// @desc    Reject a provider's service request
+// @access  Private (Admin)
+router.post('/provider-services/:requestId/reject', protect, authorize('admin'), async (req, res) => {
+  try {
+    const { providerId, rejectionReason } = req.body;
+    const serviceId = req.params.requestId;
+
+    console.log('❌ Rejecting provider request:', { serviceId, providerId, rejectionReason });
+
+    // Find of service with provider requests
+    const service = await Service.findById(serviceId);
+
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    // Find the specific provider request
+    const providerRequest = service.providerRequests?.find(
+      request => request.provider.toString() === providerId
+    );
+
+    if (!providerRequest) {
+      return res.status(404).json({ message: 'Provider request not found' });
+    }
+
+    if (providerRequest.isApproved) {
+      return res.status(400).json({ message: 'Cannot reject an already approved request' });
+    }
+
+    // Update the provider request to mark as rejected
+    providerRequest.isRejected = true;
+    providerRequest.rejectionReason = rejectionReason || 'Rejected by admin';
+    providerRequest.reviewedAt = new Date();
+    providerRequest.reviewedBy = req.user._id;
+
+    await service.save();
+
+    console.log('❌ Provider request rejected:', service.title, 'by provider:', providerRequest.provider?.name);
+
+    res.json({
+      message: 'Service request rejected successfully',
+      service: providerRequest
+    });
+  } catch (error) {
+    console.error('Reject provider service error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET /api/admin/service-requests
+// @desc    Get all provider service requests
+// @access  Private (Admin)
+router.get('/service-requests', protect, authorize('admin'), async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build query - get services that have provider requests
+    const query = { 
+      providerRequests: { $exists: true, $ne: [] }
+    };
+    
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Sort
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get services with provider requests
+    const servicesWithRequests = await Service.find(query)
+      .populate({
+        path: 'providerRequests.provider',
+        select: 'name email phone profilePicture'
+      })
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
+
+    // Flatten provider requests into individual request items
+    const allRequests = [];
+    servicesWithRequests.forEach(service => {
+      service.providerRequests.forEach(request => {
+        // Only include pending requests (not approved or rejected)
+        if (!request.isApproved && !request.isRejected) {
+          allRequests.push({
+            _id: service._id, // Service ID
+            serviceId: service._id,
+            title: service.title,
+            description: service.description,
+            category: service.category,
+            price: service.price,
+            priceType: service.priceType,
+            duration: service.duration,
+            serviceArea: service.serviceArea,
+            providerRequest: {
+              _id: request._id,
+              provider: request.provider,
+              isApproved: request.isApproved,
+              isRejected: request.isRejected,
+              requestedAt: request.requestedAt,
+              rejectionReason: request.rejectionReason
+            },
+            createdAt: service.createdAt
+          });
+        }
+      });
+    });
+
+    // Get total count of pending requests
+    const totalServices = await Service.countDocuments(query);
+    const totalRequests = await Service.aggregate([
+      { $match: query },
+      { $project: { providerRequests: 1 } },
+      { $unwind: '$providerRequests' },
+      { $match: { 'providerRequests.isApproved': false, 'providerRequests.isRejected': false } },
+      { $count: 'total' }
+    ]);
+
+    const total = totalRequests.length > 0 ? totalRequests[0].total : 0;
+
+    res.json({
+      services: allRequests,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get service requests error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

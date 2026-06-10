@@ -193,8 +193,8 @@ router.post('/upload-voice', protect, authorize('customer'), upload.single('voic
       return res.status(400).json({ message: 'No voice note file uploaded' });
     }
 
-    // Cloudinary returns the secure URL in req.file.path
-    const voiceNotePath = req.file.path;
+    // Cloudinary returns the secure URL in req.file.path or req.file.secure_url
+    const voiceNotePath = req.file.secure_url || req.file.path;
     
     console.log('Voice note uploaded:', voiceNotePath);
     
@@ -1005,7 +1005,7 @@ router.post('/upload-service-images', protect, authorize('provider'), upload.arr
     const imageUrls = [];
     if (req.files && req.files.length > 0) {
       req.files.forEach(file => {
-        imageUrls.push(file.path);
+        imageUrls.push(file.secure_url || file.path);
       });
     }
 

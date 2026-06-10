@@ -233,10 +233,8 @@ router.post('/kyc', protect, async (req, res) => {
       return res.status(403).json({ message: 'Only providers can submit KYC documents' });
     }
 
-    // Check if KYC is already submitted and approved
-    if (user.kycStatus === 'approved') {
-      return res.status(400).json({ message: 'KYC already approved' });
-    }
+    // Allow re-uploading even if KYC is approved (for document updates)
+    // Remove the restriction to allow approved users to re-upload documents
 
     // Validate each document
     for (const doc of documents) {

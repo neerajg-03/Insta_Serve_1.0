@@ -27,7 +27,12 @@ const storage = new CloudinaryStorage({
     transformation: [
       { width: 800, height: 800, crop: 'limit' }, // Limit image size
       { quality: 'auto' } // Auto-optimize quality
-    ]
+    ],
+    public_id: (req, file) => {
+      // Generate a unique public ID
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      return file.fieldname + '-' + uniqueSuffix;
+    }
   }
 });
 

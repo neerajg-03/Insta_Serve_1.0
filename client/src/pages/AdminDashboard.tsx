@@ -652,9 +652,9 @@ const AdminDashboard: React.FC = () => {
       let filteredBookings = response.bookings;
 
       if (bookingFilter === 'cancelled_no_provider') {
-        filteredBookings = response.bookings.filter((b: any) => !b.provider);
+        filteredBookings = response.bookings.filter((b: any) => !b.provider || b.provider === null || b.provider === undefined);
       } else if (bookingFilter === 'cancelled_with_provider') {
-        filteredBookings = response.bookings.filter((b: any) => b.provider);
+        filteredBookings = response.bookings.filter((b: any) => b.provider && b.provider !== null && b.provider !== undefined);
       }
 
       setBookings(filteredBookings);

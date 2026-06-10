@@ -402,7 +402,7 @@ router.post('/', protect, authorize('admin'), upload.array('images', 5), async (
     const serviceData = {
       ...req.body,
       provider: null, // Admin-created services have no provider initially
-      images: req.files ? req.files.map(file => file.path) : [],
+      images: req.files ? req.files.map(file => file.secure_url || file.path) : [],
       isApproved: true, // Admin-created services are auto-approved
       isActive: true,
       createdBy: 'admin',
@@ -455,7 +455,7 @@ router.put('/:id', protect, upload.array('images', 5), async (req, res) => {
 
     // Handle image uploads
     if (req.files && req.files.length > 0) {
-      const newImages = req.files.map(file => file.path);
+      const newImages = req.files.map(file => file.secure_url || file.path);
       updateData.images = [...(service.images || []), ...newImages];
     }
 

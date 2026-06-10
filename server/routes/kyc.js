@@ -1,25 +1,9 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = 'uploads/kyc';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+const { storage, cloudinary } = require('../config/cloudinary');
 
 const fileFilter = (req, file, cb) => {
   // Accept images and PDFs
@@ -161,23 +145,25 @@ router.post('/upload/kyc-verification-photo', protect, upload.single('photo'), a
       return res.status(400).json({ message: 'No photo uploaded' });
     }
 
-    // Create file URL
-    const photoUrl = `/uploads/kyc/${req.file.filename}`;
+    // Cloudinary returns the secure URL in req.file.path
+    const photoUrl = req.file.path;
 
     // Update user's kycVerificationPhoto
     const user = await User.findById(req.user._id);
     
     if (!user) {
-      // Clean up uploaded file if user not found
-      fs.unlinkSync(req.file.path);
+      // Delete uploaded file from Cloudinary if user not found
+      await cloudinary.uploader.destroy(req.file.filename);
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Delete old photo if exists
+    // Delete old photo from Cloudinary if exists
     if (user.kycVerificationPhoto) {
-      const oldPhotoPath = path.join(__dirname, '..', user.kycVerificationPhoto);
-      if (fs.existsSync(oldPhotoPath)) {
-        fs.unlinkSync(oldPhotoPath);
+      try {
+        const publicId = user.kycVerificationPhoto.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`kyc-verification/${publicId}`);
+      } catch (err) {
+        console.error('Error deleting old photo from Cloudinary:', err);
       }
     }
 
@@ -186,16 +172,15 @@ router.post('/upload/kyc-verification-photo', protect, upload.single('photo'), a
 
     res.json({
       message: 'Verification photo uploaded successfully',
-      photoUrl: photoUrl,
-      filename: req.file.filename
+      photoUrl: photoUrl
     });
 
   } catch (error) {
     console.error('Photo upload error:', error);
     
-    // Clean up uploaded file if error occurred
+    // Clean up uploaded file from Cloudinary if error occurred
     if (req.file) {
-      fs.unlinkSync(req.file.path);
+      await cloudinary.uploader.destroy(req.file.filename);
     }
     
     res.status(500).json({ 

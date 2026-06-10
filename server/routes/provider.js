@@ -130,7 +130,7 @@ router.get('/nearby', protect, async (req, res) => {
       isApproved: true,
       isActive: true,
       provider: { $exists: true, $ne: null }
-    }).populate('provider', 'name email isAvailable currentLocation locationSharingEnabled').lean();
+    }).populate('provider', 'name email isAvailable currentLocation locationSharingEnabled kycVerificationPhoto').lean();
 
     // Filter by availability and distance
     const EARTH_RADIUS = 6371; // Earth's radius in kilometers

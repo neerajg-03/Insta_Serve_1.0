@@ -2081,9 +2081,15 @@ const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => {
-                    const filename = doc.documentUrl.split('/').pop();
-                    const url = adminAPI.getKYCDocumentUrl(filename);
-                    window.open(url, '_blank');
+                    // Check if it's a Cloudinary URL (starts with http/https)
+                    if (doc.documentUrl.startsWith('http://') || doc.documentUrl.startsWith('https://')) {
+                      window.open(doc.documentUrl, '_blank');
+                    } else {
+                      // Old local storage URL
+                      const filename = doc.documentUrl.split('/').pop();
+                      const url = adminAPI.getKYCDocumentUrl(filename);
+                      window.open(url, '_blank');
+                    }
                   }}
                   className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1"
                 >
@@ -2209,18 +2215,29 @@ const AdminDashboard: React.FC = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-3">
-                            <div className={`p-2 rounded-lg ${
-                              user.kycStatus === 'approved' ? 'bg-green-100' :
-                              user.kycStatus === 'rejected' ? 'bg-red-100' : 'bg-yellow-100'
-                            }`}>
-                              <ShieldCheckIcon className={`w-6 h-6 ${
-                                user.kycStatus === 'approved' ? 'text-green-600' :
-                                user.kycStatus === 'rejected' ? 'text-red-600' : 'text-yellow-600'
-                              }`} />
-                            </div>
+                            {user.kycVerificationPhoto ? (
+                              <img
+                                src={`https://insta-serve-1-0.onrender.com${user.kycVerificationPhoto}`}
+                                alt={user.name}
+                                className="w-12 h-12 rounded-full object-cover border-2 border-green-500"
+                              />
+                            ) : (
+                              <div className={`p-2 rounded-lg ${
+                                user.kycStatus === 'approved' ? 'bg-green-100' :
+                                user.kycStatus === 'rejected' ? 'bg-red-100' : 'bg-yellow-100'
+                              }`}>
+                                <ShieldCheckIcon className={`w-6 h-6 ${
+                                  user.kycStatus === 'approved' ? 'text-green-600' :
+                                  user.kycStatus === 'rejected' ? 'text-red-600' : 'text-yellow-600'
+                                }`} />
+                              </div>
+                            )}
                             <div>
                               <h5 className="font-semibold text-gray-900">{user.name}</h5>
                               <p className="text-sm text-gray-600 capitalize">{user.kycStatus} Application</p>
+                              {user.kycVerificationPhoto && (
+                                <p className="text-xs text-green-600">✓ Verification Photo Uploaded</p>
+                              )}
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">

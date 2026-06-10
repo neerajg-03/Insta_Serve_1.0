@@ -82,7 +82,7 @@ router.get('/', async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const services = await Service.find(query)
-      .populate('provider', 'name email phone profilePicture ratings')
+      .populate('provider', 'name email phone profilePicture ratings kycVerificationPhoto')
       .sort(sort)
       .skip(skip)
       .limit(limitNum);
@@ -139,7 +139,7 @@ router.get('/public', async (req, res) => {
 
     // Execute query with pagination
     const services = await Service.find(query)
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .sort(sortOptions)
       .limit(parseInt(limit))
       .skip((parseInt(page) - 1) * parseInt(limit));
@@ -390,7 +390,7 @@ router.post('/:serviceId/request', protect, authorize('provider'), async (req, r
 router.get('/:id', async (req, res) => {
   try {
     const service = await Service.findById(req.params.id)
-      .populate('provider', 'name email phone profilePicture')
+      .populate('provider', 'name email phone profilePicture kycVerificationPhoto')
       .populate('reviews.customer', 'name');
 
     if (!service) {
@@ -433,7 +433,7 @@ router.post('/', protect, authorize('admin'), upload.array('images', 5), async (
     await service.save();
 
     const populatedService = await Service.findById(service._id)
-      .populate('provider', 'name email phone profilePicture');
+      .populate('provider', 'name email phone profilePicture kycVerificationPhoto');
 
     res.status(201).json({
       message: 'Service created successfully',
@@ -481,7 +481,7 @@ router.put('/:id', protect, upload.array('images', 5), async (req, res) => {
       req.params.id,
       updateData,
       { new: true, runValidators: true }
-    ).populate('provider', 'name email phone profilePicture');
+    ).populate('provider', 'name email phone profilePicture kycVerificationPhoto');
 
     res.json({
       message: 'Service updated successfully',

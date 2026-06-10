@@ -43,7 +43,7 @@ router.post('/kyc', protect, authorize('provider'), upload.array('kycDocuments',
       return {
         documentType: doc.documentType,
         documentNumber: doc.documentNumber,
-        documentUrl: file ? file.path : null,
+        documentUrl: file ? (file.secure_url || file.path) : null,
         uploadDate: new Date()
       };
     });
@@ -94,24 +94,29 @@ router.post('/profile-picture', protect, upload.single('profilePicture'), async 
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
+    // Cloudinary returns the secure URL in req.file.path or req.file.secure_url
+    const photoUrl = req.file.secure_url || req.file.path;
+
     const user = await User.findById(req.user._id);
     if (!user) {
       // Delete uploaded file from Cloudinary if user not found
-      await cloudinary.uploader.destroy(req.file.filename);
+      await cloudinary.uploader.destroy(req.file.public_id);
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Delete old profile picture from Cloudinary if exists
     if (user.profilePicture) {
       try {
-        const publicId = user.profilePicture.split('/').pop().split('.')[0];
+        const urlParts = user.profilePicture.split('/');
+        const filename = urlParts[urlParts.length - 1];
+        const publicId = filename.split('.')[0];
         await cloudinary.uploader.destroy(`profile-pictures/${publicId}`);
       } catch (err) {
         console.error('Error deleting old profile picture from Cloudinary:', err);
       }
     }
 
-    user.profilePicture = req.file.path;
+    user.profilePicture = photoUrl;
     await user.save();
 
     res.json({

@@ -154,6 +154,57 @@ router.post('/upload/kyc-document', protect, upload.single('document'), async (r
   }
 });
 
+// Upload KYC verification photo
+router.post('/upload/kyc-verification-photo', protect, upload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No photo uploaded' });
+    }
+
+    // Create file URL
+    const photoUrl = `/uploads/kyc/${req.file.filename}`;
+
+    // Update user's kycVerificationPhoto
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      // Clean up uploaded file if user not found
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Delete old photo if exists
+    if (user.kycVerificationPhoto) {
+      const oldPhotoPath = path.join(__dirname, '..', user.kycVerificationPhoto);
+      if (fs.existsSync(oldPhotoPath)) {
+        fs.unlinkSync(oldPhotoPath);
+      }
+    }
+
+    user.kycVerificationPhoto = photoUrl;
+    await user.save();
+
+    res.json({
+      message: 'Verification photo uploaded successfully',
+      photoUrl: photoUrl,
+      filename: req.file.filename
+    });
+
+  } catch (error) {
+    console.error('Photo upload error:', error);
+    
+    // Clean up uploaded file if error occurred
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(500).json({ 
+      message: 'Photo upload failed',
+      error: error.message 
+    });
+  }
+});
+
 // Submit KYC documents
 router.post('/kyc', protect, async (req, res) => {
   try {

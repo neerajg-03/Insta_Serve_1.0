@@ -2217,9 +2217,12 @@ const AdminDashboard: React.FC = () => {
                           <div className="flex items-center space-x-3 mb-3">
                             {user.kycVerificationPhoto ? (
                               <img
-                                src={`https://insta-serve-1-0.onrender.com${user.kycVerificationPhoto}`}
+                                src={user.kycVerificationPhoto.startsWith('http') ? user.kycVerificationPhoto : `https://insta-serve-1-0.onrender.com${user.kycVerificationPhoto}`}
                                 alt={user.name}
                                 className="w-12 h-12 rounded-full object-cover border-2 border-green-500"
+                                onError={(e) => {
+                                  console.log('Failed to load verification photo URL:', e.currentTarget.src);
+                                }}
                               />
                             ) : (
                               <div className={`p-2 rounded-lg ${

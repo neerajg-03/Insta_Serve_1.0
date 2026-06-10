@@ -6,29 +6,8 @@ const User = require('../models/User');
 const ProviderWallet = require('../models/ProviderWallet');
 const { protect, authorize } = require('../middleware/auth');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { storage, cloudinary } = require('../config/cloudinary');
 const { sendPushNotification } = require('../services/firebaseService');
-
-// Configure multer for image and audio uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    let uploadDir;
-    if (file.mimetype.startsWith('audio/')) {
-      uploadDir = path.join(__dirname, '../uploads/voice-notes');
-    } else {
-      uploadDir = path.join(__dirname, '../uploads/service-images');
-    }
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
 
 const upload = multer({
   storage: storage,
@@ -214,8 +193,8 @@ router.post('/upload-voice', protect, authorize('customer'), upload.single('voic
       return res.status(400).json({ message: 'No voice note file uploaded' });
     }
 
-    // Return the full URL path for accessing the voice note
-    const voiceNotePath = `/uploads/voice-notes/${req.file.filename}`;
+    // Cloudinary returns the secure URL in req.file.path
+    const voiceNotePath = req.file.path;
     
     console.log('Voice note uploaded:', voiceNotePath);
     
@@ -1026,7 +1005,7 @@ router.post('/upload-service-images', protect, authorize('provider'), upload.arr
     const imageUrls = [];
     if (req.files && req.files.length > 0) {
       req.files.forEach(file => {
-        imageUrls.push(`/uploads/service-images/${file.filename}`);
+        imageUrls.push(file.path);
       });
     }
 

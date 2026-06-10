@@ -3,24 +3,14 @@ const router = express.Router();
 const Service = require('../models/Service');
 const { protect, authorize } = require('../middleware/auth');
 const multer = require('multer');
-const path = require('path');
+const { storage, cloudinary } = require('../config/cloudinary');
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/services/');
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: function (req, file, cb) {
     const allowedTypes = /jpeg|jpg|png|gif/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const extname = allowedTypes.test(file.originalname.toLowerCase().match(/\.(jpeg|jpg|png|gif)$/));
     const mimetype = allowedTypes.test(file.mimetype);
 
     if (mimetype && extname) {
@@ -412,7 +402,7 @@ router.post('/', protect, authorize('admin'), upload.array('images', 5), async (
     const serviceData = {
       ...req.body,
       provider: null, // Admin-created services have no provider initially
-      images: req.files ? req.files.map(file => `/uploads/services/${file.filename}`) : [],
+      images: req.files ? req.files.map(file => file.path) : [],
       isApproved: true, // Admin-created services are auto-approved
       isActive: true,
       createdBy: 'admin',
@@ -465,7 +455,7 @@ router.put('/:id', protect, upload.array('images', 5), async (req, res) => {
 
     // Handle image uploads
     if (req.files && req.files.length > 0) {
-      const newImages = req.files.map(file => `/uploads/services/${file.filename}`);
+      const newImages = req.files.map(file => file.path);
       updateData.images = [...(service.images || []), ...newImages];
     }
 

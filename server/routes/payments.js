@@ -88,7 +88,7 @@ router.post('/confirm', protect, async (req, res) => {
     // Get updated booking with populated data
     const updatedBooking = await Booking.findById(bookingId)
       .populate('customer', 'name email phone')
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .populate('service', 'title category price images');
 
     res.json({
@@ -129,7 +129,7 @@ router.get('/history', protect, async (req, res) => {
 
     const payments = await Booking.find(query)
       .populate('customer', 'name email')
-      .populate('provider', 'name email')
+      .populate('provider', 'name email kycVerificationPhoto')
       .populate('service', 'title category')
       .select('paymentId price paymentStatus status scheduledDate createdAt')
       .sort({ createdAt: -1 })

@@ -554,9 +554,9 @@ router.get('/analytics', protect, authorize('admin'), async (req, res) => {
       status: 'cancelled'
     });
 
-    // Revenue statistics
+    // Revenue statistics - only from completed services
     const revenueResult = await Booking.aggregate([
-      { $match: { ...dateFilter, paymentStatus: 'paid' } },
+      { $match: { ...dateFilter, paymentStatus: 'paid', status: 'completed' } },
       { $group: { _id: null, total: { $sum: '$price.totalPrice' } } }
     ]);
 

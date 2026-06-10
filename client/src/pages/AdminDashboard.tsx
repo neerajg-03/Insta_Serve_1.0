@@ -379,7 +379,7 @@ const AdminDashboard: React.FC = () => {
     try {
       setServicesLoading(true);
       setServicesError(null);
-      const response = await adminAPI.getServices();
+      const response = await adminAPI.getServices({ limit: 1000 });
       // Ensure provider data is populated
       const servicesWithProviders = await Promise.all(
         response.services.map(async (service: any) => {
@@ -1302,8 +1302,8 @@ const AdminDashboard: React.FC = () => {
             </h4>
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-white rounded-lg">
-                <p className="text-2xl font-bold text-green-600">{services.filter(s => s.isActive && !s.provider).length}</p>
-                <p className="text-sm text-gray-600">Active Service Types</p>
+                <p className="text-2xl font-bold text-green-600">{services.filter(s => s.isActive).length}</p>
+                <p className="text-sm text-gray-600">Active Services</p>
               </div>
               <div className="text-center p-4 bg-white rounded-lg">
                 <p className="text-2xl font-bold text-blue-600">{providerRequests.filter(r => !r.isApproved).length}</p>

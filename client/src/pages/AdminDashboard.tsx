@@ -250,7 +250,7 @@ const AdminDashboard: React.FC = () => {
     try {
       setUsersLoading(true);
       setUsersError(null);
-      const response = await adminAPI.getUsers();
+      const response = await adminAPI.getUsers({ limit: 1000 });
       setUsers(response.users);
     } catch (err: any) {
       setUsersError(err.response?.data?.message || 'Failed to fetch users');
@@ -1603,7 +1603,7 @@ const AdminDashboard: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                services.filter(s => !s.provider).map((service: any) => (
+                services.map((service: any) => (
                   <div key={`service_${service._id}`} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200 hover:border-blue-300">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">

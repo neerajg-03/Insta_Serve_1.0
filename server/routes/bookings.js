@@ -97,7 +97,7 @@ router.get('/', protect, async (req, res) => {
 
     const bookings = await Booking.find(query)
       .populate('customer', 'name email phone')
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .populate('service', 'title category price images')
       .sort(sort)
       .skip(skip)
@@ -168,7 +168,7 @@ router.get('/:id', protect, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate('customer', 'name email phone address')
-      .populate('provider', 'name email phone address ratings currentLocation isAvailable locationSharingEnabled')
+      .populate('provider', 'name email phone address ratings currentLocation isAvailable locationSharingEnabled kycVerificationPhoto')
       .populate('service', 'title category description price images provider');
 
     if (!booking) {
@@ -265,7 +265,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
         isApproved: true,
         isActive: true,
         provider: { $exists: true, $ne: null }
-      }).populate('provider', 'name email isActive kycStatus address isAvailable locationSharingEnabled currentLocation isCurrentlyServing').lean();
+      }).populate('provider', 'name email isActive kycStatus address isAvailable locationSharingEnabled currentLocation isCurrentlyServing kycVerificationPhoto').lean();
 
       // Group providers by ID for distance filtering first (wallet check comes later)
       const providerMap = new Map();
@@ -586,7 +586,7 @@ router.post('/', protect, authorize('customer'), async (req, res) => {
     // Populate and return
     const populatedBooking = await Booking.findById(booking._id)
       .populate('customer', 'name email phone')
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .populate('service', 'title category price images');
 
     // Emit Socket.IO broadcast to approved providers only
@@ -762,7 +762,7 @@ router.put('/:id', protect, async (req, res) => {
 
     const updatedBooking = await Booking.findById(booking._id)
       .populate('customer', 'name email phone')
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .populate('service', 'title category price images');
 
     res.json({
@@ -820,7 +820,7 @@ router.post('/:id/cancel', protect, async (req, res) => {
 
     const updatedBooking = await Booking.findById(booking._id)
       .populate('customer', 'name email phone')
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .populate('service', 'title category price images');
 
     res.json({
@@ -988,7 +988,7 @@ router.post('/:id/complete-customer', protect, authorize('customer'), async (req
 
     const updatedBooking = await Booking.findById(booking._id)
       .populate('customer', 'name email phone')
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .populate('service', 'title category price images');
 
     res.json({
@@ -1144,7 +1144,7 @@ router.post('/:id/complete', protect, authorize('provider'), async (req, res) =>
 
     const updatedBooking = await Booking.findById(booking._id)
       .populate('customer', 'name email phone')
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .populate('service', 'title category price images');
 
     res.json({
@@ -1289,7 +1289,7 @@ router.post('/:id/verify-completion-code', protect, authorize('provider'), async
 
     const updatedBooking = await Booking.findById(booking._id)
       .populate('customer', 'name email phone')
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .populate('service', 'title category price images');
 
     res.json({
@@ -1419,7 +1419,7 @@ router.post('/:id/generate-start-code', protect, authorize('provider'), async (r
 
     const updatedBooking = await Booking.findById(booking._id)
       .populate('customer', 'name email phone')
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .populate('service', 'title category price images');
 
     console.log('✅ Start code generation successful');
@@ -1513,7 +1513,7 @@ router.post('/:id/verify-start-code', protect, authorize('provider'), async (req
 
     const updatedBooking = await Booking.findById(booking._id)
       .populate('customer', 'name email phone')
-      .populate('provider', 'name email phone')
+      .populate('provider', 'name email phone kycVerificationPhoto')
       .populate('service', 'title category price images');
 
     res.json({

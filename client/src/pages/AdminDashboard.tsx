@@ -641,11 +641,23 @@ const AdminDashboard: React.FC = () => {
       setBookingsLoading(true);
       setBookingsError(null);
       const params: any = {};
-      if (bookingFilter !== 'all') {
+
+      if (bookingFilter === 'cancelled_no_provider' || bookingFilter === 'cancelled_with_provider') {
+        params.status = 'cancelled';
+      } else if (bookingFilter !== 'all') {
         params.status = bookingFilter;
       }
+
       const response = await adminAPI.getBookings(params);
-      setBookings(response.bookings);
+      let filteredBookings = response.bookings;
+
+      if (bookingFilter === 'cancelled_no_provider') {
+        filteredBookings = response.bookings.filter((b: any) => !b.provider);
+      } else if (bookingFilter === 'cancelled_with_provider') {
+        filteredBookings = response.bookings.filter((b: any) => b.provider);
+      }
+
+      setBookings(filteredBookings);
     } catch (err: any) {
       setBookingsError(err.response?.data?.message || 'Failed to fetch bookings');
     } finally {
@@ -1919,11 +1931,11 @@ const AdminDashboard: React.FC = () => {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Status</option>
-              <option value="pending">Pending</option>
               <option value="confirmed">Confirmed</option>
               <option value="in_progress">In Progress</option>
               <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="cancelled_no_provider">Cancelled (No Provider)</option>
+              <option value="cancelled_with_provider">Cancelled (With Provider)</option>
               <option value="broadcast">Broadcast</option>
             </select>
             <button

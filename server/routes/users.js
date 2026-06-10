@@ -3,28 +3,14 @@ const router = express.Router();
 const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 const multer = require('multer');
-const path = require('path');
+const { storage, cloudinary } = require('../config/cloudinary');
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    if (file.fieldname === 'kycDocuments') {
-      cb(null, 'uploads/kyc/');
-    } else if (file.fieldname === 'profilePicture') {
-      cb(null, 'uploads/profiles/');
-    }
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: function (req, file, cb) {
     const allowedTypes = /jpeg|jpg|png|pdf/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const extname = allowedTypes.test(file.originalname.toLowerCase().match(/\.(jpeg|jpg|png|pdf)$/));
     const mimetype = allowedTypes.test(file.mimetype);
 
     if (mimetype && extname) {
@@ -57,7 +43,7 @@ router.post('/kyc', protect, authorize('provider'), upload.array('kycDocuments',
       return {
         documentType: doc.documentType,
         documentNumber: doc.documentNumber,
-        documentUrl: file ? `/uploads/kyc/${file.filename}` : null,
+        documentUrl: file ? file.path : null,
         uploadDate: new Date()
       };
     });
@@ -110,10 +96,22 @@ router.post('/profile-picture', protect, upload.single('profilePicture'), async 
 
     const user = await User.findById(req.user._id);
     if (!user) {
+      // Delete uploaded file from Cloudinary if user not found
+      await cloudinary.uploader.destroy(req.file.filename);
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.profilePicture = `/uploads/profiles/${req.file.filename}`;
+    // Delete old profile picture from Cloudinary if exists
+    if (user.profilePicture) {
+      try {
+        const publicId = user.profilePicture.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`profile-pictures/${publicId}`);
+      } catch (err) {
+        console.error('Error deleting old profile picture from Cloudinary:', err);
+      }
+    }
+
+    user.profilePicture = req.file.path;
     await user.save();
 
     res.json({

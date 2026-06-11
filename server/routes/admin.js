@@ -559,15 +559,13 @@ router.get('/analytics', protect, authorize('admin'), async (req, res) => {
     });
 
     // Service statistics
-    const totalServices = await Service.countDocuments({ createdBy: 'admin' });
+    const totalServices = await Service.countDocuments({});
     const activeServices = await Service.countDocuments({ 
       isActive: true, 
-      isApproved: true,
-      createdBy: 'admin'
+      isApproved: true
     });
     const pendingServices = await Service.countDocuments({ 
-      isApproved: false,
-      createdBy: 'admin'
+      isApproved: false
     });
 
     // Booking statistics
@@ -581,9 +579,9 @@ router.get('/analytics', protect, authorize('admin'), async (req, res) => {
       status: 'cancelled'
     });
 
-    // Revenue statistics - only from completed services
+    // Revenue statistics - sum of all completed bookings
     const revenueResult = await Booking.aggregate([
-      { $match: { ...dateFilter, paymentStatus: 'paid', status: 'completed' } },
+      { $match: { ...dateFilter, status: 'completed' } },
       { $group: { _id: null, total: { $sum: '$price.totalPrice' } } }
     ]);
 

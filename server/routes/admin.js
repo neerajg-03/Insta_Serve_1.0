@@ -864,7 +864,8 @@ router.put('/services/:id', protect, authorize('admin'), async (req, res) => {
       'requirements',
       'tools',
       'isActive',
-      'isApproved'
+      'isApproved',
+      'updateAllInstances'
     ];
 
     const updates = {};
@@ -908,6 +909,31 @@ router.put('/services/:id', protect, authorize('admin'), async (req, res) => {
     ).populate('provider', 'name email phone');
 
     console.log('✏️ Service updated:', updatedService.title);
+
+    // If this is a template service and updateAllInstances is true, update all provider instances
+    const updateAllInstances = req.body.updateAllInstances === 'true';
+    if (!service.provider && updateAllInstances) {
+      const providerInstances = await Service.find({ templateServiceId: service._id });
+      
+      if (providerInstances.length > 0) {
+        // Prepare update data (exclude provider-specific fields)
+        const instanceUpdateData = { ...updates };
+        delete instanceUpdateData.updateAllInstances;
+        delete instanceUpdateData.provider;
+        delete instanceUpdateData.templateServiceId;
+        delete instanceUpdateData.providerRequests;
+        delete instanceUpdateData.ratings;
+        delete instanceUpdateData.reviews;
+        delete instanceUpdateData.bookingCount;
+
+        await Service.updateMany(
+          { templateServiceId: service._id },
+          instanceUpdateData
+        );
+
+        console.log(`🔄 Synced ${providerInstances.length} provider instances with template`);
+      }
+    }
 
     res.json({
       message: 'Service updated successfully',

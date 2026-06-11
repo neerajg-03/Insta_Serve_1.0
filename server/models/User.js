@@ -63,6 +63,8 @@ const userSchema = new mongoose.Schema({
     },
     documentNumber: String,
     documentUrl: String,
+    documentFrontUrl: String,
+    documentBackUrl: String,
     uploadDate: {
       type: Date,
       default: Date.now

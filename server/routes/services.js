@@ -452,6 +452,7 @@ router.put('/:id', protect, upload.array('images', 5), async (req, res) => {
     }
 
     const updateData = { ...req.body };
+    const updateAllInstances = req.body.updateAllInstances === 'true';
 
     // Handle image uploads
     if (req.files && req.files.length > 0) {
@@ -472,6 +473,31 @@ router.put('/:id', protect, upload.array('images', 5), async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     ).populate('provider', 'name email phone profilePicture kycVerificationPhoto');
+
+    // If this is a template service and updateAllInstances is true, update all provider instances
+    if (req.user.role === 'admin' && !service.provider && updateAllInstances) {
+      const providerInstances = await Service.find({ templateServiceId: service._id });
+      
+      // Update all provider instances with the same data (except provider-specific fields)
+      const instanceUpdateData = { ...updateData };
+      delete instanceUpdateData.provider;
+      delete instanceUpdateData.templateServiceId;
+      delete instanceUpdateData.providerRequests;
+      delete instanceUpdateData.ratings;
+      delete instanceUpdateData.reviews;
+      delete instanceUpdateData.bookingCount;
+
+      await Service.updateMany(
+        { templateServiceId: service._id },
+        instanceUpdateData
+      );
+
+      return res.json({
+        message: `Service updated successfully along with ${providerInstances.length} provider instances`,
+        service: updatedService,
+        updatedInstances: providerInstances.length
+      });
+    }
 
     res.json({
       message: 'Service updated successfully',
@@ -504,6 +530,131 @@ router.delete('/:id', protect, async (req, res) => {
     res.json({ message: 'Service deleted successfully' });
   } catch (error) {
     console.error('Delete service error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/services/:templateId/instances
+// @desc    Get all provider instances for a template service
+// @access  Private (Admin)
+router.get('/:templateId/instances', protect, authorize('admin'), async (req, res) => {
+  try {
+    const templateId = req.params.templateId;
+    const {
+      page = 1,
+      limit = 10,
+      status
+    } = req.query;
+
+    // Build query for provider instances of this template
+    const query = { templateServiceId: templateId };
+
+    if (status === 'active') {
+      query.isActive = true;
+    } else if (status === 'inactive') {
+      query.isActive = false;
+    }
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get provider instances
+    const instances = await Service.find(query)
+      .populate('provider', 'name email phone kycStatus isAvailable')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Service.countDocuments(query);
+
+    res.json({
+      instances,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get service instances error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/services/admin/templates
+// @desc    Get all template services (admin-created master services)
+// @access  Private (Admin)
+router.get('/admin/templates', protect, authorize('admin'), async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      category,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build query for template services only (admin-created, no provider)
+    const query = {
+      provider: null, // Template services have no provider
+      isActive: true
+    };
+
+    if (category) query.category = category;
+    
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Sort options
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get template services
+    const templates = await Service.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
+
+    // For each template, get provider instances count
+    const templatesWithStats = await Promise.all(
+      templates.map(async (template) => {
+        const instanceCount = await Service.countDocuments({ templateServiceId: template._id });
+        const pendingRequests = template.providerRequests?.filter(
+          req => !req.isApproved && !req.isRejected
+        ).length || 0;
+
+        return {
+          ...template.toObject(),
+          instanceCount,
+          pendingRequests
+        };
+      })
+    );
+
+    const total = await Service.countDocuments(query);
+
+    res.json({
+      services: templatesWithStats,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get template services error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -625,25 +776,44 @@ router.post('/admin/:serviceId/approve', protect, authorize('admin'), async (req
       return res.status(400).json({ message: 'Provider request is already approved' });
     }
 
-    // Update the existing admin service to assign the provider
-    const updatedService = await Service.findByIdAndUpdate(serviceId, {
+    // Create a new service instance for the provider (don't modify the original)
+    const providerServiceData = {
+      title: adminService.title,
+      description: adminService.description,
+      category: adminService.category,
+      subcategory: adminService.subcategory,
       provider: providerId,
-      createdBy: 'provider',
+      price: adminService.price,
+      priceType: adminService.priceType,
+      duration: adminService.duration,
+      images: adminService.images,
+      serviceArea: adminService.serviceArea,
+      maxDistance: adminService.maxDistance,
+      skills: adminService.skills,
+      experience: adminService.experience,
+      certifications: adminService.certifications,
+      availability: adminService.availability,
       isActive: true,
-      isApproved: true
-    }, { new: true });
+      isApproved: true,
+      createdBy: 'provider',
+      templateServiceId: adminService._id, // Link to the original template
+      providerRequests: []
+    };
 
-    // Update provider's services array with the assigned service
+    const providerService = new Service(providerServiceData);
+    await providerService.save();
+
+    // Update provider's services array with the new provider service
     await require('../models/User').findByIdAndUpdate(providerId, {
-      $push: { services: serviceId }
+      $push: { services: providerService._id }
     });
 
-    // Update the provider request status
+    // Update the provider request status on the admin service
     await Service.findByIdAndUpdate(serviceId, {
       $set: {
         'providerRequests.$[elem].isApproved': true,
         'providerRequests.$[elem].reviewedAt': new Date(),
-        'providerRequests.$[elem].approvedServiceId': serviceId,
+        'providerRequests.$[elem].approvedServiceId': providerService._id,
         'providerRequests.$[elem].reviewedBy': req.user._id
       }
     }, {
@@ -684,7 +854,8 @@ router.post('/admin/:serviceId/approve', protect, authorize('admin'), async (req
 
     res.json({
       message: 'Provider request approved successfully',
-      service: serviceWithRequests
+      service: serviceWithRequests,
+      providerService: providerService
     });
   } catch (error) {
     console.error('Approve service error:', error);

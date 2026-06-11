@@ -78,6 +78,8 @@ async function sendPushNotification(userId, title, body, data = {}) {
       },
       data: data,
       android: {
+        priority: 'high',
+        ttl: 2419200, // 28 days in seconds
         notification: {
           channelId: 'default',
           priority: 'high',
@@ -86,10 +88,14 @@ async function sendPushNotification(userId, title, body, data = {}) {
         }
       },
       apns: {
+        headers: {
+          'apns-priority': '10'
+        },
         payload: {
           aps: {
             sound: 'default',
-            badge: 1
+            badge: 1,
+            'interruption-level': 'active'
           }
         }
       }
@@ -147,6 +153,8 @@ async function sendPushNotificationToMultiple(userIds, title, body, data = {}) {
       },
       data: data,
       android: {
+        priority: 'high',
+        ttl: 2419200, // 28 days in seconds
         notification: {
           channelId: 'default',
           priority: 'high',
@@ -155,10 +163,14 @@ async function sendPushNotificationToMultiple(userIds, title, body, data = {}) {
         }
       },
       apns: {
+        headers: {
+          'apns-priority': '10'
+        },
         payload: {
           aps: {
             sound: 'default',
-            badge: 1
+            badge: 1,
+            'interruption-level': 'active'
           }
         }
       }

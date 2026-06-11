@@ -106,7 +106,7 @@ router.post('/upload/kyc-document', protect, upload.single('document'), async (r
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const { documentType } = req.body;
+    const { documentType, side } = req.body;
 
     if (!documentType) {
       // Clean up uploaded file from Cloudinary if document type is missing
@@ -129,6 +129,7 @@ router.post('/upload/kyc-document', protect, upload.single('document'), async (r
     res.json({
       message: 'Document uploaded successfully',
       documentUrl: documentUrl,
+      side: side || 'front',
       filename: req.file.filename
     });
 
@@ -217,13 +218,13 @@ router.post('/kyc/upload-verification-photo', protect, upload.single('photo'), a
 router.post('/kyc', protect, async (req, res) => {
   try {
     const { documents } = req.body;
-    
+
     if (!documents || !Array.isArray(documents) || documents.length === 0) {
       return res.status(400).json({ message: 'Documents are required' });
     }
 
     const user = await User.findById(req.user._id);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -238,10 +239,26 @@ router.post('/kyc', protect, async (req, res) => {
 
     // Validate each document
     for (const doc of documents) {
-      if (!doc.documentType || !doc.documentNumber || !doc.documentUrl) {
-        return res.status(400).json({ 
-          message: 'All documents must have type, number, and URL' 
+      if (!doc.documentType || !doc.documentNumber) {
+        return res.status(400).json({
+          message: 'All documents must have type and number'
         });
+      }
+
+      // For Aadhaar, require both front and back URLs
+      if (doc.documentType === 'aadhar') {
+        if (!doc.documentFrontUrl || !doc.documentBackUrl) {
+          return res.status(400).json({
+            message: 'Aadhaar card requires both front and back images'
+          });
+        }
+      } else {
+        // For other documents, at least one URL is required (for backward compatibility)
+        if (!doc.documentUrl) {
+          return res.status(400).json({
+            message: 'All documents must have at least one image URL'
+          });
+        }
       }
     }
 
@@ -253,14 +270,14 @@ router.post('/kyc', protect, async (req, res) => {
     });
 
     if (existingUsers.length > 0) {
-      const duplicateNumbers = existingUsers.flatMap(user => 
+      const duplicateNumbers = existingUsers.flatMap(user =>
         user.kycDocuments
           .filter(doc => documentNumbers.includes(doc.documentNumber))
           .map(doc => doc.documentNumber)
       );
 
-      return res.status(400).json({ 
-        message: `Document number(s) already exist with another user: ${duplicateNumbers.join(', ')}` 
+      return res.status(400).json({
+        message: `Document number(s) already exist with another user: ${duplicateNumbers.join(', ')}`
       });
     }
 
@@ -269,6 +286,8 @@ router.post('/kyc', protect, async (req, res) => {
       documentType: doc.documentType,
       documentNumber: doc.documentNumber,
       documentUrl: doc.documentUrl,
+      documentFrontUrl: doc.documentFrontUrl,
+      documentBackUrl: doc.documentBackUrl,
       uploadDate: new Date()
     }));
 
@@ -289,9 +308,9 @@ router.post('/kyc', protect, async (req, res) => {
 
   } catch (error) {
     console.error('KYC submission error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'KYC submission failed',
-      error: error.message 
+      error: error.message
     });
   }
 });

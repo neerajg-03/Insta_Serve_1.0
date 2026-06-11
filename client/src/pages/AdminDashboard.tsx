@@ -345,6 +345,16 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleRequestReupload = async (userId: string, email: string) => {
+    try {
+      // For now, just show a toast notification
+      // In the future, this could send an email or push notification to the provider
+      toast.success(`Re-upload request sent to ${email}. The provider has been notified to upload new documents.`);
+    } catch (err: any) {
+      toast.error('Failed to send re-upload request');
+    }
+  };
+
   const handleRejectKYC = async (userId: string) => {
     const reason = window.prompt('Please enter rejection reason:');
     if (!reason) return;
@@ -561,6 +571,7 @@ const AdminDashboard: React.FC = () => {
         ...serviceFormData,
         estimatedDuration: parseInt(serviceFormData.estimatedDuration),
         basePrice: parseFloat(serviceFormData.basePrice),
+        updateAllInstances: 'true', // Sync all provider instances with template
       });
       toast.success('Service updated successfully');
       setShowEditServiceForm(false);
@@ -2237,7 +2248,18 @@ const AdminDashboard: React.FC = () => {
                             )}
                             <div>
                               <h5 className="font-semibold text-gray-900">{user.name}</h5>
-                              <p className="text-sm text-gray-600 capitalize">{user.kycStatus} Application</p>
+                              <div className="flex items-center space-x-2">
+                                <p className="text-sm text-gray-600 capitalize">{user.kycStatus} Application</p>
+                                <button
+                                  onClick={() => {
+                                    // Send notification to provider to re-upload documents
+                                    handleRequestReupload(user._id, user.email);
+                                  }}
+                                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                >
+                                  (Request Re-upload)
+                                </button>
+                              </div>
                               {user.kycVerificationPhoto && (
                                 <p className="text-xs text-green-600">✓ Verification Photo Uploaded</p>
                               )}

@@ -3,6 +3,7 @@ const router = express.Router();
 const Chat = require('../models/Chat');
 const Booking = require('../models/Booking');
 const { protect } = require('../middleware/auth');
+const { sendPushNotification } = require('../services/firebaseService');
 
 // Save a chat message
 router.post('/', protect, async (req, res) => {
@@ -41,7 +42,24 @@ router.post('/', protect, async (req, res) => {
 
     // Populate booking to get recipient name
     await booking.populate('customer', 'name email');
-    await booking.populate('provider', 'name email');
+    await booking.populate('provider', 'name email kycVerificationPhoto');
+
+    // Send push notification to recipient
+    const isSenderCustomer = req.user._id.toString() === booking.customer._id.toString();
+    const recipientName = isSenderCustomer ? booking.provider.name : booking.customer.name;
+    const senderName = req.user.name;
+
+    await sendPushNotification(
+      recipientId,
+      `New message from ${senderName}`,
+      message.length > 50 ? message.substring(0, 50) + '...' : message,
+      {
+        type: 'chat_message',
+        bookingId: bookingId,
+        senderId: req.user._id.toString(),
+        senderName: senderName
+      }
+    );
 
     // Emit socket event for real-time delivery to connected users
     const io = req.app.get('io');

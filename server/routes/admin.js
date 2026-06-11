@@ -344,8 +344,10 @@ router.get('/services', protect, authorize('admin'), async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // Build query
-    const query = {};
+    // Build query - only show template services (admin-created, no provider assigned)
+    const query = {
+      provider: null // Exclude provider instances, only show template services
+    };
     
     if (isApproved !== undefined) query.isApproved = isApproved === 'true';
     if (isActive !== undefined) query.isActive = isActive === 'true';
@@ -367,15 +369,30 @@ router.get('/services', protect, authorize('admin'), async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     const services = await Service.find(query)
-      .populate('provider', 'name email phone kycVerificationPhoto')
       .sort(sort)
       .skip(skip)
       .limit(limitNum);
 
+    // Add instance count for each template service
+    const servicesWithStats = await Promise.all(
+      services.map(async (service) => {
+        const instanceCount = await Service.countDocuments({ templateServiceId: service._id });
+        const pendingRequests = service.providerRequests?.filter(
+          req => !req.isApproved && !req.isRejected
+        ).length || 0;
+
+        return {
+          ...service.toObject(),
+          instanceCount,
+          pendingRequests
+        };
+      })
+    );
+
     const total = await Service.countDocuments(query);
 
     res.json({
-      services,
+      services: servicesWithStats,
       pagination: {
         page: pageNum,
         limit: limitNum,

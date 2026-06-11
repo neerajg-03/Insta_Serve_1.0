@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
+const { body, validationResult } = require('express-validator');
 
 // @route   PUT /api/provider/availability
 // @desc    Toggle provider availability status
@@ -192,5 +193,129 @@ router.get('/nearby', protect, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// @route   PUT /api/provider/change-password
+// @desc    Change provider password
+// @access  Private (Provider)
+router.put(
+  '/change-password',
+  protect,
+  authorize('provider'),
+  [
+    body('currentPassword')
+      .notEmpty()
+      .withMessage('Current password is required'),
+    body('newPassword')
+      .isLength({ min: 6 })
+      .withMessage('New password must be at least 6 characters long')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      // Get user with password
+      const user = await User.findById(req.user._id).select('+password');
+
+      if (!user) {
+        return res.status(404).json({
+          message: 'Provider not found'
+        });
+      }
+
+      // Verify current password
+      const isPasswordValid = await user.comparePassword(currentPassword);
+
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          message: 'Current password is incorrect'
+        });
+      }
+
+      // Update password
+      user.password = newPassword;
+      await user.save();
+
+      console.log(`✅ Password changed for provider: ${user.email}`);
+
+      res.json({
+        message: 'Password changed successfully'
+      });
+    } catch (error) {
+      console.error('Change password error:', error);
+      res.status(500).json({
+        message: 'Server error while changing password'
+      });
+    }
+  }
+);
+
+// @route   DELETE /api/provider/delete-account
+// @desc    Delete provider account
+// @access  Private (Provider)
+router.delete(
+  '/delete-account',
+  protect,
+  authorize('provider'),
+  [
+    body('password')
+      .notEmpty()
+      .withMessage('Password is required to delete account')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { password } = req.body;
+
+      // Get user with password
+      const user = await User.findById(req.user._id).select('+password');
+
+      if (!user) {
+        return res.status(404).json({
+          message: 'Provider not found'
+        });
+      }
+
+      // Verify password
+      const isPasswordValid = await user.comparePassword(password);
+
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          message: 'Invalid password'
+        });
+      }
+
+      // Delete provider account (cascade delete will handle related data)
+      await User.findByIdAndDelete(req.user._id);
+
+      console.log(`✅ Account deleted for provider: ${user.email}`);
+
+      res.json({
+        message: 'Account deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete account error:', error);
+      res.status(500).json({
+        message: 'Server error while deleting account'
+      });
+    }
+  }
+);
 
 module.exports = router;

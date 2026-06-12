@@ -253,8 +253,8 @@ router.post('/kyc', protect, async (req, res) => {
           });
         }
       } else {
-        // For other documents, at least one URL is required (for backward compatibility)
-        if (!doc.documentUrl) {
+        // For other documents, accept either documentUrl or documentFrontUrl
+        if (!doc.documentUrl && !doc.documentFrontUrl) {
           return res.status(400).json({
             message: 'All documents must have at least one image URL'
           });

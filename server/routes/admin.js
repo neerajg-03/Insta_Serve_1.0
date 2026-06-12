@@ -36,8 +36,6 @@ router.get('/users/:id', protect, authorize('admin'), async (req, res) => {
 router.get('/users', protect, authorize('admin'), async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
       role,
       kycStatus,
       isActive,
@@ -65,27 +63,11 @@ router.get('/users', protect, authorize('admin'), async (req, res) => {
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
     const users = await User.find(query)
       .select('-password -emailVerificationToken -passwordResetToken -passwordResetExpires')
-      .sort(sort)
-      .skip(skip)
-      .limit(limitNum);
+      .sort(sort);
 
-    const total = await User.countDocuments(query);
-
-    res.json({
-      users,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages: Math.ceil(total / limitNum)
-      }
-    });
+    res.json({ users });
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -131,11 +113,7 @@ router.put('/users/:id', protect, authorize('admin'), async (req, res) => {
 // @access  Private (Admin)
 router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
-
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
+    const { status } = req.query;
 
     const query = {
       role: 'provider'
@@ -147,11 +125,7 @@ router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
 
     const users = await User.find(query)
       .select('name email phone kycDocuments kycStatus kycRejectionReason kycVerificationPhoto createdAt')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
-
-    const total = await User.countDocuments(query);
+      .sort({ createdAt: -1 });
 
     console.log('KYC users fetched:', users.length);
     users.forEach(user => {
@@ -163,15 +137,7 @@ router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
       }
     });
 
-    res.json({
-      users,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages: Math.ceil(total / limitNum)
-      }
-    });
+    res.json({ users });
   } catch (error) {
     console.error('Get all KYC error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -183,35 +149,14 @@ router.get('/kyc/all', protect, authorize('admin'), async (req, res) => {
 // @access  Private (Admin)
 router.get('/kyc/pending', protect, authorize('admin'), async (req, res) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
-
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
     const users = await User.find({
       role: 'provider',
       kycStatus: 'pending'
     })
       .select('name email phone kycDocuments kycStatus kycRejectionReason kycVerificationPhoto createdAt')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+      .sort({ createdAt: -1 });
 
-    const total = await User.countDocuments({
-      role: 'provider',
-      kycStatus: 'pending'
-    });
-
-    res.json({
-      users,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages: Math.ceil(total / limitNum)
-      }
-    });
+    res.json({ users });
   } catch (error) {
     console.error('Get pending KYC error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -334,8 +279,6 @@ router.post('/kyc/:userId/reject', protect, authorize('admin'), async (req, res)
 router.get('/services', protect, authorize('admin'), async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
       isApproved,
       isActive,
       category,
@@ -364,14 +307,8 @@ router.get('/services', protect, authorize('admin'), async (req, res) => {
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
     const services = await Service.find(query)
-      .sort(sort)
-      .skip(skip)
-      .limit(limitNum);
+      .sort(sort);
 
     // Add instance count for each template service
     const servicesWithStats = await Promise.all(
@@ -389,17 +326,7 @@ router.get('/services', protect, authorize('admin'), async (req, res) => {
       })
     );
 
-    const total = await Service.countDocuments(query);
-
-    res.json({
-      services: servicesWithStats,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages: Math.ceil(total / limitNum)
-      }
-    });
+    res.json({ services: servicesWithStats });
   } catch (error) {
     console.error('Get services error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -642,8 +569,6 @@ router.get('/analytics', protect, authorize('admin'), async (req, res) => {
 router.get('/coupons', protect, authorize('admin'), async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
       status,
       discountType,
       search,
@@ -679,27 +604,11 @@ router.get('/coupons', protect, authorize('admin'), async (req, res) => {
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
     const coupons = await Coupon.find(query)
       .populate('createdBy', 'name email')
-      .sort(sort)
-      .skip(skip)
-      .limit(limitNum);
+      .sort(sort);
 
-    const total = await Coupon.countDocuments(query);
-
-    res.json({
-      coupons,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages: Math.ceil(total / limitNum)
-      }
-    });
+    res.json({ coupons });
   } catch (error) {
     console.error('Get coupons error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -1051,8 +960,6 @@ router.get('/coupons/:id/stats', protect, authorize('admin'), async (req, res) =
 router.get('/bookings', protect, authorize('admin'), async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
       status,
       paymentStatus,
       dateFrom,
@@ -1077,29 +984,13 @@ router.get('/bookings', protect, authorize('admin'), async (req, res) => {
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
     const bookings = await Booking.find(query)
       .populate('customer', 'name email phone')
       .populate('provider', 'name email phone')
       .populate('service', 'title category price')
-      .sort(sort)
-      .skip(skip)
-      .limit(limitNum);
+      .sort(sort);
 
-    const total = await Booking.countDocuments(query);
-
-    res.json({
-      bookings,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages: Math.ceil(total / limitNum)
-      }
-    });
+    res.json({ bookings });
   } catch (error) {
     console.error('Get admin bookings error:', error);
     res.status(500).json({ message: 'Server error' });

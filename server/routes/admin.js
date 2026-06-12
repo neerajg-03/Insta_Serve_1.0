@@ -1315,9 +1315,6 @@ router.post('/provider-services/:requestId/reject', protect, authorize('admin'),
 router.get('/service-requests', protect, authorize('admin'), async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
-      status,
       search,
       sortBy = 'createdAt',
       sortOrder = 'desc'
@@ -1339,19 +1336,13 @@ router.get('/service-requests', protect, authorize('admin'), async (req, res) =>
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
-    // Get services with provider requests
+    // Get all services with provider requests (no pagination to show all pending requests)
     const servicesWithRequests = await Service.find(query)
       .populate({
         path: 'providerRequests.provider',
         select: 'name email phone profilePicture'
       })
-      .sort(sort)
-      .skip(skip)
-      .limit(limitNum);
+      .sort(sort);
 
     // Flatten provider requests into individual request items
     const allRequests = [];
@@ -1383,26 +1374,8 @@ router.get('/service-requests', protect, authorize('admin'), async (req, res) =>
       });
     });
 
-    // Get total count of pending requests
-    const totalServices = await Service.countDocuments(query);
-    const totalRequests = await Service.aggregate([
-      { $match: query },
-      { $project: { providerRequests: 1 } },
-      { $unwind: '$providerRequests' },
-      { $match: { 'providerRequests.isApproved': false, 'providerRequests.isRejected': false } },
-      { $count: 'total' }
-    ]);
-
-    const total = totalRequests.length > 0 ? totalRequests[0].total : 0;
-
     res.json({
-      services: allRequests,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        pages: Math.ceil(total / limitNum)
-      }
+      services: allRequests
     });
   } catch (error) {
     console.error('Get service requests error:', error);

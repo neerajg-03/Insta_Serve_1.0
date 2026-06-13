@@ -2088,30 +2088,76 @@ const AdminDashboard: React.FC = () => {
             <p className="text-xs text-gray-600 mb-2">
               Document Number: {doc.documentNumber}
             </p>
-            {doc.documentUrl && (
-              <div className="flex items-center space-x-2">
+            
+            {/* View Document Buttons */}
+            <div className="flex flex-wrap gap-2">
+              {doc.documentUrl && (
                 <button
                   onClick={() => {
-                    // Check if it's a Cloudinary URL (starts with http/https)
                     if (doc.documentUrl.startsWith('http://') || doc.documentUrl.startsWith('https://')) {
                       window.open(doc.documentUrl, '_blank');
                     } else {
-                      // Old local storage URL
                       const filename = doc.documentUrl.split('/').pop();
                       const url = adminAPI.getKYCDocumentUrl(filename);
                       window.open(url, '_blank');
                     }
                   }}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1"
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
                 >
                   <EyeIcon className="w-4 h-4" />
                   <span>View Document</span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    ({doc.documentUrl.split('.').pop()?.toUpperCase()})
+                  </span>
                 </button>
-                <span className="text-xs text-gray-500">
-                  ({doc.documentUrl.split('.').pop()?.toUpperCase()})
-                </span>
-              </div>
-            )}
+              )}
+              
+              {doc.documentFrontUrl && (
+                <button
+                  onClick={() => {
+                    if (doc.documentFrontUrl.startsWith('http://') || doc.documentFrontUrl.startsWith('https://')) {
+                      window.open(doc.documentFrontUrl, '_blank');
+                    } else {
+                      const filename = doc.documentFrontUrl.split('/').pop();
+                      const url = adminAPI.getKYCDocumentUrl(filename);
+                      window.open(url, '_blank');
+                    }
+                  }}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <EyeIcon className="w-4 h-4" />
+                  <span>View Front</span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    ({doc.documentFrontUrl.split('.').pop()?.toUpperCase()})
+                  </span>
+                </button>
+              )}
+              
+              {doc.documentBackUrl && (
+                <button
+                  onClick={() => {
+                    if (doc.documentBackUrl.startsWith('http://') || doc.documentBackUrl.startsWith('https://')) {
+                      window.open(doc.documentBackUrl, '_blank');
+                    } else {
+                      const filename = doc.documentBackUrl.split('/').pop();
+                      const url = adminAPI.getKYCDocumentUrl(filename);
+                      window.open(url, '_blank');
+                    }
+                  }}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <EyeIcon className="w-4 h-4" />
+                  <span>View Back</span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    ({doc.documentBackUrl.split('.').pop()?.toUpperCase()})
+                  </span>
+                </button>
+              )}
+              
+              {!doc.documentUrl && !doc.documentFrontUrl && !doc.documentBackUrl && (
+                <span className="text-xs text-gray-400 italic">No document image available</span>
+              )}
+            </div>
           </div>
         ))}
       </div>

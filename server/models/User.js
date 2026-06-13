@@ -199,12 +199,74 @@ const userSchema = new mongoose.Schema({
 // Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
-  
+
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (error) {
+    next(error);
+  }
+});
+
+// Handle associated bookings before deleting a user
+userSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
+  try {
+    const Booking = require('./Booking');
+    const userId = this._id;
+
+    console.log(`🗑️ Deleting user ${userId}, handling associated bookings...`);
+
+    // Find all bookings associated with this user (as customer or provider)
+    const bookings = await Booking.find({
+      $or: [
+        { customer: userId },
+        { provider: userId },
+        { broadcastTo: userId },
+        { cancelledBy: userId },
+        { broadcastAcceptedBy: userId }
+      ]
+    });
+
+    console.log(`🗑️ Found ${bookings.length} bookings associated with user ${userId}`);
+
+    // Handle each booking
+    for (const booking of bookings) {
+      if (booking.customer.toString() === userId.toString()) {
+        // User was the customer - cancel the booking if not already completed/cancelled
+        if (!['completed', 'cancelled', 'refunded'].includes(booking.status)) {
+          booking.status = 'cancelled';
+          booking.cancellationReason = 'Customer account deleted';
+          booking.cancelledAt = new Date();
+          booking.cancelledBy = userId;
+          await booking.save();
+          console.log(`🗑️ Cancelled booking ${booking._id} (customer deleted)`);
+        }
+      }
+
+      if (booking.provider && booking.provider.toString() === userId.toString()) {
+        // User was the provider - cancel the booking if not already completed/cancelled
+        if (!['completed', 'cancelled', 'refunded'].includes(booking.status)) {
+          booking.status = 'cancelled';
+          booking.cancellationReason = 'Provider account deleted';
+          booking.cancelledAt = new Date();
+          booking.cancelledBy = userId;
+          await booking.save();
+          console.log(`🗑️ Cancelled booking ${booking._id} (provider deleted)`);
+        }
+      }
+
+      // Remove user from broadcastTo array
+      if (booking.broadcastTo && booking.broadcastTo.includes(userId)) {
+        booking.broadcastTo = booking.broadcastTo.filter(id => id.toString() !== userId.toString());
+        await booking.save();
+        console.log(`🗑️ Removed user from broadcastTo for booking ${booking._id}`);
+      }
+    }
+
+    next();
+  } catch (error) {
+    console.error('❌ Error in user pre-delete hook:', error);
     next(error);
   }
 });

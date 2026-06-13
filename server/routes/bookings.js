@@ -39,6 +39,16 @@ router.get('/', protect, async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
+    console.log('📊 Fetching bookings:', {
+      userId: req.user._id,
+      role: req.user.role,
+      page,
+      limit,
+      status,
+      sortBy,
+      sortOrder
+    });
+
     // Build query based on user role
     let query = {};
     
@@ -74,6 +84,8 @@ router.get('/', protect, async (req, res) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
+    console.log('📊 Query built:', { query, sort, skip, limitNum });
+
     const bookings = await Booking.find(query)
       .populate('customer', 'name email phone')
       .populate('provider', 'name email phone kycVerificationPhoto')
@@ -82,10 +94,25 @@ router.get('/', protect, async (req, res) => {
       .skip(skip)
       .limit(limitNum);
 
+    // Filter out bookings with missing customers (edge case for data integrity)
+    const validBookings = bookings.filter(booking => {
+      if (!booking.customer) {
+        console.warn(`⚠️ Booking ${booking._id} has missing customer, filtering out`);
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`📊 Valid bookings after filtering: ${validBookings.length}`);
+
+    console.log('📊 Bookings fetched:', bookings.length);
+
     const total = await Booking.countDocuments(query);
 
+    console.log('📊 Total bookings:', total);
+
     res.json({
-      bookings,
+      bookings: validBookings,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -94,8 +121,12 @@ router.get('/', protect, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get bookings error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('❌ Get bookings error:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

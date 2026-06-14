@@ -26,6 +26,7 @@ import TransactionHistory from './pages/provider/TransactionHistory';
 import BankAccount from './pages/provider/BankAccount';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import GoogleAuthCallback from './pages/GoogleAuthCallback';
 import GoogleSignupComplete from './pages/GoogleSignupComplete';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -179,6 +180,7 @@ function AppContent() {
             </ProtectedRoute>
           } />
           <Route path="/about" element={<About />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/contact" element={<Contact />} />
         </Route>
       </Routes>

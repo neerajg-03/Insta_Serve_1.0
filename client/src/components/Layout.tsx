@@ -161,7 +161,6 @@ const Layout: React.FC = () => {
               About
             </Link>
             <Link
-            <Link
               to="/privacy-policy"
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
@@ -170,6 +169,7 @@ const Layout: React.FC = () => {
             >
               Policy
             </Link>
+            <Link
               to="/contact"
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${

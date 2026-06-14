@@ -62,6 +62,14 @@ const Layout: React.FC = () => {
               >
                 Contact
               </Link>
+              <Link
+                to="/privacy-policy"
+                className={`text-sm font-medium transition-colors ${
+                  isActive('/privacy-policy') ? 'text-primary-600' : 'text-gray-700 hover:text-primary-600'
+                }`}
+              >
+                Policy
+              </Link>
               {user && (
                 <Link
                   to={user.role === 'provider' ? '/provider' : user.role === 'admin' ? '/admin' : '/dashboard'}
@@ -153,6 +161,15 @@ const Layout: React.FC = () => {
               About
             </Link>
             <Link
+            <Link
+              to="/privacy-policy"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                isActive('/privacy-policy') ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              Policy
+            </Link>
               to="/contact"
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${

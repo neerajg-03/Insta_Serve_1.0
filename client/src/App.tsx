@@ -27,6 +27,7 @@ import BankAccount from './pages/provider/BankAccount';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import DeleteAccount from './pages/DeleteAccount';
 import GoogleAuthCallback from './pages/GoogleAuthCallback';
 import GoogleSignupComplete from './pages/GoogleSignupComplete';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -182,6 +183,7 @@ function AppContent() {
           <Route path="/about" element={<About />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/delete-account" element={<DeleteAccount />} />
         </Route>
       </Routes>
       <Toaster position="top-right" />

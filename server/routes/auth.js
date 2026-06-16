@@ -8,6 +8,7 @@ const { protect } = require('../middleware/auth');
 const passport = require('../config/googleAuth');
 const nodemailer = require('nodemailer');
 const { sendOTP, verifyOTP, verifyOTPWithWidget } = require('../services/otpService');
+const { sendEmailOTP, verifyEmailOTP } = require('../services/emailOtpService');
 
 const router = express.Router();
 
@@ -993,6 +994,257 @@ router.post(
       });
     } catch (error) {
       console.error('OTP login error:', error);
+      res.status(500).json({
+        message: 'Server error during OTP login'
+      });
+    }
+  }
+);
+
+// ===============================
+// EMAIL OTP AUTHENTICATION ROUTES
+// ===============================
+
+// @route   POST /api/auth/email-otp/send
+// @desc    Send OTP to email address
+// @access  Public
+router.post(
+  '/email-otp/send',
+  [
+    body('email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Please provide a valid email address')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { email } = req.body;
+
+      // Send OTP
+      const result = await sendEmailOTP(email);
+
+      if (result.success) {
+        res.json({
+          message: result.message,
+          // Only include OTP in response for testing/mock mode
+          ...(result.otp && { otp: result.otp })
+        });
+      } else {
+        res.status(500).json({
+          message: result.message,
+          error: result.error
+        });
+      }
+    } catch (error) {
+      console.error('Send email OTP error:', error);
+      res.status(500).json({
+        message: 'Server error while sending OTP'
+      });
+    }
+  }
+);
+
+// @route   POST /api/auth/email-otp/verify
+// @desc    Verify OTP and login/register user via email
+// @access  Public
+router.post(
+  '/email-otp/verify',
+  [
+    body('email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Please provide a valid email address'),
+    body('otp')
+      .isLength({ min: 6, max: 6 })
+      .withMessage('OTP must be 6 digits')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { email, otp, name, phone, role, address } = req.body;
+
+      // Verify OTP
+      const verificationResult = verifyEmailOTP(email, otp);
+
+      if (!verificationResult.success) {
+        return res.status(400).json({
+          message: verificationResult.message
+        });
+      }
+
+      // Check if user exists
+      let user = await User.findOne({ email });
+
+      if (user) {
+        // Existing user - login
+        if (!user.isActive) {
+          return res.status(401).json({
+            message: 'Account is deactivated'
+          });
+        }
+
+        user.lastLogin = new Date();
+        await user.save();
+
+        const token = generateToken(user._id);
+
+        res.json({
+          message: 'Login successful',
+          token,
+          user: user.getProfile(),
+          isNewUser: false
+        });
+      } else {
+        // New user - register with email OTP
+        if (!name) {
+          return res.status(400).json({
+            message: 'Name is required for new user registration'
+          });
+        }
+
+        if (!phone) {
+          return res.status(400).json({
+            message: 'Phone number is required for new user registration'
+          });
+        }
+
+        // Validate phone number
+        if (!/^[6-9]\d{9}$/.test(phone)) {
+          return res.status(400).json({
+            message: 'Please provide a valid 10-digit phone number'
+          });
+        }
+
+        // Check if phone number is already taken
+        const phoneExists = await User.findOne({ phone });
+        if (phoneExists) {
+          return res.status(400).json({
+            message: 'This phone number is already registered with another account'
+          });
+        }
+
+        const newUser = new User({
+          name,
+          email,
+          phone,
+          role: role || 'customer',
+          address,
+          authMethod: 'email-otp',
+          isVerified: true, // Email verified via OTP
+          password: Math.random().toString(36).slice(-8) // Generate random password for email OTP users
+        });
+
+        await newUser.save();
+
+        // Provider signup bonus
+        if (newUser.role === 'provider') {
+          try {
+            const wallet = await ProviderWallet.getOrCreateWallet(newUser._id);
+            await wallet.addBonus(300, 'Signup bonus - Welcome to InstaServe!');
+            console.log(`💰 Added 300 Rs signup bonus to provider wallet: ${newUser.email}`);
+          } catch (walletError) {
+            console.error('Wallet bonus error:', walletError);
+          }
+        }
+
+        const token = generateToken(newUser._id);
+
+        res.status(201).json({
+          message: 'Registration successful',
+          token,
+          user: newUser.getProfile(),
+          isNewUser: true
+        });
+      }
+    } catch (error) {
+      console.error('Email OTP verify error:', error);
+      res.status(500).json({
+        message: 'Server error during OTP verification'
+      });
+    }
+  }
+);
+
+// @route   POST /api/auth/email-otp/login
+// @desc    Login with email OTP (for existing users only)
+// @access  Public
+router.post(
+  '/email-otp/login',
+  [
+    body('email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Please provide a valid email address'),
+    body('otp')
+      .isLength({ min: 6, max: 6 })
+      .withMessage('OTP must be 6 digits')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { email, otp } = req.body;
+
+      // Verify OTP
+      const verificationResult = verifyEmailOTP(email, otp);
+
+      if (!verificationResult.success) {
+        return res.status(400).json({
+          message: verificationResult.message
+        });
+      }
+
+      // Check if user exists
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        return res.status(404).json({
+          message: 'No account found with this email. Please register first.'
+        });
+      }
+
+      if (!user.isActive) {
+        return res.status(401).json({
+          message: 'Account is deactivated'
+        });
+      }
+
+      user.lastLogin = new Date();
+      await user.save();
+
+      const token = generateToken(user._id);
+
+      res.json({
+        message: 'Login successful',
+        token,
+        user: user.getProfile()
+      });
+    } catch (error) {
+      console.error('Email OTP login error:', error);
       res.status(500).json({
         message: 'Server error during OTP login'
       });

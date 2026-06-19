@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 
-// In-memory OTP storage (in production, use Redis)
-const otpStore = new Map();
+// In-memory OTP storage for email (in production, use Redis)
+const emailOTPStore = new Map();
 
 // OTP expiration time in minutes
 const OTP_EXPIRY_MINUTES = 5;
@@ -13,13 +13,13 @@ const isEmailConfigured = () => {
          process.env.EMAIL_PASS !== 'your_gmail_app_password_here';
 };
 
-// Create transporter for sending emails
+// Create transporter for sending emails (same as contact page)
 const createTransporter = () => {
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER || 'admin.instaserve@gmail.com',
-      pass: process.env.EMAIL_PASS
+      pass: process.env.EMAIL_PASS // Use App Password, not regular password
     },
     connectionTimeout: 10000,
     greetingTimeout: 5000,
@@ -37,33 +37,37 @@ const generateOTP = () => {
 /**
  * Send OTP to email address
  * @param {string} email - Email address
+ * @param {string} purpose - Purpose of OTP (login/signup)
  * @returns {Promise<Object>} - Response with success status and message
  */
-const sendEmailOTP = async (email) => {
+const sendEmailOTP = async (email, purpose = 'login') => {
   try {
     // Validate email
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
       return {
         success: false,
-        message: 'Invalid email address format'
+        message: 'Invalid email address'
       };
     }
 
     // Check if email is configured
     if (!isEmailConfigured()) {
-      console.warn('Email not configured. Using mock OTP for testing.');
+      console.warn('Email credentials not configured. Using mock OTP for testing.');
       // For testing without email credentials
       const mockOTP = generateOTP();
-      otpStore.set(email, {
+      emailOTPStore.set(email, {
         otp: mockOTP,
         expiresAt: Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000,
-        attempts: 0
+        attempts: 0,
+        purpose
       });
-      console.log(`Mock OTP for ${email}: ${mockOTP}`);
+      console.log(`Mock Email OTP for ${email}: ${mockOTP}`);
       return {
         success: true,
         message: 'OTP sent successfully (mock mode)',
-        otp: mockOTP // Only return OTP in mock mode for testing
+        otp: mockOTP, // Only return OTP in mock mode for testing
+        mockMode: true
       };
     }
 
@@ -71,60 +75,83 @@ const sendEmailOTP = async (email) => {
     const otp = generateOTP();
 
     // Store OTP with expiration
-    otpStore.set(email, {
+    emailOTPStore.set(email, {
       otp,
       expiresAt: Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000,
-      attempts: 0
+      attempts: 0,
+      purpose
     });
 
-    // Create transporter
+    // Create email transporter
     const transporter = createTransporter();
 
-    // Send email
+    // Determine email content based on purpose
+    const subject = purpose === 'signup' 
+      ? 'Verify your email - InstaServe Registration'
+      : 'Login OTP - InstaServe';
+    
+    const htmlContent = purpose === 'signup'
+      ? `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #7C3AED;">Welcome to InstaServe!</h2>
+          <p>Thank you for registering with InstaServe. Please verify your email address using the OTP below:</p>
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #7C3AED;">${otp}</span>
+          </div>
+          <p><strong>This OTP will expire in 5 minutes.</strong></p>
+          <p>If you didn't request this, please ignore this email or contact our support team.</p>
+          <p style="margin-top: 30px;">Best regards,<br>The InstaServe Team</p>
+        </div>
+      `
+      : `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #7C3AED;">Login OTP - InstaServe</h2>
+          <p>You requested to login to your InstaServe account. Use the OTP below to complete your login:</p>
+          <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #7C3AED;">${otp}</span>
+          </div>
+          <p><strong>This OTP will expire in 5 minutes.</strong></p>
+          <p>If you didn't request this, please ignore this email or contact our support team immediately.</p>
+          <p style="margin-top: 30px;">Best regards,<br>The InstaServe Team</p>
+        </div>
+      `;
+
     const mailOptions = {
       from: process.env.EMAIL_USER || 'admin.instaserve@gmail.com',
       to: email,
-      subject: 'InstaServe - Email Verification OTP',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #7C3AED;">Email Verification</h2>
-          <p>Hello,</p>
-          <p>Your OTP for InstaServe authentication is:</p>
-          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-            <span style="font-size: 32px; font-weight: bold; color: #7C3AED; letter-spacing: 5px;">${otp}</span>
-          </div>
-          <p>This OTP will expire in 5 minutes.</p>
-          <p>If you didn't request this OTP, please ignore this email or contact our support team.</p>
-          <p>Best regards,<br>The InstaServe Team</p>
-        </div>
-      `
+      subject: subject,
+      html: htmlContent
     };
 
+    // Send email
     await transporter.sendMail(mailOptions);
 
-    console.log(`OTP sent to email: ${email}`);
+    console.log(`Email OTP sent to ${email}: ${otp}`);
 
     return {
       success: true,
-      message: 'OTP sent successfully to your email'
+      message: 'OTP sent successfully to your email',
+      mockMode: false
     };
   } catch (error) {
     console.error('Error sending email OTP:', error);
     
-    // Fallback to mock mode if email fails
+    // Fallback to mock mode if email sending fails
     console.warn('Email sending failed, falling back to mock mode');
     const mockOTP = generateOTP();
-    otpStore.set(email, {
+    emailOTPStore.set(email, {
       otp: mockOTP,
       expiresAt: Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000,
-      attempts: 0
+      attempts: 0,
+      purpose
     });
-    console.log(`Fallback Mock OTP for ${email}: ${mockOTP}`);
+    console.log(`Fallback Mock Email OTP for ${email}: ${mockOTP}`);
     
     return {
       success: true,
       message: 'OTP sent successfully (fallback mode)',
       otp: mockOTP,
+      mockMode: true,
       fallback: true
     };
   }
@@ -134,7 +161,7 @@ const sendEmailOTP = async (email) => {
  * Verify OTP for email
  * @param {string} email - Email address
  * @param {string} otp - OTP to verify
- * @returns {Object} - Response with success status and message
+ * @returns {Promise<Object>} - Response with success status and message
  */
 const verifyEmailOTP = (email, otp) => {
   try {
@@ -147,7 +174,7 @@ const verifyEmailOTP = (email, otp) => {
     }
 
     // Check if OTP exists for this email
-    const storedData = otpStore.get(email);
+    const storedData = emailOTPStore.get(email);
 
     if (!storedData) {
       return {
@@ -158,7 +185,7 @@ const verifyEmailOTP = (email, otp) => {
 
     // Check if OTP has expired
     if (Date.now() > storedData.expiresAt) {
-      otpStore.delete(email);
+      emailOTPStore.delete(email);
       return {
         success: false,
         message: 'OTP has expired. Please request a new OTP.'
@@ -167,7 +194,7 @@ const verifyEmailOTP = (email, otp) => {
 
     // Check if too many attempts
     if (storedData.attempts >= 3) {
-      otpStore.delete(email);
+      emailOTPStore.delete(email);
       return {
         success: false,
         message: 'Too many failed attempts. Please request a new OTP.'
@@ -177,7 +204,7 @@ const verifyEmailOTP = (email, otp) => {
     // Verify OTP
     if (storedData.otp !== otp) {
       storedData.attempts += 1;
-      otpStore.set(email, storedData);
+      emailOTPStore.set(email, storedData);
       return {
         success: false,
         message: `Invalid OTP. ${3 - storedData.attempts} attempts remaining.`
@@ -185,7 +212,7 @@ const verifyEmailOTP = (email, otp) => {
     }
 
     // OTP verified successfully - remove from store
-    otpStore.delete(email);
+    emailOTPStore.delete(email);
 
     return {
       success: true,
@@ -206,9 +233,9 @@ const verifyEmailOTP = (email, otp) => {
  */
 const cleanupExpiredOTPs = () => {
   const now = Date.now();
-  for (const [email, data] of otpStore.entries()) {
+  for (const [email, data] of emailOTPStore.entries()) {
     if (now > data.expiresAt) {
-      otpStore.delete(email);
+      emailOTPStore.delete(email);
       console.log(`Cleaned up expired OTP for ${email}`);
     }
   }

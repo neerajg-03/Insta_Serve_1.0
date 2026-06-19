@@ -177,7 +177,7 @@ const userSchema = new mongoose.Schema({
   },
   authMethod: {
     type: String,
-    enum: ['local', 'google', 'otp'],
+    enum: ['local', 'google', 'otp', 'email-otp'],
     default: 'local'
   },
   profilePicture: {

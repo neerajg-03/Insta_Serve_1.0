@@ -8,7 +8,7 @@ const { protect } = require('../middleware/auth');
 const passport = require('../config/googleAuth');
 const nodemailer = require('nodemailer');
 const { sendOTP, verifyOTP, verifyOTPWithWidget } = require('../services/otpService');
-const { sendEmailOTP, verifyEmailOTP } = require('../services/emailOtpService');
+const { sendEmailOTP, verifyEmailOTP } = require('../services/emailOTPService');
 
 const router = express.Router();
 
@@ -1014,7 +1014,11 @@ router.post(
     body('email')
       .isEmail()
       .normalizeEmail()
-      .withMessage('Please provide a valid email address')
+      .withMessage('Please provide a valid email'),
+    body('purpose')
+      .optional()
+      .isIn(['login', 'signup'])
+      .withMessage('Purpose must be either login or signup')
   ],
   async (req, res) => {
     try {
@@ -1027,10 +1031,10 @@ router.post(
         });
       }
 
-      const { email } = req.body;
+      const { email, purpose = 'login' } = req.body;
 
-      // Send OTP
-      const result = await sendEmailOTP(email);
+      // Send email OTP
+      const result = await sendEmailOTP(email, purpose);
 
       if (result.success) {
         res.json({
@@ -1047,14 +1051,14 @@ router.post(
     } catch (error) {
       console.error('Send email OTP error:', error);
       res.status(500).json({
-        message: 'Server error while sending OTP'
+        message: 'Server error while sending email OTP'
       });
     }
   }
 );
 
 // @route   POST /api/auth/email-otp/verify
-// @desc    Verify OTP and login/register user via email
+// @desc    Verify email OTP and login/register user
 // @access  Public
 router.post(
   '/email-otp/verify',
@@ -1062,7 +1066,7 @@ router.post(
     body('email')
       .isEmail()
       .normalizeEmail()
-      .withMessage('Please provide a valid email address'),
+      .withMessage('Please provide a valid email'),
     body('otp')
       .isLength({ min: 6, max: 6 })
       .withMessage('OTP must be 6 digits')
@@ -1078,7 +1082,7 @@ router.post(
         });
       }
 
-      const { email, otp, name, phone, role, address } = req.body;
+      const { email, otp, name, role, phone, password, address } = req.body;
 
       // Verify OTP
       const verificationResult = verifyEmailOTP(email, otp);
@@ -1119,14 +1123,13 @@ router.post(
           });
         }
 
-        if (!phone) {
+        if (!password || password.length < 6) {
           return res.status(400).json({
-            message: 'Phone number is required for new user registration'
+            message: 'Password must be at least 6 characters long'
           });
         }
 
-        // Validate phone number
-        if (!/^[6-9]\d{9}$/.test(phone)) {
+        if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
           return res.status(400).json({
             message: 'Please provide a valid 10-digit phone number'
           });
@@ -1134,6 +1137,7 @@ router.post(
 
         // Check if phone number is already taken
         const phoneExists = await User.findOne({ phone });
+
         if (phoneExists) {
           return res.status(400).json({
             message: 'This phone number is already registered with another account'
@@ -1143,12 +1147,13 @@ router.post(
         const newUser = new User({
           name,
           email,
+          password,
           phone,
           role: role || 'customer',
           address,
           authMethod: 'email-otp',
-          isVerified: true, // Email verified via OTP
-          password: Math.random().toString(36).slice(-8) // Generate random password for email OTP users
+          emailVerified: true,
+          isVerified: true
         });
 
         await newUser.save();
@@ -1176,77 +1181,7 @@ router.post(
     } catch (error) {
       console.error('Email OTP verify error:', error);
       res.status(500).json({
-        message: 'Server error during OTP verification'
-      });
-    }
-  }
-);
-
-// @route   POST /api/auth/email-otp/login
-// @desc    Login with email OTP (for existing users only)
-// @access  Public
-router.post(
-  '/email-otp/login',
-  [
-    body('email')
-      .isEmail()
-      .normalizeEmail()
-      .withMessage('Please provide a valid email address'),
-    body('otp')
-      .isLength({ min: 6, max: 6 })
-      .withMessage('OTP must be 6 digits')
-  ],
-  async (req, res) => {
-    try {
-      const errors = validationResult(req);
-
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          message: 'Validation failed',
-          errors: errors.array()
-        });
-      }
-
-      const { email, otp } = req.body;
-
-      // Verify OTP
-      const verificationResult = verifyEmailOTP(email, otp);
-
-      if (!verificationResult.success) {
-        return res.status(400).json({
-          message: verificationResult.message
-        });
-      }
-
-      // Check if user exists
-      const user = await User.findOne({ email });
-
-      if (!user) {
-        return res.status(404).json({
-          message: 'No account found with this email. Please register first.'
-        });
-      }
-
-      if (!user.isActive) {
-        return res.status(401).json({
-          message: 'Account is deactivated'
-        });
-      }
-
-      user.lastLogin = new Date();
-      await user.save();
-
-      const token = generateToken(user._id);
-
-      res.json({
-        message: 'Login successful',
-        token,
-        user: user.getProfile()
-      });
-    } catch (error) {
-      console.error('Email OTP login error:', error);
-      res.status(500).json({
-        message: 'Server error during OTP login'
+        message: 'Server error during email OTP verification'
       });
     }
   }

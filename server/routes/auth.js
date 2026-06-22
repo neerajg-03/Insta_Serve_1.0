@@ -79,7 +79,8 @@ router.post(
         password,
         phone,
         role,
-        address
+        address,
+        authMethod
       } = req.body;
 
       const existingUser = await User.findOne({
@@ -93,14 +94,23 @@ router.post(
         });
       }
 
-      const user = new User({
+      const userData = {
         name,
         email,
         password,
         phone,
         role: role || 'customer',
         address
-      });
+      };
+
+      // Handle email-otp auth method
+      if (authMethod === 'email-otp') {
+        userData.authMethod = 'email-otp';
+        userData.emailVerified = true;
+        userData.isVerified = true;
+      }
+
+      const user = new User(userData);
 
       await user.save();
 
@@ -1116,7 +1126,8 @@ router.post(
           isNewUser: false
         });
       } else {
-        // New user - register with email OTP
+        // New user - email verified but not registered yet
+        // Validate required fields for registration
         if (!name) {
           return res.status(400).json({
             message: 'Name is required for new user registration'
@@ -1144,38 +1155,21 @@ router.post(
           });
         }
 
-        const newUser = new User({
-          name,
-          email,
-          password,
-          phone,
-          role: role || 'customer',
-          address,
-          authMethod: 'email-otp',
+        // Store the verified email and registration data temporarily
+        // The actual user creation will happen after terms acceptance
+        res.json({
+          message: 'Email verified successfully. Please accept terms to complete registration.',
           emailVerified: true,
-          isVerified: true
-        });
-
-        await newUser.save();
-
-        // Provider signup bonus
-        if (newUser.role === 'provider') {
-          try {
-            const wallet = await ProviderWallet.getOrCreateWallet(newUser._id);
-            await wallet.addBonus(300, 'Signup bonus - Welcome to InstaServe!');
-            console.log(`💰 Added 300 Rs signup bonus to provider wallet: ${newUser.email}`);
-          } catch (walletError) {
-            console.error('Wallet bonus error:', walletError);
+          isNewUser: true,
+          // Return the registration data for frontend to store
+          registrationData: {
+            name,
+            email,
+            password,
+            phone,
+            role: role || 'customer',
+            address
           }
-        }
-
-        const token = generateToken(newUser._id);
-
-        res.status(201).json({
-          message: 'Registration successful',
-          token,
-          user: newUser.getProfile(),
-          isNewUser: true
         });
       }
     } catch (error) {

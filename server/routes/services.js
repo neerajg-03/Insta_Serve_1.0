@@ -4,6 +4,7 @@ const Service = require('../models/Service');
 const { protect, authorize } = require('../middleware/auth');
 const multer = require('multer');
 const { storage, cloudinary } = require('../config/cloudinary');
+const { adjustPriceByZone, getZoneDetails } = require('../utils/zoneConfig');
 
 const upload = multer({
   storage: storage,
@@ -24,7 +25,7 @@ const upload = multer({
 // @route   GET /api/services
 // @desc    Get all services with filtering and pagination
 // @access  Public
-router.get('/', async (req, res) => {
+router.get('/', protect, async (req, res) => {
   try {
     const {
       page = 1,
@@ -51,7 +52,7 @@ router.get('/', async (req, res) => {
     if (rating) query['ratings.average'] = { $gte: parseFloat(rating) };
     if (location) query.serviceArea = { $regex: location, $options: 'i' };
 
-    // Price range filter
+    // Price range filter (use base price for filtering)
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = parseFloat(minPrice);
@@ -83,8 +84,39 @@ router.get('/', async (req, res) => {
 
     const total = await Service.countDocuments(query);
 
+    // Adjust prices based on user's zone if authenticated
+    let userZone = 'D'; // Default to Zone D (Budget)
+    let zoneMultiplier = 1.00;
+    let zoneName = 'Budget';
+
+    if (req.user && req.user.zone) {
+      userZone = req.user.zone;
+      const zoneDetails = getZoneDetails(userZone);
+      if (zoneDetails) {
+        zoneMultiplier = zoneDetails.multiplier;
+        zoneName = zoneDetails.name;
+      }
+    }
+
+    // Apply zone pricing to services
+    const servicesWithZonePricing = services.map(service => {
+      const serviceObj = service.toObject();
+      const adjustedPrice = adjustPriceByZone(service.price, userZone);
+      return {
+        ...serviceObj,
+        basePrice: service.price,
+        adjustedPrice: adjustedPrice,
+        zone: userZone,
+        zoneMultiplier: zoneMultiplier,
+        zoneName: zoneName
+      };
+    });
+
     res.json({
-      services,
+      services: servicesWithZonePricing,
+      userZone: req.user ? userZone : null,
+      zoneMultiplier: zoneMultiplier,
+      zoneName: zoneName,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -99,7 +131,7 @@ router.get('/', async (req, res) => {
 });
 
 // @route   GET /api/services/public
-// @desc    Get all active services for public viewing
+// @desc    Get all active services for public viewing (with optional zone pricing)
 // @access  Public
 router.get('/public', async (req, res) => {
   try {
@@ -109,7 +141,8 @@ router.get('/public', async (req, res) => {
       category,
       search,
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      pincode
     } = req.query;
 
     // Build query for all active services
@@ -140,8 +173,40 @@ router.get('/public', async (req, res) => {
 
     const total = await Service.countDocuments(query);
 
+    // Determine zone based on provided pincode (for public/anonymous users)
+    let userZone = 'D';
+    let zoneMultiplier = 1.00;
+    let zoneName = 'Budget';
+
+    if (pincode) {
+      const { getZoneFromPincode } = require('../utils/zoneConfig');
+      userZone = getZoneFromPincode(pincode) || 'D';
+      const zoneDetails = getZoneDetails(userZone);
+      if (zoneDetails) {
+        zoneMultiplier = zoneDetails.multiplier;
+        zoneName = zoneDetails.name;
+      }
+    }
+
+    // Apply zone pricing to services
+    const servicesWithZonePricing = services.map(service => {
+      const serviceObj = service.toObject();
+      const adjustedPrice = adjustPriceByZone(service.price, userZone);
+      return {
+        ...serviceObj,
+        basePrice: service.price,
+        adjustedPrice: adjustedPrice,
+        zone: userZone,
+        zoneMultiplier: zoneMultiplier,
+        zoneName: zoneName
+      };
+    });
+
     res.json({
-      services,
+      services: servicesWithZonePricing,
+      userZone: pincode ? userZone : null,
+      zoneMultiplier: zoneMultiplier,
+      zoneName: zoneName,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -379,7 +444,7 @@ router.post('/:serviceId/request', protect, authorize('provider'), async (req, r
 });
 
 // @route   GET /api/services/:id
-// @desc    Get single service by ID
+// @desc    Get single service by ID with zone-adjusted pricing
 // @access  Public
 router.get('/:id', async (req, res) => {
   try {
@@ -391,7 +456,42 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Service not found' });
     }
 
-    res.json({ service });
+    // Determine zone based on authenticated user or provided pincode
+    let userZone = 'D';
+    let zoneMultiplier = 1.00;
+    let zoneName = 'Budget';
+    const { pincode } = req.query;
+
+    // Try to get zone from authenticated user first
+    if (req.user && req.user.zone) {
+      userZone = req.user.zone;
+    } else if (pincode) {
+      const { getZoneFromPincode } = require('../utils/zoneConfig');
+      userZone = getZoneFromPincode(pincode) || 'D';
+    }
+
+    const zoneDetails = getZoneDetails(userZone);
+    if (zoneDetails) {
+      zoneMultiplier = zoneDetails.multiplier;
+      zoneName = zoneDetails.name;
+    }
+
+    const serviceObj = service.toObject();
+    const adjustedPrice = adjustPriceByZone(service.price, userZone);
+
+    res.json({
+      service: {
+        ...serviceObj,
+        basePrice: service.price,
+        adjustedPrice: adjustedPrice,
+        zone: userZone,
+        zoneMultiplier: zoneMultiplier,
+        zoneName: zoneName
+      },
+      userZone: userZone,
+      zoneMultiplier: zoneMultiplier,
+      zoneName: zoneName
+    });
   } catch (error) {
     console.error('Get service error:', error);
     res.status(500).json({ message: 'Server error' });

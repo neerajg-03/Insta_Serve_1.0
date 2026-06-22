@@ -59,7 +59,31 @@ router.post(
       .isIn(['customer', 'provider'])
       .withMessage(
         'Role must be either customer or provider'
-      )
+      ),
+
+    body('address')
+      .notEmpty()
+      .withMessage('Address is required'),
+
+    body('address.street')
+      .trim()
+      .notEmpty()
+      .withMessage('Street address is required'),
+
+    body('address.city')
+      .trim()
+      .notEmpty()
+      .withMessage('City is required'),
+
+    body('address.state')
+      .trim()
+      .notEmpty()
+      .withMessage('State is required'),
+
+    body('address.pincode')
+      .trim()
+      .matches(/^\d{6}$/)
+      .withMessage('Please provide a valid 6-digit pincode')
   ],
 
   async (req, res) => {
@@ -467,6 +491,19 @@ router.post(
         });
       }
 
+      // Validate address
+      if (!address || !address.street || !address.city || !address.state || !address.pincode) {
+        return res.status(400).json({
+          message: 'Address including street, city, state, and pincode is required'
+        });
+      }
+
+      if (!/^\d{6}$/.test(address.pincode)) {
+        return res.status(400).json({
+          message: 'Please provide a valid 6-digit pincode'
+        });
+      }
+
       // Check if user already exists
       let user = await User.findOne({
         googleId: googleData.googleId
@@ -848,7 +885,36 @@ router.post(
       .withMessage('Please provide a valid 10-digit phone number'),
     body('otp')
       .isLength({ min: 6, max: 6 })
-      .withMessage('OTP must be 6 digits')
+      .withMessage('OTP must be 6 digits'),
+
+    body('address')
+      .optional()
+      .notEmpty()
+      .withMessage('Address is required'),
+
+    body('address.street')
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage('Street address is required'),
+
+    body('address.city')
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage('City is required'),
+
+    body('address.state')
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage('State is required'),
+
+    body('address.pincode')
+      .optional()
+      .trim()
+      .matches(/^\d{6}$/)
+      .withMessage('Please provide a valid 6-digit pincode')
   ],
   async (req, res) => {
     try {
@@ -1079,7 +1145,36 @@ router.post(
       .withMessage('Please provide a valid email'),
     body('otp')
       .isLength({ min: 6, max: 6 })
-      .withMessage('OTP must be 6 digits')
+      .withMessage('OTP must be 6 digits'),
+
+    body('address')
+      .optional()
+      .notEmpty()
+      .withMessage('Address is required'),
+
+    body('address.street')
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage('Street address is required'),
+
+    body('address.city')
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage('City is required'),
+
+    body('address.state')
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage('State is required'),
+
+    body('address.pincode')
+      .optional()
+      .trim()
+      .matches(/^\d{6}$/)
+      .withMessage('Please provide a valid 6-digit pincode')
   ],
   async (req, res) => {
     try {

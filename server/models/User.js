@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { getZoneFromPincode } = require('../utils/zoneConfig');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -46,6 +47,11 @@ const userSchema = new mongoose.Schema({
       lat: Number,
       lng: Number
     }
+  },
+  zone: {
+    type: String,
+    enum: ['A', 'B', 'C', 'D'],
+    default: 'D'
   },
   isVerified: {
     type: Boolean,
@@ -177,7 +183,7 @@ const userSchema = new mongoose.Schema({
   },
   authMethod: {
     type: String,
-    enum: ['local', 'google', 'otp', 'email-otp'],
+    enum: ['local', 'google', 'otp'],
     default: 'local'
   },
   profilePicture: {
@@ -207,6 +213,17 @@ userSchema.pre('save', async function(next) {
   } catch (error) {
     next(error);
   }
+});
+
+// Auto-calculate zone from pincode before saving
+userSchema.pre('save', function(next) {
+  if (this.address && this.address.pincode) {
+    const zone = getZoneFromPincode(this.address.pincode);
+    if (zone) {
+      this.zone = zone;
+    }
+  }
+  next();
 });
 
 // Handle associated bookings before deleting a user
